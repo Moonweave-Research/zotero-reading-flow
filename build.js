@@ -11,8 +11,8 @@ esbuild.build({
 }).then(() => {
   console.log('Build finished. Creating .xpi...');
   const xpiName = 'zotero-reading-flow.xpi';
-  // Zip the contents of the addon folder
-  const cmd = `cd addon && zip -r ../${xpiName} *`;
+  // Zip only the necessary files, excluding hidden system files
+  const cmd = `cd addon && zip -r ../${xpiName} . -x "*.DS_Store"`;
   exec(cmd, (error, stdout, stderr) => {
     if (error) {
       console.error(`Error creating xpi: ${error.message}`);
