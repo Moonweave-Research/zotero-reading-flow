@@ -79,7 +79,12 @@ export class ColumnManager {
     const bar = document.createElement('div');
     bar.style.width = `${latestProgress * 100}%`;
     bar.style.height = '100%';
-    bar.style.backgroundColor = latestProgress >= 0.99 ? '#4caf50' : '#2196f3';
+    
+    const prefPrefix = 'extensions.readingflow.';
+    const completedColor = Zotero.Prefs.get(prefPrefix + 'color-completed') || '#4caf50';
+    const readingColor = Zotero.Prefs.get(prefPrefix + 'color-reading') || '#2196f3';
+    
+    bar.style.backgroundColor = latestProgress >= 0.99 ? completedColor : readingColor;
 
     barContainer.appendChild(bar);
     element.appendChild(barContainer);

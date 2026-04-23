@@ -10,5 +10,13 @@
       "strict_min_version": "9.0",
       "strict_max_version": "9.0.*"
     }
+  },
+  "options_ui": {
+    "page": "prefs.html",
+    "browser_style": true
+  },
+  "icons": {
+    "48": "icon.png",
+    "96": "icon.png"
   }
 }

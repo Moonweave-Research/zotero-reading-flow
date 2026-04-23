@@ -4,6 +4,7 @@ import { ReaderTracker } from './readerTracker';
 import { ColumnManager } from './columnManager';
 import { StyleManager } from './styleManager';
 import { NotifierManager } from './notifierManager';
+import { PopoverManager } from './popoverManager';
 import { Logger } from './Logger';
 
 class Bootstrap {
@@ -13,6 +14,7 @@ class Bootstrap {
   private columnManager?: ColumnManager;
   private styleManager: StyleManager;
   private notifierManager?: NotifierManager;
+  private popoverManager?: PopoverManager;
 
   constructor() {
     this.tool = new BasicTool();
@@ -35,6 +37,9 @@ class Bootstrap {
 
     this.notifierManager = new NotifierManager(this.dataStore);
     this.notifierManager.register();
+
+    this.popoverManager = new PopoverManager();
+    this.popoverManager.register();
   }
 
   shutdown() {
@@ -50,6 +55,10 @@ class Bootstrap {
 
     if (this.notifierManager) {
       this.notifierManager.unregister();
+    }
+
+    if (this.popoverManager) {
+      this.popoverManager.unregister();
     }
 
     this.styleManager.unregister();

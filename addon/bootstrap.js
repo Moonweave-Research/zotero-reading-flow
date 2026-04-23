@@ -3608,19 +3608,492 @@ var ZoteroToolkit = class extends BasicTool {
   }
 };
 
+// src/lruCache.ts
+var LRUCache = class {
+  max;
+  cache;
+  constructor(max = 1e3) {
+    this.max = max;
+    this.cache = /* @__PURE__ */ new Map();
+  }
+  get(key) {
+    if (!this.cache.has(key))
+      return void 0;
+    const val = this.cache.get(key);
+    this.cache.delete(key);
+    this.cache.set(key, val);
+    return val;
+  }
+  set(key, val) {
+    if (this.cache.has(key))
+      this.cache.delete(key);
+    else if (this.cache.size === this.max) {
+      this.cache.delete(this.cache.keys().next().value);
+    }
+    this.cache.set(key, val);
+  }
+  delete(key) {
+    this.cache.delete(key);
+  }
+};
+
+// src/Logger.ts
+var Logger = class {
+  static prefix = "[Reading Flow] ";
+  static log(message, level = 3) {
+    if (typeof Zotero !== "undefined" && Zotero.debug) {
+      Zotero.debug(this.prefix + message, level);
+    } else {
+      console.log(this.prefix + message);
+    }
+  }
+  static error(message, error) {
+    const errorMessage = error ? `${message}: ${error.message || error}` : message;
+    if (typeof Zotero !== "undefined" && Zotero.debug) {
+      Zotero.debug(this.prefix + "ERROR: " + errorMessage, 1);
+    } else {
+      console.error(this.prefix + "ERROR: " + errorMessage);
+    }
+    if (error && error.stack) {
+      this.log("Stack trace: " + error.stack, 1);
+    }
+  }
+  static warn(message) {
+    this.log("WARN: " + message, 2);
+  }
+};
+
+// src/dataStore.ts
+var PREFIX = "ReadingFlow: ";
+var DEFAULT_DATA = { v: 1, p: {}, c: null, s: null, ts: 0 };
+var DataStore = class {
+  cache = new LRUCache(2e3);
+  getData(item) {
+    const id = item.id;
+    const cached = this.cache.get(id);
+    if (cached)
+      return cached;
+    const extra = item.getField("extra") || "";
+    const match = extra.split("\n").find((line) => line.startsWith(PREFIX));
+    let data = { ...DEFAULT_DATA };
+    if (match) {
+      try {
+        const parsed = JSON.parse(match.substring(PREFIX.length));
+        data = { ...DEFAULT_DATA, ...parsed };
+      } catch (e) {
+        Logger.error(`ReadingFlow: Failed to parse data for ${id}`, e);
+      }
+    }
+    this.cache.set(id, data);
+    return data;
+  }
+  async updateData(item, updates) {
+    if (item.isDirty()) {
+      Logger.warn("ReadingFlow: Item dirty, skipping write to prevent race condition");
+      return;
+    }
+    const current = this.getData(item);
+    if (updates.ts && updates.ts < current.ts)
+      return;
+    const merged = { ...current, ...updates, ts: Date.now() };
+    this.cache.set(item.id, merged);
+    let extra = item.getField("extra") || "";
+    const lines = extra.split("\n").filter((line) => !line.startsWith(PREFIX));
+    lines.push(`${PREFIX}${JSON.stringify(merged)}`);
+    item.setField("extra", lines.join("\n"));
+    await item.saveTx();
+  }
+  clearCache(itemId) {
+    this.cache.delete(itemId);
+  }
+};
+
+// src/ErrorHandler.ts
+var ErrorHandler = class {
+  static wrap(fn, context) {
+    return (...args) => {
+      try {
+        return fn(...args);
+      } catch (error) {
+        Logger.error(`Error in ${context}`, error);
+        return void 0;
+      }
+    };
+  }
+  static async wrapAsync(fn, context) {
+    try {
+      return await fn();
+    } catch (error) {
+      Logger.error(`Async error in ${context}`, error);
+      return void 0;
+    }
+  }
+  static handle(error, context) {
+    Logger.error(`Exception in ${context}`, error);
+  }
+};
+
+// src/readerTracker.ts
+var ReaderTracker = class {
+  dataStore;
+  readerEventId = null;
+  saveTimeout = null;
+  constructor(dataStore) {
+    this.dataStore = dataStore;
+  }
+  register() {
+    this.readerEventId = Zotero.Events.register("reader:page-change", this.handlePageChange.bind(this));
+    Logger.log("ReaderTracker: Registered");
+  }
+  unregister() {
+    if (this.readerEventId) {
+      Zotero.Events.unregister("reader:page-change", this.readerEventId);
+      this.readerEventId = null;
+    }
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
+    Logger.log("ReaderTracker: Unregistered");
+  }
+  handlePageChange(event) {
+    ErrorHandler.wrap(() => {
+      const reader = event.reader;
+      if (!reader || !reader.itemID)
+        return;
+      const attachmentId = reader.itemID.toString();
+      const parentId = reader._item.parentID;
+      if (!parentId)
+        return;
+      let progress = 0;
+      if (reader.type === "pdf") {
+        const current = event.pageIndex + 1;
+        const total = reader._state.pdf.numPages;
+        progress = total > 0 ? current / total : 0;
+      } else if (reader.type === "epub") {
+        progress = event.progress || 0;
+      }
+      progress = Math.min(1, Math.max(0, progress));
+      this.debounceSave(parentId, attachmentId, progress);
+    }, "ReaderTracker.handlePageChange")();
+  }
+  debounceSave(parentId, attachmentId, progress) {
+    if (this.saveTimeout)
+      clearTimeout(this.saveTimeout);
+    this.saveTimeout = setTimeout(async () => {
+      await ErrorHandler.wrapAsync(async () => {
+        const parentItem = await Zotero.Items.getAsync(parentId);
+        if (parentItem) {
+          const updates = { p: {} };
+          updates.p[attachmentId] = progress;
+          await this.dataStore.updateData(parentItem, updates);
+        }
+      }, "ReaderTracker.debounceSave");
+    }, 5e3);
+  }
+};
+
+// src/columnManager.ts
+var ColumnManager = class {
+  dataStore;
+  constructor(dataStore) {
+    this.dataStore = dataStore;
+  }
+  async register() {
+    await Zotero.ItemTreeManager.registerColumns({
+      dataKey: "readingFlowProgress",
+      label: "Progress",
+      pluginID: "readingflow@example.com",
+      zoteroPersist: true,
+      renderCell: this.renderProgressCell.bind(this)
+    });
+  }
+  unregister() {
+    Zotero.ItemTreeManager.unregisterColumns("readingflow@example.com");
+  }
+  renderProgressCell(index, data, column, element) {
+    element.textContent = "";
+    const item = data.getRow(index).ref;
+    if (!item || !item.isRegularItem())
+      return element;
+    const flowData = this.dataStore.getData(item);
+    const row = element.closest("tree-row");
+    if (row) {
+      if (flowData.c) {
+        row.setAttribute("data-flow-color", "true");
+        const color = flowData.c.startsWith("#") ? `${flowData.c}33` : flowData.c;
+        row.style.setProperty("--reading-flow-row-color", color);
+      } else {
+        row.removeAttribute("data-flow-color");
+        row.style.removeProperty("--reading-flow-row-color");
+      }
+    }
+    let latestProgress = 0;
+    if (flowData.p && Object.keys(flowData.p).length > 0) {
+      const entries = Object.values(flowData.p);
+      let newestTs = -1;
+      for (const entry of entries) {
+        if (typeof entry === "object" && entry !== null && "ts" in entry) {
+          if (entry.ts > newestTs) {
+            newestTs = entry.ts;
+            latestProgress = entry.pr;
+          }
+        } else if (typeof entry === "number") {
+          if (newestTs === -1) {
+            latestProgress = Math.max(latestProgress, entry);
+          }
+        }
+      }
+    }
+    if (latestProgress === 0)
+      return element;
+    const barContainer = document.createElement("div");
+    barContainer.style.width = "100%";
+    barContainer.style.height = "6px";
+    barContainer.style.backgroundColor = "rgba(0,0,0,0.1)";
+    barContainer.style.borderRadius = "3px";
+    barContainer.style.overflow = "hidden";
+    barContainer.style.marginTop = "4px";
+    const bar = document.createElement("div");
+    bar.style.width = `${latestProgress * 100}%`;
+    bar.style.height = "100%";
+    const prefPrefix = "extensions.readingflow.";
+    const completedColor = Zotero.Prefs.get(prefPrefix + "color-completed") || "#4caf50";
+    const readingColor = Zotero.Prefs.get(prefPrefix + "color-reading") || "#2196f3";
+    bar.style.backgroundColor = latestProgress >= 0.99 ? completedColor : readingColor;
+    barContainer.appendChild(bar);
+    element.appendChild(barContainer);
+    return element;
+  }
+};
+
+// src/styleManager.ts
+var StyleManager = class {
+  uiTool;
+  constructor() {
+    this.uiTool = new UITool();
+  }
+  injectCSS() {
+    this.uiTool.registerCSS(`
+      tree-row[data-flow-color] {
+        background-color: var(--reading-flow-row-color) !important;
+      }
+    `);
+  }
+  unregister() {
+    this.uiTool.unregisterAll();
+  }
+};
+
+// src/notifierManager.ts
+var NotifierManager = class {
+  dataStore;
+  notifierId = null;
+  constructor(dataStore) {
+    this.dataStore = dataStore;
+  }
+  register() {
+    this.notifierId = Zotero.Notifier.registerObserver(this, ["item"], "ReadingFlow");
+  }
+  unregister() {
+    if (this.notifierId) {
+      Zotero.Notifier.unregisterObserver(this.notifierId);
+    }
+  }
+  notify(action, type, ids) {
+    if (type === "item" && (action === "trash" || action === "delete")) {
+      ids.forEach((id) => this.dataStore.clearCache(id));
+    }
+  }
+};
+
+// src/popoverManager.ts
+var PopoverManager = class {
+  timeoutId = null;
+  popover = null;
+  currentItemId = null;
+  register() {
+    const pane = Zotero.getActiveZoteroPane();
+    if (pane && pane.itemsView) {
+      const content = pane.itemsView.contentElement;
+      content.addEventListener("mouseover", this.handleMouseOver.bind(this));
+      content.addEventListener("mouseout", this.handleMouseOut.bind(this));
+      content.addEventListener("scroll", this.removePopover.bind(this));
+    }
+  }
+  unregister() {
+    const pane = Zotero.getActiveZoteroPane();
+    if (pane && pane.itemsView) {
+      const content = pane.itemsView.contentElement;
+      content.removeEventListener("mouseover", this.handleMouseOver.bind(this));
+      content.removeEventListener("mouseout", this.handleMouseOut.bind(this));
+      content.removeEventListener("scroll", this.removePopover.bind(this));
+    }
+    this.removePopover();
+  }
+  handleMouseOver(event) {
+    const target = event.target;
+    const cell = target.closest(".cell");
+    if (!cell)
+      return;
+    const isTitleCell = cell.classList.contains("primary") || cell.getAttribute("data-column-id") === "title";
+    if (!isTitleCell)
+      return;
+    const row = cell.closest("tree-row");
+    if (!row)
+      return;
+    const pane = Zotero.getActiveZoteroPane();
+    const index = parseInt(row.getAttribute("data-index") || "-1");
+    if (index === -1)
+      return;
+    const item = pane.itemsView.getRow(index).ref;
+    if (!item || !item.isRegularItem())
+      return;
+    if (this.currentItemId === item.id)
+      return;
+    this.currentItemId = item.id;
+    if (this.timeoutId)
+      clearTimeout(this.timeoutId);
+    const delay = Zotero.Prefs.get("extensions.readingflow.hover-debounce") || 400;
+    this.timeoutId = setTimeout(() => this.showPopover(item, event), delay);
+  }
+  handleMouseOut(event) {
+    const relatedTarget = event.relatedTarget;
+    if (this.popover && this.popover.contains(relatedTarget))
+      return;
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+    this.currentItemId = null;
+    this.removePopover();
+  }
+  async showPopover(item, event) {
+    try {
+      const abstract = item.getField("abstractNote");
+      const annotations = await Zotero.Annotations.getForItems([item.id]);
+      if (!abstract && (!annotations || annotations.length === 0))
+        return;
+      this.removePopover();
+      const popover = document.createElement("div");
+      popover.id = "reading-flow-popover";
+      Object.assign(popover.style, {
+        position: "fixed",
+        zIndex: "10000",
+        backgroundColor: "white",
+        color: "#333",
+        border: "1px solid #ccc",
+        padding: "12px",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+        maxWidth: "350px",
+        fontSize: "12px",
+        lineHeight: "1.4",
+        pointerEvents: "none"
+      });
+      let html = "";
+      if (abstract) {
+        const sanitizedAbstract = this.sanitizeHTML(abstract);
+        html += `<div style="margin-bottom: 8px;"><strong>Abstract:</strong><br/>${sanitizedAbstract.substring(0, 300)}${sanitizedAbstract.length > 300 ? "..." : ""}</div>`;
+      }
+      if (annotations && annotations.length > 0) {
+        html += `<div><strong>Top Highlights:</strong><ul style="margin: 4px 0; padding-left: 16px;">`;
+        const topAnnotations = annotations.slice(0, 3);
+        for (const ann of topAnnotations) {
+          const text = ann.annotationText || "";
+          if (text) {
+            html += `<li>${this.sanitizeHTML(text).substring(0, 100)}${text.length > 100 ? "..." : ""}</li>`;
+          }
+        }
+        html += `</ul></div>`;
+      }
+      popover.innerHTML = html;
+      document.body.appendChild(popover);
+      this.popover = popover;
+      this.positionPopover(event.clientX, event.clientY);
+    } catch (e) {
+      Logger.log("Reading Flow: Popover error", e);
+    }
+  }
+  sanitizeHTML(str) {
+    return str.replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[m]);
+  }
+  positionPopover(x, y) {
+    if (!this.popover)
+      return;
+    const padding = 15;
+    let left = x + padding;
+    let top = y + padding;
+    const width = this.popover.offsetWidth;
+    const height = this.popover.offsetHeight;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    if (left + width > viewportWidth) {
+      left = x - width - padding;
+    }
+    if (top + height > viewportHeight) {
+      top = y - height - padding;
+    }
+    this.popover.style.left = `${left}px`;
+    this.popover.style.top = `${top}px`;
+  }
+  removePopover() {
+    if (this.popover) {
+      this.popover.remove();
+      this.popover = null;
+    }
+  }
+};
+
 // src/bootstrap.ts
 var Bootstrap = class {
   tool;
+  dataStore;
+  readerTracker;
+  columnManager;
+  styleManager;
+  notifierManager;
+  popoverManager;
   constructor() {
     this.tool = new BasicTool();
+    this.styleManager = new StyleManager();
   }
   install() {
   }
   async startup({ id, version: version2, rootURI }) {
-    Zotero.debug("Reading Flow: Starting up");
+    Logger.log("Reading Flow: Starting up");
+    this.dataStore = new DataStore();
+    this.styleManager.injectCSS();
+    this.readerTracker = new ReaderTracker(this.dataStore);
+    this.readerTracker.register();
+    this.columnManager = new ColumnManager(this.dataStore);
+    await this.columnManager.register();
+    this.notifierManager = new NotifierManager(this.dataStore);
+    this.notifierManager.register();
+    this.popoverManager = new PopoverManager();
+    this.popoverManager.register();
   }
   shutdown() {
-    Zotero.debug("Reading Flow: Shutting down");
+    Logger.log("Reading Flow: Shutting down");
+    if (this.readerTracker) {
+      this.readerTracker.unregister();
+    }
+    if (this.columnManager) {
+      this.columnManager.unregister();
+    }
+    if (this.notifierManager) {
+      this.notifierManager.unregister();
+    }
+    if (this.popoverManager) {
+      this.popoverManager.unregister();
+    }
+    this.styleManager.unregister();
   }
   uninstall() {
   }
