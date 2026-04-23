@@ -1,12 +1,14 @@
 import { BasicTool } from 'zotero-plugin-toolkit';
 import { DataStore } from './dataStore';
 import { ReaderTracker } from './readerTracker';
+import { ColumnManager } from './columnManager';
 import { Logger } from './Logger';
 
 class Bootstrap {
   private tool: BasicTool;
   public dataStore?: DataStore;
   private readerTracker?: ReaderTracker;
+  private columnManager?: ColumnManager;
 
   constructor() {
     this.tool = new BasicTool();
@@ -20,6 +22,9 @@ class Bootstrap {
     
     this.readerTracker = new ReaderTracker(this.dataStore);
     this.readerTracker.register();
+
+    this.columnManager = new ColumnManager(this.dataStore);
+    await this.columnManager.register();
   }
 
   shutdown() {
@@ -27,6 +32,10 @@ class Bootstrap {
     
     if (this.readerTracker) {
       this.readerTracker.unregister();
+    }
+
+    if (this.columnManager) {
+      this.columnManager.unregister();
     }
   }
   
