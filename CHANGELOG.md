@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1 - 2026-04-23
+
+### Fixed
+
+- Fixed progress/status/last-read column layout so custom cell contents scale with the Zotero item-tree column width.
+- Removed fixed/static custom-column widths to allow user resizing without distorting the progress bar.
+
 ## 1.1.0 - 2026-04-23
 
 ### Added

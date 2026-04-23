@@ -23,6 +23,18 @@ const STATUS_COLORS: Record<ReadingStatus, string> = {
   important: '#dc2626'
 };
 
+const BASE_CELL_STYLE = [
+  'display:flex',
+  'align-items:center',
+  'width:100%',
+  'max-width:100%',
+  'min-width:0',
+  'height:100%',
+  'padding:0 6px',
+  'box-sizing:border-box',
+  'overflow:hidden'
+].join(';');
+
 export class ColumnManager {
   private dataStore: DataStore;
   private registeredDataKeys: string[] = [];
@@ -38,9 +50,7 @@ export class ColumnManager {
       pluginID: PLUGIN_ID,
       enabledTreeIDs: ['main'],
       defaultIn: ['default'],
-      width: '90',
-      fixedWidth: true,
-      staticWidth: true,
+      width: 130,
       zoteroPersist: ['width', 'hidden', 'sortDirection'],
       dataProvider: (item: any, _dataKey: string): string => {
         try {
@@ -55,7 +65,7 @@ export class ColumnManager {
       },
       renderCell: (index: number, data: string, column: any, isFirstColumn: boolean, doc: Document): HTMLElement => {
         const cell = doc.createElement('div');
-        cell.style.cssText = 'display:flex;align-items:center;width:100%;height:100%;padding:0 4px;box-sizing:border-box;font-size:11px;';
+        cell.style.cssText = `${BASE_CELL_STYLE};font-size:11px;`;
 
         const value = parseFloat(data);
         if (!data || isNaN(value) || value === 0) return cell;
@@ -73,15 +83,30 @@ export class ColumnManager {
         const label = doc.createElement('span');
         label.textContent = `${percent}%`;
         label.title = `${percent}% read`;
-        label.style.cssText = 'min-width:28px;text-align:right;color:var(--fill-secondary, #666);font-size:10px;line-height:1;';
+        label.style.cssText = [
+          'flex:0 0 34px',
+          'min-width:0',
+          'text-align:right',
+          'color:var(--fill-secondary, #666)',
+          'font-size:10px',
+          'line-height:1'
+        ].join(';');
 
         const track = doc.createElement('div');
-        track.style.cssText = 'flex:1;min-width:24px;height:6px;background:rgba(0,0,0,0.1);border-radius:3px;overflow:hidden;';
+        track.style.cssText = [
+          'flex:1 1 auto',
+          'min-width:32px',
+          'max-width:100%',
+          'height:6px',
+          'background:rgba(0,0,0,0.1)',
+          'border-radius:3px',
+          'overflow:hidden'
+        ].join(';');
 
         const bar = doc.createElement('div');
         const completedColor = (Zotero.Prefs.get('extensions.readingflow.color-completed') as string) || '#4caf50';
         const readingColor = (Zotero.Prefs.get('extensions.readingflow.color-reading') as string) || '#2196f3';
-        bar.style.cssText = `width:${value * 100}%;height:100%;background:${value >= 0.99 ? completedColor : readingColor};`;
+        bar.style.cssText = `width:${percent}%;height:100%;background:${value >= 0.99 ? completedColor : readingColor};`;
 
         track.appendChild(bar);
         cell.appendChild(label);
@@ -95,9 +120,7 @@ export class ColumnManager {
       label: 'Status',
       pluginID: PLUGIN_ID,
       enabledTreeIDs: ['main'],
-      width: '88',
-      fixedWidth: true,
-      staticWidth: true,
+      width: 104,
       zoteroPersist: ['width', 'hidden', 'sortDirection'],
       dataProvider: (item: any): string => {
         try {
@@ -110,7 +133,7 @@ export class ColumnManager {
       },
       renderCell: (_index: number, data: string, _column: any, _isFirstColumn: boolean, doc: Document): HTMLElement => {
         const cell = doc.createElement('div');
-        cell.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:0 4px;box-sizing:border-box;';
+        cell.style.cssText = `${BASE_CELL_STYLE};justify-content:center;`;
         if (!data || !(data in STATUS_LABELS)) return cell;
 
         const status = data as ReadingStatus;
@@ -120,6 +143,7 @@ export class ColumnManager {
         badge.style.cssText = [
           'display:inline-flex',
           'align-items:center',
+          'justify-content:center',
           'max-width:100%',
           'height:18px',
           'padding:0 6px',
@@ -143,9 +167,7 @@ export class ColumnManager {
       label: 'Last Read',
       pluginID: PLUGIN_ID,
       enabledTreeIDs: ['main'],
-      width: '82',
-      fixedWidth: true,
-      staticWidth: true,
+      width: 92,
       zoteroPersist: ['width', 'hidden', 'sortDirection'],
       dataProvider: (item: any): string => {
         try {
@@ -159,7 +181,7 @@ export class ColumnManager {
       },
       renderCell: (_index: number, data: string, _column: any, _isFirstColumn: boolean, doc: Document): HTMLElement => {
         const cell = doc.createElement('div');
-        cell.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:0 4px;box-sizing:border-box;font-size:11px;color:var(--fill-secondary, #666);';
+        cell.style.cssText = `${BASE_CELL_STYLE};justify-content:center;font-size:11px;color:var(--fill-secondary, #666);text-overflow:ellipsis;white-space:nowrap;`;
         const timestamp = Number(data);
         if (!Number.isFinite(timestamp) || timestamp <= 0) return cell;
         const label = formatRelativeDate(timestamp);
