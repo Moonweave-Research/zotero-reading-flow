@@ -1,0 +1,32 @@
+<vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+      xmlns:html="http://www.w3.org/1999/xhtml">
+  <groupbox>
+    <label>
+      <html:h2>Reading Flow</html:h2>
+    </label>
+    <html:div style="display: grid; grid-template-columns: 160px 1fr; gap: 12px; align-items: center; max-width: 420px;">
+      <html:label for="readingflow-pref-color-completed">Completed color</html:label>
+      <html:input id="readingflow-pref-color-completed"
+                  type="color"
+                  preference="extensions.readingflow.color-completed"/>
+
+      <html:label for="readingflow-pref-color-reading">Reading color</html:label>
+      <html:input id="readingflow-pref-color-reading"
+                  type="color"
+                  preference="extensions.readingflow.color-reading"/>
+
+      <html:label for="readingflow-pref-hover-debounce">Popover delay</html:label>
+      <html:input id="readingflow-pref-hover-debounce"
+                  type="number"
+                  min="100"
+                  max="2000"
+                  step="50"
+                  preference="extensions.readingflow.hover-debounce"/>
+
+      <html:label for="readingflow-pref-debug">Debug logging</html:label>
+      <html:input id="readingflow-pref-debug"
+                  type="checkbox"
+                  preference="extensions.readingflow.debug"/>
+    </html:div>
+  </groupbox>
+</vbox>

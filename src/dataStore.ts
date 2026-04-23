@@ -1,19 +1,18 @@
 import { LRUCache } from './lruCache';
 import { Logger } from './Logger';
-
-export interface FlowData {
-  v: number;
-  p: { [attId: string]: number }; // Progress
-  c: string | null; // Color hex
-  s: string | null; // Status badge
-  ts: number; // Timestamp
-}
-
-const PREFIX = "ReadingFlow: ";
-const DEFAULT_DATA: FlowData = { v: 1, p: {}, c: null, s: null, ts: 0 };
+import {
+  DEFAULT_FLOW_DATA,
+  FLOW_PREFIX,
+  FlowData,
+  isFlowDataSame,
+  mergeFlowData,
+  normalizeFlowData,
+  ReadingStatus
+} from './flowData';
 
 export class DataStore {
   private cache = new LRUCache<number, FlowData>(2000);
+  private closed = false;
 
   public getData(item: any): FlowData {
     const id = item.id;
@@ -21,13 +20,13 @@ export class DataStore {
     if (cached) return cached;
 
     const extra = item.getField('extra') || '';
-    const match = extra.split('\n').find((line: string) => line.startsWith(PREFIX));
+    const match = extra.split('\n').find((line: string) => line.startsWith(FLOW_PREFIX));
     
-    let data = { ...DEFAULT_DATA };
+    let data = { ...DEFAULT_FLOW_DATA };
     if (match) {
       try {
-        const parsed = JSON.parse(match.substring(PREFIX.length));
-        data = { ...DEFAULT_DATA, ...parsed };
+        const parsed = JSON.parse(match.substring(FLOW_PREFIX.length));
+        data = normalizeFlowData(parsed);
       } catch (e) {
         Logger.error(`ReadingFlow: Failed to parse data for ${id}`, e);
       }
@@ -38,7 +37,12 @@ export class DataStore {
   }
 
   public async updateData(item: any, updates: Partial<FlowData>) {
-    if (item.isDirty()) {
+    if (this.isClosedOrShuttingDown()) {
+      Logger.log('ReadingFlow: write skipped during shutdown');
+      return;
+    }
+
+    if (typeof item.isDirty === 'function' && item.isDirty()) {
       Logger.warn('ReadingFlow: Item dirty, skipping write to prevent race condition');
       return;
     }
@@ -48,18 +52,51 @@ export class DataStore {
     // Last write wins check
     if (updates.ts && updates.ts < current.ts) return;
 
-    const merged: FlowData = { ...current, ...updates, ts: Date.now() };
+    const nextWithoutTimestamp = mergeFlowData(current, updates, current.ts);
+    if (isFlowDataSame(current, nextWithoutTimestamp)) return;
+
+    const merged = mergeFlowData(current, updates);
+
     this.cache.set(item.id, merged);
 
     let extra = item.getField('extra') || '';
-    const lines = extra.split('\n').filter((line: string) => !line.startsWith(PREFIX));
-    lines.push(`${PREFIX}${JSON.stringify(merged)}`);
+    const lines = extra.split('\n').filter((line: string) => !line.startsWith(FLOW_PREFIX));
+    lines.push(`${FLOW_PREFIX}${JSON.stringify(merged)}`);
+
+    if (this.isClosedOrShuttingDown()) {
+      Logger.log('ReadingFlow: write skipped before saveTx during shutdown');
+      return;
+    }
     
     item.setField('extra', lines.join('\n'));
     await item.saveTx();
   }
 
+  public async setStatus(item: any, status: ReadingStatus | null) {
+    await this.updateData(item, { s: status });
+  }
+
+  public async resetProgress(item: any) {
+    await this.updateData(item, {
+      p: {},
+      s: 'to-read',
+      lastAttachmentId: null,
+      lastPage: null,
+      lastReadAt: null
+    });
+  }
+
   public clearCache(itemId: number) {
     this.cache.delete(itemId);
+  }
+
+  public close() {
+    this.closed = true;
+    this.cache.clear();
+  }
+
+  private isClosedOrShuttingDown(): boolean {
+    const startup = (globalThis as any).Services?.startup;
+    return this.closed || Boolean(startup?.shuttingDown);
   }
 }

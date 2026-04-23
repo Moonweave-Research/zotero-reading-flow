@@ -27,4 +27,8 @@ export class LRUCache<K, V> {
   delete(key: K) {
     this.cache.delete(key);
   }
+
+  clear() {
+    this.cache.clear();
+  }
 }

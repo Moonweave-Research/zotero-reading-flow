@@ -1,1 +1,6 @@
 .worktrees/
+tmp/
+node_modules/
+addon/bootstrap.js
+updates.json
+zotero-reading-flow.xpi

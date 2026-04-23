@@ -4,24 +4,32 @@ export class PopoverManager {
   private timeoutId: any = null;
   private popover: HTMLElement | null = null;
   private currentItemId: number | null = null;
+  private contentElement: HTMLElement | null = null;
+  private readonly boundHandleMouseOver = this.handleMouseOver.bind(this);
+  private readonly boundHandleMouseOut = this.handleMouseOut.bind(this);
+  private readonly boundRemovePopover = this.removePopover.bind(this);
 
   public register() {
     const pane = Zotero.getActiveZoteroPane();
-    if (pane && pane.itemsView) {
+    if (pane?.itemsView?.contentElement && !this.contentElement) {
       const content = pane.itemsView.contentElement;
-      content.addEventListener('mouseover', this.handleMouseOver.bind(this));
-      content.addEventListener('mouseout', this.handleMouseOut.bind(this));
-      content.addEventListener('scroll', this.removePopover.bind(this));
+      content.addEventListener('mouseover', this.boundHandleMouseOver);
+      content.addEventListener('mouseout', this.boundHandleMouseOut);
+      content.addEventListener('scroll', this.boundRemovePopover);
+      this.contentElement = content;
     }
   }
 
   public unregister() {
-    const pane = Zotero.getActiveZoteroPane();
-    if (pane && pane.itemsView) {
-      const content = pane.itemsView.contentElement;
-      content.removeEventListener('mouseover', this.handleMouseOver.bind(this));
-      content.removeEventListener('mouseout', this.handleMouseOut.bind(this));
-      content.removeEventListener('scroll', this.removePopover.bind(this));
+    if (this.contentElement) {
+      this.contentElement.removeEventListener('mouseover', this.boundHandleMouseOver);
+      this.contentElement.removeEventListener('mouseout', this.boundHandleMouseOut);
+      this.contentElement.removeEventListener('scroll', this.boundRemovePopover);
+      this.contentElement = null;
+    }
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
     }
     this.removePopover();
   }
@@ -50,7 +58,8 @@ export class PopoverManager {
 
     if (this.timeoutId) clearTimeout(this.timeoutId);
     
-    const delay = Zotero.Prefs.get('extensions.readingflow.hover-debounce') || 400;
+    const prefDelay = Zotero.Prefs.get('extensions.readingflow.hover-debounce');
+    const delay = typeof prefDelay === 'number' ? prefDelay : 400;
     this.timeoutId = setTimeout(() => this.showPopover(item, event), delay);
   }
 
@@ -76,7 +85,8 @@ export class PopoverManager {
 
       this.removePopover();
 
-      const popover = document.createElement('div');
+      const doc = Zotero.getMainWindow().document;
+      const popover = doc.createElement('div');
       popover.id = 'reading-flow-popover';
       Object.assign(popover.style, {
         position: 'fixed',
@@ -112,12 +122,12 @@ export class PopoverManager {
       }
 
       popover.innerHTML = html;
-      document.body.appendChild(popover);
+      doc.body.appendChild(popover);
       this.popover = popover;
 
       this.positionPopover(event.clientX, event.clientY);
     } catch (e) {
-      Logger.log('Reading Flow: Popover error', e);
+      Logger.error('Popover error', e);
     }
   }
 
@@ -140,8 +150,9 @@ export class PopoverManager {
 
     const width = this.popover.offsetWidth;
     const height = this.popover.offsetHeight;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+    const win = Zotero.getMainWindow();
+    const viewportWidth = win.innerWidth;
+    const viewportHeight = win.innerHeight;
 
     if (left + width > viewportWidth) {
       left = x - width - padding;
