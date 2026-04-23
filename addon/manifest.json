@@ -4,10 +4,11 @@
   "version": "1.0.0",
   "description": "Progress tracking and semantic colors for Zotero 9.",
   "author": "Reading Flow Team",
-  "browser_specific_settings": {
-    "gecko": {
+  "applications": {
+    "zotero": {
       "id": "readingflow@moon.com",
-      "strict_min_version": "6.999"
+      "strict_min_version": "9.0",
+      "strict_max_version": "10.0.*"
     }
   },
   "options_ui": {

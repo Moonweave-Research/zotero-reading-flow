@@ -68,4 +68,19 @@ class Bootstrap {
 }
 
 const BOOTSTRAP = new Bootstrap();
-export { BOOTSTRAP as default };
+
+export function install() {
+  BOOTSTRAP.install();
+}
+
+export async function startup(data: any, reason: any) {
+  await BOOTSTRAP.startup(data);
+}
+
+export function shutdown(data: any, reason: any) {
+  BOOTSTRAP.shutdown();
+}
+
+export function uninstall() {
+  BOOTSTRAP.uninstall();
+}
