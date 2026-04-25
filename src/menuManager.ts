@@ -109,17 +109,26 @@ export class ReadingFlowMenuManager {
     if (!items.length) return false;
 
     return items.some((item) => {
-      const state = getReadingQueueState(this.dataStore.getData(item));
-      return state[queue];
+      const state = this.getQueueStateForItem(item);
+      return state?.[queue] ?? false;
     });
   }
 
   private logQueueSelection(queue: QueueKey) {
     const itemIds = this.getSelectedRegularItems()
-      .filter((item) => getReadingQueueState(this.dataStore.getData(item))[queue])
+      .filter((item) => this.getQueueStateForItem(item)?.[queue] ?? false)
       .map((item) => item.id);
 
     Logger.log(`Reading queue ${queue}: ${itemIds.join(', ') || 'none'}`);
+  }
+
+  private getQueueStateForItem(item: any): ReadingQueueState | null {
+    try {
+      return getReadingQueueState(this.dataStore.getData(item));
+    } catch (e) {
+      Logger.warn(`failed to read queue state for item ${item?.id}: ${e instanceof Error ? e.message : e}`);
+      return null;
+    }
   }
 
   private async canShowSubmenu(): Promise<boolean> {

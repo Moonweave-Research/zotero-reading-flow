@@ -33,6 +33,18 @@ function makePdfAttachment(id: number, parentID: number) {
   };
 }
 
+function makeUnsupportedItem(id: number) {
+  return {
+    id,
+    isRegularItem() {
+      return false;
+    },
+    isPDFAttachment() {
+      return false;
+    }
+  };
+}
+
 function enabledContext() {
   return {
     enabled: undefined as boolean | undefined,
@@ -51,7 +63,7 @@ function checkedContext() {
   };
 }
 
-function setupMenu(selectedItems: any[], dataById: Record<number, FlowData>, availableItems = selectedItems) {
+function setupMenu(selectedItems: any[], dataById: Record<number, FlowData | Error>, availableItems = selectedItems) {
   let registeredMenu: any;
   const openCalls: any[] = [];
   const mutationCalls: string[] = [];
@@ -100,7 +112,11 @@ function setupMenu(selectedItems: any[], dataById: Record<number, FlowData>, ava
 
   const dataStore = {
     getData(item: any) {
-      return dataById[item.id] ?? flowData();
+      const data = dataById[item.id];
+      if (data instanceof Error) {
+        throw data;
+      }
+      return data ?? flowData();
     },
     async setStatus() {
       mutationCalls.push('setStatus');
@@ -119,6 +135,7 @@ function setupMenu(selectedItems: any[], dataById: Record<number, FlowData>, ava
 
   return {
     openCalls,
+    manager,
     mutationCalls,
     submenu,
     menuByLabel(label: string) {
@@ -150,6 +167,16 @@ test('submenu is enabled for exactly one resumable PDF attachment', async () => 
   await submenu.onShowing(new Event('showing'), context);
 
   assert.equal(context.enabled, true);
+});
+
+test('submenu is disabled for a single non-regular non-resumable item', async () => {
+  const item = makeUnsupportedItem(99);
+  const { submenu } = setupMenu([item], {});
+
+  const context = enabledContext();
+  await submenu.onShowing(new Event('showing'), context);
+
+  assert.equal(context.enabled, false);
 });
 
 test('resume menu is registered and disabled for multi-select', async () => {
@@ -192,6 +219,30 @@ test('resume menu command opens the selected resumable item', async () => {
   assert.deepEqual(openCalls, [[10, { pageIndex: 4 }]]);
 });
 
+test('resume menu command logs outer resumeSelectedItem errors without rejecting', async () => {
+  const originalError = Logger.error;
+  const errors: any[][] = [];
+  const item = makeRegularItem(20);
+  const { manager, menuByLabel } = setupMenu([item], {});
+
+  Logger.error = (...args: any[]) => {
+    errors.push(args);
+  };
+  (manager as any).resumeReader.resume = async () => {
+    throw new Error('outer resume failed');
+  };
+
+  try {
+    await assert.doesNotReject(menuByLabel('reading-flow-resume-reading').onCommand());
+
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0][0], 'resume reading failed for item 20');
+    assert.match(errors[0][1].message, /outer resume failed/);
+  } finally {
+    Logger.error = originalError;
+  }
+});
+
 test('resume menu command catches reader failures through ResumeReader warnings', async () => {
   const originalWarn = Logger.warn;
   const originalError = Logger.error;
@@ -224,6 +275,47 @@ test('resume menu command catches reader failures through ResumeReader warnings'
   } finally {
     Logger.warn = originalWarn;
     Logger.error = originalError;
+  }
+});
+
+test('queue menus skip items whose flow data cannot be read', async () => {
+  const originalLog = Logger.log;
+  const originalWarn = Logger.warn;
+  const logMessages: string[] = [];
+  const warnings: string[] = [];
+  Logger.log = (message: string) => {
+    logMessages.push(message);
+  };
+  Logger.warn = (message: string) => {
+    warnings.push(message);
+  };
+
+  try {
+    const badItem = makeRegularItem(20);
+    const goodItem = makeRegularItem(21);
+    const { menuByLabel, mutationCalls } = setupMenu([badItem, goodItem], {
+      20: new Error('extra parse failed'),
+      21: flowData({ p: { '10': 0.85 }, lastAttachmentId: '10' })
+    });
+
+    const context = checkedContext();
+    await assert.doesNotReject(async () => {
+      menuByLabel('reading-flow-queue-continue').onShowing(new Event('showing'), context);
+    });
+    await assert.doesNotReject(async () => {
+      menuByLabel('reading-flow-queue-continue').onCommand();
+    });
+
+    assert.equal(context.checked, true);
+    assert.deepEqual(mutationCalls, []);
+    assert.equal(logMessages.length, 1);
+    assert.match(logMessages[0], /continueReading: 21/);
+    assert.equal(warnings.length, 2);
+    assert.match(warnings[0], /failed to read queue state for item 20/);
+    assert.match(warnings[0], /extra parse failed/);
+  } finally {
+    Logger.log = originalLog;
+    Logger.warn = originalWarn;
   }
 });
 
