@@ -35,10 +35,24 @@ const BASE_CELL_STYLE = [
   'overflow:hidden'
 ].join(';');
 
+const PROGRESS_CELL_STYLE = [
+  'display:flex',
+  'align-items:center',
+  'justify-content:center',
+  'position:relative',
+  'width:100%',
+  'max-width:100%',
+  'min-width:0',
+  'height:100%',
+  'padding:0',
+  'box-sizing:border-box',
+  'overflow:hidden'
+].join(';');
+
 export class ColumnManager {
   private dataStore: DataStore;
   private registeredDataKeys: string[] = [];
-  private static readonly ITEMS_VIEW_RETRY_COUNT = 20;
+  private static readonly ITEMS_VIEW_RETRY_COUNT = 120;
   private static readonly ITEMS_VIEW_RETRY_MS = 250;
 
   constructor(dataStore: DataStore) {
@@ -64,8 +78,9 @@ export class ColumnManager {
         }
       },
       renderCell: (index: number, data: string, column: any, isFirstColumn: boolean, doc: Document): HTMLElement => {
-        const cell = doc.createElement('div');
-        cell.style.cssText = `${BASE_CELL_STYLE};font-size:11px;`;
+        const cell = doc.createElement('span');
+        cell.className = `cell ${column.className || ''}`.trim();
+        cell.style.cssText = `${PROGRESS_CELL_STYLE};font-size:11px;`;
 
         const value = parseFloat(data);
         if (!data || isNaN(value) || value === 0) return cell;
@@ -74,19 +89,20 @@ export class ColumnManager {
           cell.textContent = `p. ${Math.round(value)}`;
           cell.title = `Last read page ${Math.round(value)}`;
           cell.style.justifyContent = 'center';
+          cell.style.padding = '0 6px';
           return cell;
         }
-
-        cell.style.gap = '4px';
 
         const percent = Math.max(1, Math.min(100, Math.round(value * 100)));
         const label = doc.createElement('span');
         label.textContent = `${percent}%`;
         label.title = `${percent}% read`;
         label.style.cssText = [
-          'flex:0 0 34px',
-          'min-width:0',
-          'text-align:right',
+          'position:absolute',
+          'right:6px',
+          'top:50%',
+          'transform:translateY(-50%)',
+          'z-index:1',
           'color:var(--fill-secondary, #666)',
           'font-size:10px',
           'line-height:1'
@@ -94,9 +110,7 @@ export class ColumnManager {
 
         const track = doc.createElement('div');
         track.style.cssText = [
-          'flex:1 1 auto',
-          'min-width:32px',
-          'max-width:100%',
+          'width:100%',
           'height:6px',
           'background:rgba(0,0,0,0.1)',
           'border-radius:3px',
@@ -130,8 +144,9 @@ export class ColumnManager {
           return '';
         }
       },
-      renderCell: (_index: number, data: string, _column: any, _isFirstColumn: boolean, doc: Document): HTMLElement => {
-        const cell = doc.createElement('div');
+      renderCell: (_index: number, data: string, column: any, _isFirstColumn: boolean, doc: Document): HTMLElement => {
+        const cell = doc.createElement('span');
+        cell.className = `cell ${column.className || ''}`.trim();
         cell.style.cssText = `${BASE_CELL_STYLE};justify-content:center;`;
         if (!data || !(data in STATUS_LABELS)) return cell;
 
@@ -177,8 +192,9 @@ export class ColumnManager {
           return '';
         }
       },
-      renderCell: (_index: number, data: string, _column: any, _isFirstColumn: boolean, doc: Document): HTMLElement => {
-        const cell = doc.createElement('div');
+      renderCell: (_index: number, data: string, column: any, _isFirstColumn: boolean, doc: Document): HTMLElement => {
+        const cell = doc.createElement('span');
+        cell.className = `cell ${column.className || ''}`.trim();
         cell.style.cssText = `${BASE_CELL_STYLE};justify-content:center;font-size:11px;color:var(--fill-secondary, #666);text-overflow:ellipsis;white-space:nowrap;`;
         const timestamp = Number(data);
         if (!Number.isFinite(timestamp) || timestamp <= 0) return cell;

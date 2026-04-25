@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.3 - 2026-04-25
+
+### Fixed
+
+- Fixed PDF progress tracking to prefer the live reader page index over stale saved page indices.
+- Fixed Progress column rendering so the progress bar stays within the actual Zotero column width.
+
 ## 1.1.2 - 2026-04-25
 
 ### Fixed

@@ -58,15 +58,11 @@ export class ReaderTracker {
 
     let progress = 0;
     if (reader?._type === 'pdf' || item.isPDFAttachment?.()) {
-      const savedPageIndex = item.getAttachmentLastPageIndex?.();
-      const pageIndex =
-        typeof savedPageIndex === 'number'
-          ? savedPageIndex
-          : reader?._state?.pageIndex ?? reader?._internalReader?._state?.pageIndex ?? 0;
+      const pageIndex = this.getCurrentPageIndex(reader, item) ?? 0;
       const numPages = this.getPDFPageCount(reader);
       Logger.log('pdf pageIndex=' + pageIndex + ' numPages=' + numPages);
       if (numPages > 0) {
-        progress = (pageIndex + 1) / numPages;
+        progress = Math.min(pageIndex + 1, numPages) / numPages;
       } else {
         // Keep a visible fallback instead of leaving the custom column blank.
         progress = pageIndex + 1;
@@ -153,12 +149,22 @@ export class ReaderTracker {
   }
 
   private getLastPage(reader: any, item: any): number | null {
-    const savedPageIndex = item.getAttachmentLastPageIndex?.();
-    const pageIndex =
-      typeof savedPageIndex === 'number'
-        ? savedPageIndex
-        : reader?._state?.pageIndex ?? reader?._internalReader?._state?.pageIndex;
+    const pageIndex = this.getCurrentPageIndex(reader, item);
     return typeof pageIndex === 'number' && Number.isFinite(pageIndex) ? pageIndex + 1 : null;
+  }
+
+  private getCurrentPageIndex(reader: any, item: any): number | null {
+    const livePageIndex = reader?._state?.pageIndex ?? reader?._internalReader?._state?.pageIndex;
+    if (typeof livePageIndex === 'number' && Number.isFinite(livePageIndex) && livePageIndex >= 0) {
+      return livePageIndex;
+    }
+
+    const savedPageIndex = item.getAttachmentLastPageIndex?.();
+    if (typeof savedPageIndex === 'number' && Number.isFinite(savedPageIndex) && savedPageIndex >= 0) {
+      return savedPageIndex;
+    }
+
+    return null;
   }
 
   private getPDFPageCount(reader: any): number {
@@ -167,12 +173,15 @@ export class ReaderTracker {
       ?? reader?._internalReader?._primaryView?._iframeWindow;
     const readerWindow = reader?._iframeWindow?.wrappedJSObject ?? reader?._iframeWindow;
     const app = primaryWindow?.PDFViewerApplication ?? readerWindow?.PDFViewerApplication;
-    return (
+    const pageCount = (
       app?.pdfDocument?.numPages
       ?? app?.pdfViewer?.pagesCount
       ?? app?.pdfViewer?._pages?.length
       ?? app?.pagesCount
       ?? 0
     );
+    return typeof pageCount === 'number' && Number.isFinite(pageCount) && pageCount > 0
+      ? Math.round(pageCount)
+      : 0;
   }
 }

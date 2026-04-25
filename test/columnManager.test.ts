@@ -91,7 +91,7 @@ test('showColumnsOnFirstRun leaves pref unset when itemsView never appears', asy
   await (manager as any).showColumnsOnFirstRun(['progressKey']);
 
   assert.deepEqual(prefWrites, []);
-  assert.equal(paneLookups, 20);
+  assert.equal(paneLookups, 120);
 });
 
 test('showColumnsOnFirstRun can succeed on a later retry after an earlier miss', async () => {
