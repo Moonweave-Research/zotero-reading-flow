@@ -148,6 +148,35 @@ test('resume falls back to best PDF attachment when tracked attachment is not a 
   assert.deepEqual(calls, [[11, undefined]]);
 });
 
+test('resume falls back to best PDF attachment without stale page when tracked attachment is missing', async () => {
+  const calls: any[] = [];
+  const attachment = pdfAttachment(11, 20);
+  const parent = regularItem(20, attachment);
+  (globalThis as any).Zotero = {
+    Items: {
+      get(id: number) {
+        assert.equal(id, 10);
+        return null;
+      }
+    },
+    Reader: {
+      async open(...args: any[]) {
+        calls.push(args);
+      }
+    }
+  };
+
+  const reader = new ResumeReader({
+    getData(item: any) {
+      assert.equal(item, parent);
+      return flowData({ lastAttachmentId: '10', lastPage: 5 });
+    }
+  } as any);
+
+  assert.equal(await reader.resume(parent), true);
+  assert.deepEqual(calls, [[11, undefined]]);
+});
+
 test('resume ignores tracked PDF from a different parent and opens best attachment without stale page', async () => {
   const calls: any[] = [];
   const fallbackAttachment = pdfAttachment(11, 20);
