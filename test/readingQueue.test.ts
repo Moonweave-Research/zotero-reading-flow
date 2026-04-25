@@ -19,7 +19,7 @@ test('classifies explicit reading status as continue reading', () => {
   assert.equal(isContinueReading(data), true);
 });
 
-test('classifies progress between 1% and 97% as continue reading', () => {
+test('classifies implicit mid-progress as continue reading', () => {
   const data = normalizeFlowData({ p: { '10': 0.45 }, lastAttachmentId: '10' });
   const state = getReadingQueueState(data, NOW);
 
@@ -27,13 +27,43 @@ test('classifies progress between 1% and 97% as continue reading', () => {
   assert.equal(state.nearlyDone, false);
 });
 
-test('classifies progress between 80% and 97% as nearly done', () => {
+test('classifies progress between 80% and 94% as nearly done', () => {
   const data = normalizeFlowData({ p: { '10': 0.85 }, lastAttachmentId: '10' });
   const state = getReadingQueueState(data, NOW);
 
   assert.equal(state.continueReading, true);
   assert.equal(state.nearlyDone, true);
   assert.equal(isNearlyDone(data), true);
+});
+
+test('classifies implicit 0.94 progress as continue reading and nearly done', () => {
+  const data = normalizeFlowData({ p: { '10': 0.94 }, lastAttachmentId: '10' });
+  const state = getReadingQueueState(data, NOW);
+
+  assert.equal(state.continueReading, true);
+  assert.equal(state.nearlyDone, true);
+});
+
+test('does not classify implicit 0.95 progress as queued because status inference treats it as read', () => {
+  const data = normalizeFlowData({
+    p: { '10': 0.95 },
+    lastAttachmentId: '10',
+    lastReadAt: NOW - STALE_READING_MS
+  });
+
+  assert.deepEqual(getReadingQueueState(data, NOW), {
+    continueReading: false,
+    nearlyDone: false,
+    staleReading: false
+  });
+});
+
+test('classifies page-style progress as continue reading but not nearly done', () => {
+  const data = normalizeFlowData({ p: { '10': 12 }, lastAttachmentId: '10' });
+  const state = getReadingQueueState(data, NOW);
+
+  assert.equal(state.continueReading, true);
+  assert.equal(state.nearlyDone, false);
 });
 
 test('does not classify completed progress as in-progress', () => {
@@ -48,6 +78,26 @@ test('does not classify completed progress as in-progress', () => {
 test('classifies old reading item as stale reading', () => {
   const data = normalizeFlowData({
     s: 'reading',
+    lastReadAt: NOW - STALE_READING_MS - 1
+  });
+
+  assert.equal(isStaleReading(data, NOW), true);
+  assert.equal(getReadingQueueState(data, NOW).staleReading, true);
+});
+
+test('classifies reading item at exact stale cutoff as stale reading', () => {
+  const data = normalizeFlowData({
+    s: 'reading',
+    lastReadAt: NOW - STALE_READING_MS
+  });
+
+  assert.equal(isStaleReading(data, NOW), true);
+});
+
+test('classifies old page-style progress as stale reading', () => {
+  const data = normalizeFlowData({
+    p: { '10': 12 },
+    lastAttachmentId: '10',
     lastReadAt: NOW - STALE_READING_MS - 1
   });
 

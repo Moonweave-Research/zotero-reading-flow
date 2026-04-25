@@ -1,9 +1,8 @@
 import { FlowData, getDisplayProgress, inferStatus } from './flowData';
 
 export const STALE_READING_MS = 7 * 24 * 60 * 60 * 1000;
-const MIN_IN_PROGRESS = 0.01;
-const MAX_IN_PROGRESS = 0.97;
 const MIN_NEARLY_DONE = 0.8;
+const READ_PROGRESS_THRESHOLD = 0.95;
 
 export interface ReadingQueueState {
   continueReading: boolean;
@@ -20,23 +19,20 @@ export function getReadingQueueState(data: FlowData, now = Date.now()): ReadingQ
 }
 
 export function isContinueReading(data: FlowData): boolean {
-  if (data.s && data.s !== 'reading') return false;
-  const progress = getDisplayProgress(data);
-  return data.s === 'reading' || isInProgress(progress);
+  if (data.s === 'reading') return true;
+  if (data.s) return false;
+  return inferStatus(data) === 'reading';
 }
 
 export function isNearlyDone(data: FlowData): boolean {
   if (data.s && data.s !== 'reading') return false;
+  if (!data.s && inferStatus(data) !== 'reading') return false;
   const progress = getDisplayProgress(data);
-  return progress >= MIN_NEARLY_DONE && progress <= MAX_IN_PROGRESS;
+  return progress >= MIN_NEARLY_DONE && progress < READ_PROGRESS_THRESHOLD;
 }
 
 export function isStaleReading(data: FlowData, now = Date.now()): boolean {
   if (!data.lastReadAt || !Number.isFinite(data.lastReadAt)) return false;
-  if (!isContinueReading(data) && inferStatus(data) !== 'reading') return false;
+  if (!isContinueReading(data)) return false;
   return now - data.lastReadAt >= STALE_READING_MS;
-}
-
-function isInProgress(progress: number): boolean {
-  return progress >= MIN_IN_PROGRESS && progress <= MAX_IN_PROGRESS;
 }
