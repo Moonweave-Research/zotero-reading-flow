@@ -98,6 +98,7 @@ class Bootstrap {
     if (!this.started) return;
     try {
       this.styleManager.injectCSS(window.document);
+      void this.columnManager?.ensureColumnsVisibleOnFirstRun();
       this.registerPopoverWhenReady();
     } catch (e) {
       Logger.error('onMainWindowLoad failed', e);

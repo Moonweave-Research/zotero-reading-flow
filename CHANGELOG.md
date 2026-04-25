@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.2 - 2026-04-25
+
+### Fixed
+
+- Fixed first-install column visibility so `Progress`, `Status`, and `Last Read` are shown automatically without manual column enabling.
+- Hardened first-run column initialization against delayed `itemsView` startup timing and main-window load ordering.
+- Added unit coverage for delayed `itemsView` availability and Zotero-window timer fallback during first-run initialization.
+
 ## 1.1.1 - 2026-04-23
 
 ### Fixed

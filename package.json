@@ -1,6 +1,6 @@
 {
   "name": "zotero-reading-flow",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Zotero 9 Reading Progress and Visual Organization",
   "main": "src/index.ts",
   "scripts": {

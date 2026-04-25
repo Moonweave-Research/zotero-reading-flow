@@ -38,6 +38,8 @@ const BASE_CELL_STYLE = [
 export class ColumnManager {
   private dataStore: DataStore;
   private registeredDataKeys: string[] = [];
+  private static readonly ITEMS_VIEW_RETRY_COUNT = 20;
+  private static readonly ITEMS_VIEW_RETRY_MS = 250;
 
   constructor(dataStore: DataStore) {
     this.dataStore = dataStore;
@@ -49,8 +51,6 @@ export class ColumnManager {
       label: 'Progress',
       pluginID: PLUGIN_ID,
       enabledTreeIDs: ['main'],
-      defaultIn: ['default'],
-      width: 130,
       zoteroPersist: ['width', 'hidden', 'sortDirection'],
       dataProvider: (item: any, _dataKey: string): string => {
         try {
@@ -120,7 +120,6 @@ export class ColumnManager {
       label: 'Status',
       pluginID: PLUGIN_ID,
       enabledTreeIDs: ['main'],
-      width: 104,
       zoteroPersist: ['width', 'hidden', 'sortDirection'],
       dataProvider: (item: any): string => {
         try {
@@ -167,7 +166,6 @@ export class ColumnManager {
       label: 'Last Read',
       pluginID: PLUGIN_ID,
       enabledTreeIDs: ['main'],
-      width: 92,
       zoteroPersist: ['width', 'hidden', 'sortDirection'],
       dataProvider: (item: any): string => {
         try {
@@ -191,7 +189,82 @@ export class ColumnManager {
       }
     });
 
+    if (!progressKey) Logger.warn('registerColumn returned null for Progress — column will not appear');
+    if (!statusKey) Logger.warn('registerColumn returned null for Status — column will not appear');
+    if (!lastReadKey) Logger.warn('registerColumn returned null for Last Read — column will not appear');
     this.registeredDataKeys = [progressKey, statusKey, lastReadKey].filter(Boolean);
+    void this.ensureColumnsVisibleOnFirstRun();
+  }
+
+  public async ensureColumnsVisibleOnFirstRun() {
+    await this.showColumnsOnFirstRun(this.registeredDataKeys);
+  }
+
+  private async showColumnsOnFirstRun(registeredKeys: string[]) {
+    const INIT_PREF = 'extensions.readingflow.columnsInitialized';
+    try {
+      if (Zotero.Prefs.get(INIT_PREF)) return;
+      if (!registeredKeys.length) return;
+
+      // itemsView is set asynchronously after ItemTree.init(); wait for UI to be ready.
+      await (Zotero as any).uiReadyPromise;
+      const itemsView = await this.waitForItemsView();
+      if (!itemsView) {
+        Logger.warn('showColumnsOnFirstRun: itemsView not available');
+        return;
+      }
+
+      // 1. Update in-memory _columnPrefs with hidden:false.
+      if (!itemsView._columnPrefs) itemsView._columnPrefs = {};
+      for (const key of registeredKeys) {
+        itemsView._columnPrefs[key] = Object.assign(
+          {},
+          itemsView._columnPrefs[key] || {},
+          { hidden: false }
+        );
+      }
+
+      // 2. Rebuild the Columns object so the current session shows the columns.
+      //    _resetColumns creates a new Columns instance that reads _columnPrefs,
+      //    which now has hidden:false for our keys.
+      if (typeof itemsView._resetColumns === 'function') {
+        await itemsView._resetColumns();
+      }
+
+      // 3. Force-write to treePrefs.json immediately (bypass 60s throttle)
+      //    so the state is persisted even if the user quits quickly.
+      if (typeof itemsView._writeColumnPrefsToFile === 'function') {
+        await itemsView._writeColumnPrefsToFile(true);
+      }
+
+      Zotero.Prefs.set(INIT_PREF, true);
+      Logger.log('columns shown by default (first run)');
+    } catch (e) {
+      Logger.error('showColumnsOnFirstRun failed', e);
+    }
+  }
+
+  private async waitForItemsView() {
+    for (let attempt = 0; attempt < ColumnManager.ITEMS_VIEW_RETRY_COUNT; attempt++) {
+      const pane = (Zotero as any).getActiveZoteroPane?.();
+      if (pane?.itemsView) {
+        return pane.itemsView;
+      }
+      await this.delay(ColumnManager.ITEMS_VIEW_RETRY_MS);
+    }
+    return null;
+  }
+
+  private async delay(ms: number) {
+    await new Promise((resolve) => {
+      const win = (Zotero as any).getMainWindow?.();
+      const schedule = win?.setTimeout?.bind(win) ?? (globalThis as any).setTimeout;
+      if (typeof schedule !== 'function') {
+        resolve(undefined);
+        return;
+      }
+      schedule(resolve, ms);
+    });
   }
 
   public unregister() {
