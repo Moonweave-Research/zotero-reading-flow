@@ -6,6 +6,7 @@ type ZoteroItem = {
   id: number;
   parentID?: number | null;
   isPDFAttachment?: () => boolean;
+  isRegularItem?: () => boolean;
   getBestAttachment?: () => Promise<ZoteroItem | null | undefined> | ZoteroItem | null | undefined;
 };
 
@@ -40,6 +41,8 @@ export class ResumeReader {
       };
     }
 
+    if (!item.isRegularItem?.()) return null;
+
     const data = this.dataStore.getData(item);
     const attachment = await this.resolveParentAttachment(item, data);
     if (!attachment) return null;
@@ -55,7 +58,8 @@ export class ResumeReader {
     if (trackedAttachment) return trackedAttachment;
 
     const bestAttachment = await item.getBestAttachment?.();
-    return this.isPdfAttachment(bestAttachment) ? bestAttachment : null;
+    if (!bestAttachment || !this.isPdfAttachment(bestAttachment)) return null;
+    return bestAttachment;
   }
 
   private getTrackedAttachment(lastAttachmentId: string | null): ZoteroItem | null {
@@ -74,7 +78,7 @@ export class ResumeReader {
   private getAttachmentLastPage(attachment: ZoteroItem): number | null {
     const parentID = this.parsePositiveNumber(attachment.parentID);
     if (!parentID) {
-      return this.dataStore.getData(attachment).lastPage;
+      return null;
     }
 
     try {
@@ -134,7 +138,7 @@ export class ResumeReader {
       : undefined;
   }
 
-  private isPdfAttachment(item: ZoteroItem | null | undefined): item is ZoteroItem {
+  private isPdfAttachment(item: ZoteroItem | null | undefined): boolean {
     return Boolean(item?.id && item.isPDFAttachment?.());
   }
 

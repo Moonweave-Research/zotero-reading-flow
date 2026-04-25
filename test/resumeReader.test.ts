@@ -24,6 +24,9 @@ function regularItem(id: number, attachment?: any) {
     isPDFAttachment() {
       return false;
     },
+    isRegularItem() {
+      return true;
+    },
     async getBestAttachment() {
       return attachment;
     }
@@ -176,6 +179,7 @@ test('resume uses PDF attachment directly and reads parent lastPage when parentI
 
 test('resume opens without location when no positive lastPage is available', async () => {
   const calls: any[] = [];
+  let dataReads = 0;
   const attachment = pdfAttachment(10);
   (globalThis as any).Zotero = {
     Reader: {
@@ -187,12 +191,14 @@ test('resume opens without location when no positive lastPage is available', asy
 
   const reader = new ResumeReader({
     getData() {
+      dataReads += 1;
       return flowData();
     }
   } as any);
 
   assert.equal(await reader.resume(attachment), true);
   assert.deepEqual(calls, [[10, undefined]]);
+  assert.equal(dataReads, 0);
 });
 
 test('resume returns false and logs when opening without location fails', async () => {
@@ -233,8 +239,15 @@ test('resume returns false and logs when opening without location fails', async 
 
 test('resume retries without location when opening at page location throws', async () => {
   const calls: any[] = [];
-  const attachment = pdfAttachment(10);
+  const attachment = pdfAttachment(10, 20);
+  const parent = regularItem(20);
   (globalThis as any).Zotero = {
+    Items: {
+      get(id: number) {
+        assert.equal(id, 20);
+        return parent;
+      }
+    },
     Reader: {
       async open(...args: any[]) {
         calls.push(args);
@@ -246,7 +259,8 @@ test('resume retries without location when opening at page location throws', asy
   };
 
   const reader = new ResumeReader({
-    getData() {
+    getData(item: any) {
+      assert.equal(item, parent);
       return flowData({ lastPage: 2 });
     }
   } as any);
@@ -283,4 +297,43 @@ test('resume returns false when no PDF target can be resolved', async () => {
 
   assert.equal(await reader.canResume(parent), false);
   assert.equal(await reader.resume(parent), false);
+});
+
+test('resume ignores unsupported non-PDF non-regular items without reading data or best attachment', async () => {
+  let dataReads = 0;
+  let bestAttachmentCalls = 0;
+  const calls: any[] = [];
+  const unsupportedItem = {
+    id: 20,
+    isPDFAttachment() {
+      return false;
+    },
+    isRegularItem() {
+      return false;
+    },
+    async getBestAttachment() {
+      bestAttachmentCalls += 1;
+      return pdfAttachment(10);
+    }
+  };
+  (globalThis as any).Zotero = {
+    Reader: {
+      async open(...args: any[]) {
+        calls.push(args);
+      }
+    }
+  };
+
+  const reader = new ResumeReader({
+    getData() {
+      dataReads += 1;
+      return flowData({ lastAttachmentId: '10', lastPage: 3 });
+    }
+  } as any);
+
+  assert.equal(await reader.canResume(unsupportedItem), false);
+  assert.equal(await reader.resume(unsupportedItem), false);
+  assert.equal(dataReads, 0);
+  assert.equal(bestAttachmentCalls, 0);
+  assert.deepEqual(calls, []);
 });
