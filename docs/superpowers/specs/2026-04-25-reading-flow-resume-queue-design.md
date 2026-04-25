@@ -58,9 +58,13 @@ Add lightweight queue classification based on existing Reading Flow data.
 
 Queue categories:
 
-- `Continue Reading`: explicit status is `reading`, or progress is between 1%
-  and 97%.
-- `Nearly Done`: progress is between 80% and 97%.
+- `Continue Reading`: explicit status is `reading`, or implicit status inference
+  resolves to `reading`. This keeps the queue aligned with the existing Status
+  column, which treats implicit progress at 95% or above as `Read`.
+- `Nearly Done`: percent progress is between 80% and below 95%.
+- Page-style fallback progress values greater than 1 count as `Continue
+  Reading` when status inference resolves to `reading`, but do not count as
+  `Nearly Done`.
 - `Stale Reading`: explicit status is `reading` or inferred reading, and
   `lastReadAt` is at least 7 days old.
 
@@ -125,11 +129,13 @@ The user should not see modal errors for routine missing-data cases.
 Unit tests:
 
 - Classifies `Continue Reading` from explicit `reading` status.
-- Classifies `Continue Reading` from progress between 1% and 97%.
-- Classifies `Nearly Done` from progress between 80% and 97%.
+- Classifies `Continue Reading` from implicit `reading` status inference.
+- Classifies `Nearly Done` from percent progress between 80% and below 95%.
 - Classifies `Stale Reading` from old `lastReadAt`.
 - Does not classify completed items as in-progress.
 - Keeps explicit user status precedence.
+- Keeps implicit 95% or greater progress aligned with existing `Read` inference.
+- Handles page-style fallback progress values greater than 1.
 - Resolves parent item plus `lastAttachmentId` to the expected attachment.
 - Falls back safely when `lastAttachmentId` or `lastPage` is missing.
 

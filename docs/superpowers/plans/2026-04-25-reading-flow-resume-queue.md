@@ -53,7 +53,7 @@ test('classifies explicit reading status as continue reading', () => {
   assert.equal(isContinueReading(data), true);
 });
 
-test('classifies progress between 1% and 97% as continue reading', () => {
+test('classifies implicit mid-progress as continue reading', () => {
   const data = normalizeFlowData({ p: { '10': 0.45 }, lastAttachmentId: '10' });
   const state = getReadingQueueState(data, NOW);
 
@@ -61,13 +61,43 @@ test('classifies progress between 1% and 97% as continue reading', () => {
   assert.equal(state.nearlyDone, false);
 });
 
-test('classifies progress between 80% and 97% as nearly done', () => {
+test('classifies progress between 80% and 94% as nearly done', () => {
   const data = normalizeFlowData({ p: { '10': 0.85 }, lastAttachmentId: '10' });
   const state = getReadingQueueState(data, NOW);
 
   assert.equal(state.continueReading, true);
   assert.equal(state.nearlyDone, true);
   assert.equal(isNearlyDone(data), true);
+});
+
+test('classifies implicit 0.94 progress as continue reading and nearly done', () => {
+  const data = normalizeFlowData({ p: { '10': 0.94 }, lastAttachmentId: '10' });
+  const state = getReadingQueueState(data, NOW);
+
+  assert.equal(state.continueReading, true);
+  assert.equal(state.nearlyDone, true);
+});
+
+test('does not classify implicit 0.95 progress as queued because status inference treats it as read', () => {
+  const data = normalizeFlowData({
+    p: { '10': 0.95 },
+    lastAttachmentId: '10',
+    lastReadAt: NOW - STALE_READING_MS
+  });
+
+  assert.deepEqual(getReadingQueueState(data, NOW), {
+    continueReading: false,
+    nearlyDone: false,
+    staleReading: false
+  });
+});
+
+test('classifies page-style progress as continue reading but not nearly done', () => {
+  const data = normalizeFlowData({ p: { '10': 12 }, lastAttachmentId: '10' });
+  const state = getReadingQueueState(data, NOW);
+
+  assert.equal(state.continueReading, true);
+  assert.equal(state.nearlyDone, false);
 });
 
 test('does not classify completed progress as in-progress', () => {
@@ -82,6 +112,26 @@ test('does not classify completed progress as in-progress', () => {
 test('classifies old reading item as stale reading', () => {
   const data = normalizeFlowData({
     s: 'reading',
+    lastReadAt: NOW - STALE_READING_MS - 1
+  });
+
+  assert.equal(isStaleReading(data, NOW), true);
+  assert.equal(getReadingQueueState(data, NOW).staleReading, true);
+});
+
+test('classifies reading item at exact stale cutoff as stale reading', () => {
+  const data = normalizeFlowData({
+    s: 'reading',
+    lastReadAt: NOW - STALE_READING_MS
+  });
+
+  assert.equal(isStaleReading(data, NOW), true);
+});
+
+test('classifies old page-style progress as stale reading', () => {
+  const data = normalizeFlowData({
+    p: { '10': 12 },
+    lastAttachmentId: '10',
     lastReadAt: NOW - STALE_READING_MS - 1
   });
 
@@ -139,9 +189,8 @@ Create `src/readingQueue.ts`:
 import { FlowData, getDisplayProgress, inferStatus } from './flowData';
 
 export const STALE_READING_MS = 7 * 24 * 60 * 60 * 1000;
-const MIN_IN_PROGRESS = 0.01;
-const MAX_IN_PROGRESS = 0.97;
 const MIN_NEARLY_DONE = 0.8;
+const READ_PROGRESS_THRESHOLD = 0.95;
 
 export interface ReadingQueueState {
   continueReading: boolean;
@@ -158,25 +207,22 @@ export function getReadingQueueState(data: FlowData, now = Date.now()): ReadingQ
 }
 
 export function isContinueReading(data: FlowData): boolean {
-  if (data.s && data.s !== 'reading') return false;
-  const progress = getDisplayProgress(data);
-  return data.s === 'reading' || isInProgress(progress);
+  if (data.s === 'reading') return true;
+  if (data.s) return false;
+  return inferStatus(data) === 'reading';
 }
 
 export function isNearlyDone(data: FlowData): boolean {
   if (data.s && data.s !== 'reading') return false;
+  if (!data.s && inferStatus(data) !== 'reading') return false;
   const progress = getDisplayProgress(data);
-  return progress >= MIN_NEARLY_DONE && progress <= MAX_IN_PROGRESS;
+  return progress >= MIN_NEARLY_DONE && progress < READ_PROGRESS_THRESHOLD;
 }
 
 export function isStaleReading(data: FlowData, now = Date.now()): boolean {
   if (!data.lastReadAt || !Number.isFinite(data.lastReadAt)) return false;
-  if (!isContinueReading(data) && inferStatus(data) !== 'reading') return false;
+  if (!isContinueReading(data)) return false;
   return now - data.lastReadAt >= STALE_READING_MS;
-}
-
-function isInProgress(progress: number): boolean {
-  return progress >= MIN_IN_PROGRESS && progress <= MAX_IN_PROGRESS;
 }
 ```
 
