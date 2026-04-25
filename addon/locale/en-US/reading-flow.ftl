@@ -1,4 +1,8 @@
 reading-flow-menu = Reading Flow
+reading-flow-resume-reading = Resume Reading
+reading-flow-queue-continue = Continue Reading
+reading-flow-queue-nearly-done = Nearly Done
+reading-flow-queue-stale = Stale Reading
 reading-flow-status-to-read = Mark as To Read
 reading-flow-status-reading = Mark as Reading
 reading-flow-status-skimmed = Mark as Skimmed
