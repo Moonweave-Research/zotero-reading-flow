@@ -35,6 +35,14 @@ If nothing changes:
 3. Choose `Reading Flow`.
 4. Choose a status or `Reset Reading Progress`.
 
+## Resume Reading opens the PDF but not the exact page
+
+Resume Reading depends on two things: Zotero reader page-change events saving the last page, and Zotero's Reader API accepting page navigation when the PDF is reopened. If page navigation is unavailable, Reading Flow falls back to opening the PDF normally.
+
+To check what Reading Flow saved, select the parent item and inspect the `Extra` field. Look for a `ReadingFlow:` line that includes `lastAttachmentId` and `lastPage`.
+
+If `Resume Reading` is disabled, select exactly one tracked parent item or PDF attachment, then right-click and open `Reading Flow`.
+
 ## How to inspect stored data
 
 Select the parent item and inspect the `Extra` field. A tracked item contains a line similar to:

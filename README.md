@@ -19,6 +19,8 @@ The compatibility range is intentionally limited to Zotero 9 until newer Zotero 
 - `Status` column: shows an explicit status badge or derives status from progress.
 - `Last Read` column: shows compact relative time for the latest tracked read event.
 - Library item context menu: right-click selected items and use `Reading Flow` to mark status or reset progress.
+- `Resume Reading`: right-click a tracked item or PDF attachment to reopen it near the last tracked page.
+- `Reading Queue` hints: menu indicators for papers to continue, nearly finished papers, and stale reading.
 - Multi-attachment aware storage: progress is stored per attachment ID under a single parent item.
 - Zotero sync-friendly storage: data is stored in the parent item's `Extra` field as a `ReadingFlow: {...}` line.
 
@@ -59,6 +61,17 @@ To manually update status:
 2. Right-click the selection.
 3. Open `Reading Flow`.
 4. Choose a status or `Reset Reading Progress`.
+
+To resume reading:
+
+1. Select a tracked Zotero item or PDF attachment.
+2. Right-click the selection.
+3. Open `Reading Flow`.
+4. Choose `Resume Reading`.
+
+If Reading Flow has a saved page number, it tries to reopen the PDF near that page. If page navigation is unavailable, it opens the PDF normally.
+
+Reading Queue hints in the menu are indicators/logging only in this first iteration. They can point out papers to continue, nearly finished papers, or stale reading, but they do not change reading status.
 
 ## Build
 
