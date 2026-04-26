@@ -146,21 +146,21 @@ export class ResumeReader {
     const attachmentId = this.parsePositiveNumber(attachment.id);
     if (!attachmentId) return null;
 
-    const liveReaderPageCount = this.getAttachmentPageCountFromReader(attachment);
-    if (liveReaderPageCount) {
-      return liveReaderPageCount;
-    }
-
     const cachedPageCount = this.normalizePageCount(
       this.parsePositiveCount(parentData?.pageCount?.[String(attachmentId)])
     );
-    if (cachedPageCount) {
-      return cachedPageCount;
-    }
-
-    return this.normalizePageCount(
+    const metadataPageCount = this.normalizePageCount(
       this.readAttachmentPageCountFromMetadata(attachment)
     );
+    const stablePageCount = cachedPageCount ?? metadataPageCount;
+    const liveReaderPageCount = this.getAttachmentPageCountFromReader(attachment);
+
+    if (liveReaderPageCount && stablePageCount && Math.abs(liveReaderPageCount - stablePageCount) > 1) {
+      Logger.warn(`ResumeReader: PDF page count mismatch: stable=${stablePageCount}, reader=${liveReaderPageCount}; using stable count`);
+      return stablePageCount;
+    }
+
+    return liveReaderPageCount ?? stablePageCount;
   }
 
   private getAttachmentPageCountFromReader(attachment: ZoteroItem): number | null {

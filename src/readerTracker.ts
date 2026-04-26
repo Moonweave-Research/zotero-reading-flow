@@ -225,8 +225,8 @@ export class ReaderTracker {
     }
 
     if (normalizedItemPageCount && normalizedItemPageCount !== normalizedReaderPageCount && Math.abs(normalizedReaderPageCount - normalizedItemPageCount) > 1) {
-      Logger.warn(`PDF page count mismatch: metadata=${itemPageCount}, reader=${normalizedReaderPageCount}; using reader`);
-      return normalizedReaderPageCount;
+      Logger.warn(`PDF page count mismatch: metadata=${itemPageCount}, reader=${normalizedReaderPageCount}; using metadata`);
+      return normalizedItemPageCount;
     }
 
     if (normalizedItemPageCount) {

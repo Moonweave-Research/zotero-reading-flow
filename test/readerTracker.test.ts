@@ -104,7 +104,7 @@ test('ReaderTracker uses attachment numPages field when PDF viewer count is unav
   assert.deepEqual(savedCall, [20, '10', 0.4, 2, 5]);
 });
 
-test('ReaderTracker prefers open-reader page count when it conflicts with metadata', () => {
+test('ReaderTracker prefers attachment metadata when open-reader page count conflicts', () => {
   const tracker = new ReaderTracker({} as any);
   let savedCall: any[] | null = null;
   (tracker as any).debounceSave = (...args: any[]) => {
@@ -154,7 +154,7 @@ test('ReaderTracker prefers open-reader page count when it conflicts with metada
 
   (tracker as any).handlePageChange(10);
 
-  assert.deepEqual(savedCall, [20, '10', 0.005, 2, 400]);
+  assert.deepEqual(savedCall, [20, '10', 0.4, 2, 5]);
 });
 
 test('ReaderTracker does not emit synthetic page number when page count is unavailable', () => {

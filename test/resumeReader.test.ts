@@ -488,6 +488,51 @@ test('direct PDF attachment prefers cached pageCount string when reader is unava
   assert.equal(target.fallbackLabel, 'Resume at Page 4 / 12');
 });
 
+test('direct PDF attachment prefers cached page count when live reader count conflicts', async () => {
+  const attachment = pdfAttachment(10, 20);
+  const parent = regularItem(20);
+  (globalThis as any).Zotero = {
+    Items: {
+      get(id: number) {
+        assert.equal(id, 20);
+        return parent;
+      }
+    },
+    Reader: {
+      _readers: [
+        {
+          itemID: 10,
+          _internalReader: {
+            _primaryView: {
+              _iframeWindow: {
+                wrappedJSObject: {
+                  PDFViewerApplication: {
+                    pdfDocument: {
+                      numPages: 400
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  };
+
+  const reader = new ResumeReader({
+    getData(item: any) {
+      assert.equal(item, parent);
+      return flowData({ lastAttachmentId: '10', lastPage: 4, pageCount: { '10': 5 } });
+    }
+  } as any);
+
+  const target = await reader.getResumeDisplayTarget(attachment);
+  assert.equal(target.canResume, true);
+  assert.equal(target.totalPages, 5);
+  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 5');
+});
+
 test('direct PDF attachment prefers live reader page count when cached page count conflicts', async () => {
   const attachment = pdfAttachment(10, 20);
   const parent = regularItem(20);

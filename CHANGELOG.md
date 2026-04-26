@@ -1,5 +1,11 @@
 # Changelog
 
+# 1.1.13 - 2026-04-26
+
+### Fixed
+
+- Fixed inflated PDF page counts when Zotero reader internals report a conflicting page total, preferring stable cached or attachment metadata instead.
+
 # 1.1.12 - 2026-04-26
 
 ### Changed
