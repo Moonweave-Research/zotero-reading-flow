@@ -6,13 +6,13 @@ Post this in the **Zotero forums** (https://forums.zotero.org/). Plugin-related 
 
 ## Title
 
-> [Plugin] Reading Flow — `Progress` / `Status` / `Last Read` columns for Zotero reading workflows (Zotero 9.0)
+> [Plugin] Reading Flow — `Progress` / `Status` / `Last Read` columns for Zotero 9 reading workflows
 
 ## Body
 
 Hi all,
 
-I wrote this plugin during my PhD research and have been using it daily for several months. Sharing it here in case it's useful to others.
+I wrote this plugin during my PhD research and have been using it in my own Zotero workflow. Sharing it here in case it's useful to others using Zotero 9.
 
 **What it does**
 
@@ -27,7 +27,9 @@ If you read PDFs across many projects, the hard part is not just opening a paper
 
 **Compatibility**
 
-- Zotero `9.0` through `9.0.*` (tested on `9.0.1`, macOS ARM64).
+- Built for Zotero 9.
+- Tested on Zotero `9.0.1` on macOS ARM64.
+- Because Zotero 9 is still new, please report issues with your Zotero version and OS if something behaves differently.
 - Plugin ID: `readingflow@moon.com`.
 - No external services, no telemetry, no PDF modification.
 
