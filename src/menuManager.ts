@@ -56,9 +56,7 @@ export class ReadingFlowMenuManager {
                 const displayTarget = selected.length === 1
                   ? await this.resumeReader.getResumeDisplayTarget(selected[0])
                   : { canResume: false, fallbackLabel: MENU_LABELS.resumeReading };
-                if (displayTarget.l10nArgs) {
-                  context.setL10nArgs?.(displayTarget.l10nArgs);
-                }
+                context.setL10nArgs?.(displayTarget.l10nArgs ?? '{}');
                 context.menuElem?.setAttribute?.('label', displayTarget.fallbackLabel);
                 context.setEnabled(displayTarget.canResume);
               },

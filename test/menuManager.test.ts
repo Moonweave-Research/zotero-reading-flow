@@ -235,8 +235,31 @@ test('resume menu keeps fallback label when resume is not available', async () =
   await menuByL10nID('reading-flow-resume-reading').onShowing(new Event('showing'), context);
 
   assert.equal(context.enabled, false);
-  assert.equal(context.l10nArgs, undefined);
+  assert.equal(context.l10nArgs, '{}');
   assert.equal(context.menuElem.label, 'Resume Reading');
+});
+
+test('resume menu clears stale args when selection is not resumable', async () => {
+  const parent = makeRegularItem(20);
+  const attachment = makePdfAttachment(10, 20);
+  const { menuByL10nID } = setupMenu([parent], {
+    20: flowData({ lastAttachmentId: '10', lastPage: 4, pageCount: { '10': 7 } })
+  }, [parent, attachment]);
+
+  const context = enabledContext();
+  const resumeMenu = menuByL10nID('reading-flow-resume-reading');
+  await resumeMenu.onShowing(new Event('showing'), context);
+
+  assert.equal(context.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 7 }));
+
+  const { menuByL10nID: getNoPageResumeMenu } = setupMenu([parent], {
+    20: flowData({ lastAttachmentId: '10' })
+  }, [parent, attachment]);
+  await getNoPageResumeMenu('reading-flow-resume-reading').onShowing(new Event('showing'), context);
+
+  assert.equal(context.l10nArgs, '{}');
+  assert.equal(context.menuElem.label, 'Resume Reading');
+  assert.equal(context.enabled, false);
 });
 
 test('submenu is enabled for exactly one resumable PDF attachment', async () => {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.8 - 2026-04-26
+
+### Fixed
+
+- Improved Resume Reading menu behavior: now shows the resumable page (and total pages when available) with localized menu labels, and falls back cleanly when no resumable state is available.
+- Added best-effort page count capture from PDF metadata for menu context and saved flow data.
+- Hardened Resume Reading menu label rendering across native menu paths with direct label and l10n fallback handling.
+
 ## 1.1.7 - 2026-04-26
 
 ### Fixed
