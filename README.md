@@ -145,6 +145,6 @@ Use [docs/RELEASE.md](docs/RELEASE.md) for release process details.
 
 ## License
 
-MIT License. Copyright (c) 2026 Moon Choi.
+MIT License. Copyright (c) 2026 Moon-Young Choi.
 
 The Reading Flow name and project branding should not be used to imply official endorsement by the original author.
