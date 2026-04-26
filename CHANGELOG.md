@@ -1,5 +1,13 @@
 # Changelog
 
+# 1.1.10 - 2026-04-26
+
+### Fixed
+
+- Fixed Resume Reading labels so page context now includes totals from valid sources and the menu title remains visible even when native menu label setters differ.
+- Fixed page-count source selection to prefer current reader values and filter out unrealistic totals before persisting/using it, preventing inflated `400`-page fallbacks for short PDFs.
+- Added menu label fallback behavior that writes labels through `menuElem` when direct API label updates are not available.
+
 # 1.1.9 - 2026-04-26
 
 ### Fixed

@@ -28,6 +28,8 @@ export type ResumeDisplayTarget = {
 };
 
 export class ResumeReader {
+  private static readonly MAX_REASONABLE_PAGE_COUNT = 100000;
+
   constructor(private readonly dataStore: DataStore) {}
 
   public async canResume(item: ZoteroItem): Promise<boolean> {
@@ -144,12 +146,65 @@ export class ResumeReader {
     const attachmentId = this.parsePositiveNumber(attachment.id);
     if (!attachmentId) return null;
 
-    const cachedPageCount = this.parsePositiveNumber(parentData?.pageCount?.[String(attachmentId)]);
+    const liveReaderPageCount = this.getAttachmentPageCountFromReader(attachment);
+    if (liveReaderPageCount) {
+      return liveReaderPageCount;
+    }
+
+    const cachedPageCount = this.normalizePageCount(
+      this.parsePositiveCount(parentData?.pageCount?.[String(attachmentId)])
+    );
     if (cachedPageCount) {
       return cachedPageCount;
     }
 
-    return this.readAttachmentPageCountFromMetadata(attachment);
+    return this.normalizePageCount(
+      this.readAttachmentPageCountFromMetadata(attachment)
+    );
+  }
+
+  private getAttachmentPageCountFromReader(attachment: ZoteroItem): number | null {
+    const attachmentId = this.parsePositiveNumber(attachment.id);
+    if (!attachmentId) return null;
+
+    const readers = (globalThis as any).Zotero?.Reader?._readers;
+    if (!Array.isArray(readers)) {
+      return null;
+    }
+
+    const reader = readers.find((entry: any) => this.parsePositiveNumber(entry?.itemID) === attachmentId);
+    if (!reader) {
+      return null;
+    }
+
+    return this.readPdfPageCountFromReader(reader, attachment);
+  }
+
+  private readPdfPageCountFromReader(reader: any, attachment: ZoteroItem): number | null {
+    const primaryWindow =
+      reader?._internalReader?._primaryView?._iframeWindow?.wrappedJSObject
+      ?? reader?._internalReader?._primaryView?._iframeWindow
+      ?? reader?._iframeWindow?.wrappedJSObject
+      ?? reader?._iframeWindow;
+    const readerWindow = reader?._internalReader?._iframeWindow?.wrappedJSObject
+      ?? reader?._internalReader?._iframeWindow
+      ?? reader?._iframeWindow?.wrappedJSObject
+      ?? reader?._iframeWindow;
+    const app = primaryWindow?.PDFViewerApplication ?? readerWindow?.PDFViewerApplication ?? reader?.PDFViewerApplication;
+
+    return this.normalizePageCount(this.parsePositiveCount(
+      app?.pdfDocument?.numPages
+      ?? app?.pdfViewer?.pagesCount
+      ?? app?.pdfViewer?._pages?.length
+      ?? app?.pagesCount
+      ?? app?._pagesCount
+      ?? app?._numPages
+      ?? reader?._numPages
+      ?? reader?._state?.numPages
+      ?? reader?._internalReader?._state?.numPages
+      ?? reader?._primaryView?._state?.numPages
+      ?? this.readAttachmentPageCountFromMetadata(attachment)
+    ));
   }
 
   private getParentData(item: ZoteroItem): FlowData | undefined {
@@ -244,12 +299,33 @@ export class ResumeReader {
     const getField = (attachment as any)?.getField;
     if (typeof getField !== 'function') return null;
 
-    return this.parsePositiveNumber(
+    return this.parsePositiveCount(
       getField.call(attachment, 'numPages')
       ?? getField.call(attachment, 'pages')
       ?? getField.call(attachment, 'numPagesRaw')
       ?? getField.call(attachment, 'pageCount')
     );
+  }
+
+  private normalizePageCount(value: number | null): number | null {
+    if (!value) return null;
+    return value <= ResumeReader.MAX_REASONABLE_PAGE_COUNT ? value : null;
+  }
+
+  private parsePositiveCount(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return Math.trunc(value);
+    }
+
+    if (typeof value !== 'string' || !value.trim()) {
+      return null;
+    }
+
+    const match = value.match(/\d+/);
+    if (!match) return null;
+
+    const parsed = Number.parseInt(match[0], 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
 
   private idsEqual(left: unknown, right: unknown): boolean {

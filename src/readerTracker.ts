@@ -49,7 +49,7 @@ export class ReaderTracker {
     const readers = Zotero.Reader._readers as any[];
     Logger.log('_readers count=' + (readers?.length ?? 'null'));
 
-    const reader = readers?.find(r => r.itemID === attachmentId);
+    const reader = readers?.find((r: any) => this.toPositiveInt(r?.itemID) === attachmentId);
     Logger.log('reader found=' + !!reader + ' type=' + reader?._type);
 
     const item = Zotero.Items.get(attachmentId) as any;
@@ -200,10 +200,11 @@ export class ReaderTracker {
       ?? item?.getField?.('numPagesRaw')
       ?? item?.getField?.('pageCount')
     );
-    const normalizedItemPageCount = itemPageCount > 0 ? itemPageCount : undefined;
-    const pageCount = (
-      normalizedItemPageCount
-      ?? app?.pdfDocument?.numPages
+    const normalizedItemPageCount = itemPageCount > 0 && itemPageCount <= ReaderTracker.MAX_REASONABLE_PAGE_COUNT
+      ? itemPageCount
+      : undefined;
+    const normalizedReaderPageCount = this.toPositiveInt(
+      app?.pdfDocument?.numPages
       ?? app?.pdfViewer?.pagesCount
       ?? app?.pdfViewer?._pages?.length
       ?? app?.pagesCount
@@ -213,17 +214,26 @@ export class ReaderTracker {
       ?? reader?._state?.numPages
       ?? reader?._internalReader?._state?.numPages
       ?? reader?._primaryView?._state?.numPages
-      ?? 0
     );
-    const normalized = this.toPositiveInt(pageCount);
 
-    if (normalizedItemPageCount && normalized && normalized !== normalizedItemPageCount && Math.abs(normalized - normalizedItemPageCount) > 1) {
-      const pageCountFromReader = normalized;
-      Logger.warn(`PDF page count mismatch: metadata=${itemPageCount}, reader=${pageCountFromReader}; using metadata`);
+    if (!normalizedReaderPageCount) {
+      return normalizedItemPageCount ?? 0;
+    }
+
+    if (normalizedReaderPageCount > ReaderTracker.MAX_REASONABLE_PAGE_COUNT) {
+      return 0;
+    }
+
+    if (normalizedItemPageCount && normalizedItemPageCount !== normalizedReaderPageCount && Math.abs(normalizedReaderPageCount - normalizedItemPageCount) > 1) {
+      Logger.warn(`PDF page count mismatch: metadata=${itemPageCount}, reader=${normalizedReaderPageCount}; using reader`);
+      return normalizedReaderPageCount;
+    }
+
+    if (normalizedItemPageCount) {
       return normalizedItemPageCount;
     }
 
-    return normalized <= ReaderTracker.MAX_REASONABLE_PAGE_COUNT ? normalized : 0;
+    return normalizedReaderPageCount;
   }
 
   private toPositiveInt(value: unknown): number {

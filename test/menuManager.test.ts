@@ -68,6 +68,22 @@ function enabledContext() {
   };
 }
 
+function setLabelContext() {
+  return {
+    enabled: undefined as boolean | undefined,
+    l10nArgs: undefined as string | undefined,
+    setEnabled(value: boolean) {
+      this.enabled = value;
+    },
+    setL10nArgs(value: string) {
+      this.l10nArgs = value;
+    },
+    setLabel(label: string) {
+      this.label = label;
+    }
+  };
+}
+
 function checkedContext() {
   return {
     checked: undefined as boolean | undefined,
@@ -222,6 +238,21 @@ test('resume menu updates dynamic label and l10n args for resumable page state',
   assert.equal(context.enabled, true);
   assert.equal(context.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 7 }));
   assert.equal(context.menuElem.label, 'Resume at Page 4 / 7');
+});
+
+test('resume menu updates dynamic label through setLabel when menuElem is unavailable', async () => {
+  const parent = makeRegularItem(20);
+  const attachment = makePdfAttachment(10, 20);
+  const { menuByL10nID } = setupMenu([parent], {
+    20: flowData({ lastAttachmentId: '10', lastPage: 4, pageCount: { '10': 7 } })
+  }, [parent, attachment]);
+
+  const context = setLabelContext();
+  await menuByL10nID('reading-flow-resume-reading').onShowing(new Event('showing'), context);
+
+  assert.equal(context.enabled, true);
+  assert.equal(context.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 7 }));
+  assert.equal(context.label, 'Resume at Page 4 / 7');
 });
 
 test('resume menu keeps fallback label when resume is not available', async () => {

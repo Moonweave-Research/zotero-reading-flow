@@ -387,7 +387,7 @@ test('getResumeDisplayTarget for direct PDF attachment uses cached total pages f
 });
 
 test('direct PDF attachment falls back to PDF metadata when parent cache page count is unavailable', async () => {
-  const attachment = pdfAttachment(10, 20, { numPages: 12 });
+  const attachment = pdfAttachment(10, 20, { numPages: '12 pages' });
   const parent = regularItem(20);
   (globalThis as any).Zotero = {
     Items: {
@@ -413,6 +413,124 @@ test('direct PDF attachment falls back to PDF metadata when parent cache page co
   assert.equal(target.totalPages, 12);
   assert.equal(target.fallbackLabel, 'Resume at Page 4 / 12');
   assert.equal(target.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 12 }));
+});
+
+test('direct PDF attachment uses live reader page count when metadata and cache are unavailable', async () => {
+  const attachment = pdfAttachment(10, 20);
+  const parent = regularItem(20);
+  (globalThis as any).Zotero = {
+    Items: {
+      get(id: number) {
+        assert.equal(id, 20);
+        return parent;
+      }
+    },
+    Reader: {
+      _readers: [
+        {
+          itemID: 10,
+          _internalReader: {
+            _primaryView: {
+              _iframeWindow: {
+                wrappedJSObject: {
+                  PDFViewerApplication: {
+                    pdfDocument: {
+                      numPages: '9'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  };
+
+  const reader = new ResumeReader({
+    getData(item: any) {
+      assert.equal(item, parent);
+      return flowData({ lastAttachmentId: '10', lastPage: 4 });
+    }
+  } as any);
+
+  const target = await reader.getResumeDisplayTarget(attachment);
+  assert.equal(target.canResume, true);
+  assert.equal(target.totalPages, 9);
+  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 9');
+});
+
+test('direct PDF attachment prefers cached pageCount string when reader is unavailable', async () => {
+  const attachment = pdfAttachment(10, 20, { numPages: 5 });
+  const parent = regularItem(20);
+  (globalThis as any).Zotero = {
+    Items: {
+      get(id: number) {
+        assert.equal(id, 20);
+        return parent;
+      }
+    },
+    Reader: {
+      _readers: []
+    }
+  };
+
+  const reader = new ResumeReader({
+    getData(item: any) {
+      assert.equal(item, parent);
+      return flowData({ lastAttachmentId: '10', lastPage: 4, pageCount: { '10': '12 pages' } });
+    }
+  } as any);
+
+  const target = await reader.getResumeDisplayTarget(attachment);
+  assert.equal(target.canResume, true);
+  assert.equal(target.totalPages, 12);
+  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 12');
+});
+
+test('direct PDF attachment prefers live reader page count when cached page count conflicts', async () => {
+  const attachment = pdfAttachment(10, 20);
+  const parent = regularItem(20);
+  (globalThis as any).Zotero = {
+    Items: {
+      get(id: number) {
+        assert.equal(id, 20);
+        return parent;
+      }
+    },
+    Reader: {
+      _readers: [
+        {
+          itemID: '10',
+          _internalReader: {
+            _primaryView: {
+              _iframeWindow: {
+                wrappedJSObject: {
+                  PDFViewerApplication: {
+                    pdfDocument: {
+                      numPages: 5
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  };
+
+  const reader = new ResumeReader({
+    getData(item: any) {
+      assert.equal(item, parent);
+      return flowData({ lastAttachmentId: '10', lastPage: 4, pageCount: { '10': 999999 } });
+    }
+  } as any);
+
+  const target = await reader.getResumeDisplayTarget(attachment);
+  assert.equal(target.canResume, true);
+  assert.equal(target.totalPages, 5);
+  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 5');
 });
 
 test('resume opens without location when no positive lastPage is available', async () => {

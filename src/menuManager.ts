@@ -57,7 +57,7 @@ export class ReadingFlowMenuManager {
                   ? await this.resumeReader.getResumeDisplayTarget(selected[0])
                   : { canResume: false, fallbackLabel: MENU_LABELS.resumeReading };
                 context.setL10nArgs?.(displayTarget.l10nArgs ?? '{}');
-                context.menuElem?.setAttribute?.('label', displayTarget.fallbackLabel);
+                this.setMenuItemLabel(context, displayTarget.fallbackLabel);
                 context.setEnabled(displayTarget.canResume);
               },
               onCommand: (_event: Event, context: any) => this.resumeSelectedItem(context)
@@ -131,6 +131,19 @@ export class ReadingFlowMenuManager {
       await this.resumeReader.resume(item);
     } catch (e) {
       Logger.error(`resume reading failed for item ${item?.id}`, e);
+    }
+  }
+
+  private setMenuItemLabel(context: any, label: string) {
+    context?.setLabel?.(label);
+    if (!context?.menuElem) {
+      return;
+    }
+
+    context.menuElem.label = label;
+    context.menuElem.setAttribute?.('label', label);
+    if ('textContent' in context.menuElem) {
+      context.menuElem.textContent = label;
     }
   }
 
