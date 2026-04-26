@@ -8,6 +8,20 @@ const PLUGIN_ID = 'readingflow@moon.com';
 const MENU_ID = 'readingflow-library-item-menu';
 type QueueKey = keyof ReadingQueueState;
 
+const MENU_LABELS = {
+  menu: 'Reading Flow',
+  resumeReading: 'Resume Reading',
+  queueContinue: 'Continue Reading',
+  queueNearlyDone: 'Nearly Done',
+  queueStale: 'Stale Reading',
+  statusToRead: 'Mark as To Read',
+  statusReading: 'Mark as Reading',
+  statusSkimmed: 'Mark as Skimmed',
+  statusRead: 'Mark as Read',
+  statusImportant: 'Mark as Important',
+  resetProgress: 'Reset Reading Progress'
+} as const;
+
 export class ReadingFlowMenuManager {
   private registeredMenuID: string | false | null = null;
   private resumeReader: ResumeReader;
@@ -27,6 +41,7 @@ export class ReadingFlowMenuManager {
         {
           menuType: 'submenu',
           l10nID: 'reading-flow-menu',
+          label: MENU_LABELS.menu,
           onShowing: async (_event: Event, context: any) => {
             context?.setEnabled?.(await this.canShowSubmenu(context));
             context?.setVisible?.(true);
@@ -35,31 +50,36 @@ export class ReadingFlowMenuManager {
             {
               menuType: 'menuitem',
               l10nID: 'reading-flow-resume-reading',
+              label: MENU_LABELS.resumeReading,
               onShowing: async (_event: Event, context: any) => {
                 const selected = this.getSelectedItems(context);
                 const canResume = selected.length === 1 && await this.resumeReader.canResume(selected[0]);
                 context.setEnabled(canResume);
               },
-              onCommand: () => this.resumeSelectedItem()
+              onCommand: (_event: Event, context: any) => this.resumeSelectedItem(context)
             },
             {
               menuType: 'separator'
             },
-            this.queueMenu('continueReading', 'reading-flow-queue-continue'),
-            this.queueMenu('nearlyDone', 'reading-flow-queue-nearly-done'),
-            this.queueMenu('staleReading', 'reading-flow-queue-stale'),
+            this.queueMenu('continueReading', 'reading-flow-queue-continue', MENU_LABELS.queueContinue),
+            this.queueMenu('nearlyDone', 'reading-flow-queue-nearly-done', MENU_LABELS.queueNearlyDone),
+            this.queueMenu('staleReading', 'reading-flow-queue-stale', MENU_LABELS.queueStale),
             {
               menuType: 'separator'
             },
-            this.statusMenu('to-read', 'reading-flow-status-to-read'),
-            this.statusMenu('reading', 'reading-flow-status-reading'),
-            this.statusMenu('skimmed', 'reading-flow-status-skimmed'),
-            this.statusMenu('read', 'reading-flow-status-read'),
-            this.statusMenu('important', 'reading-flow-status-important'),
+            this.statusMenu('to-read', 'reading-flow-status-to-read', MENU_LABELS.statusToRead),
+            this.statusMenu('reading', 'reading-flow-status-reading', MENU_LABELS.statusReading),
+            this.statusMenu('skimmed', 'reading-flow-status-skimmed', MENU_LABELS.statusSkimmed),
+            this.statusMenu('read', 'reading-flow-status-read', MENU_LABELS.statusRead),
+            this.statusMenu('important', 'reading-flow-status-important', MENU_LABELS.statusImportant),
             {
               menuType: 'menuitem',
               l10nID: 'reading-flow-reset-progress',
-              onCommand: () => this.updateSelectedItems((item) => this.dataStore.resetProgress(item))
+              label: MENU_LABELS.resetProgress,
+              onCommand: (_event: Event, context: any) => this.updateSelectedItems(
+                (item) => this.dataStore.resetProgress(item),
+                context
+              )
             }
           ]
         }
@@ -74,27 +94,32 @@ export class ReadingFlowMenuManager {
     this.registeredMenuID = null;
   }
 
-  private statusMenu(status: ReadingStatus, l10nID: string) {
+  private statusMenu(status: ReadingStatus, l10nID: string, label: string) {
     return {
       menuType: 'menuitem',
       l10nID,
-      onCommand: () => this.updateSelectedItems((item) => this.dataStore.setStatus(item, status))
+      label,
+      onCommand: (_event: Event, context: any) => this.updateSelectedItems(
+        (item) => this.dataStore.setStatus(item, status),
+        context
+      )
     };
   }
 
-  private queueMenu(queue: QueueKey, l10nID: string) {
+  private queueMenu(queue: QueueKey, l10nID: string, label: string) {
     return {
       menuType: 'menuitem',
       l10nID,
+      label,
       onShowing: (_event: Event, context: any) => {
         context.setChecked?.(this.selectedRegularItemsMatchQueue(queue, context));
       },
-      onCommand: () => this.logQueueSelection(queue)
+      onCommand: (_event: Event, context: any) => this.logQueueSelection(queue, context)
     };
   }
 
-  private async resumeSelectedItem() {
-    const selected = this.getSelectedItems();
+  private async resumeSelectedItem(context?: any) {
+    const selected = this.getSelectedItems(context);
     if (selected.length !== 1) return;
 
     const item = selected[0];
@@ -113,8 +138,8 @@ export class ReadingFlowMenuManager {
     return states.some((state) => state?.[queue] ?? false);
   }
 
-  private logQueueSelection(queue: QueueKey) {
-    const itemIds = this.getSelectedRegularItems()
+  private logQueueSelection(queue: QueueKey, context?: any) {
+    const itemIds = this.getSelectedRegularItems(context)
       .filter((item) => this.getQueueStateForItem(item)?.[queue] ?? false)
       .map((item) => item.id);
 
@@ -168,8 +193,8 @@ export class ReadingFlowMenuManager {
     return item;
   }
 
-  private async updateSelectedItems(update: (item: any) => Promise<void>) {
-    const items = this.getSelectedRegularItems();
+  private async updateSelectedItems(update: (item: any) => Promise<void>, context?: any) {
+    const items = this.getSelectedRegularItems(context);
     if (!items.length) return;
 
     for (const item of items) {

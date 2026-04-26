@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.7 - 2026-04-26
+
+### Fixed
+
+- Added explicit native-menu label fallbacks for all `Reading Flow` submenu actions so labels render reliably in Zotero context menus.
+- Made menu commands use Zotero's command context, preserving the selected item for resume, status, queue, and reset actions.
+
 ## 1.1.3 - 2026-04-25
 
 ### Fixed

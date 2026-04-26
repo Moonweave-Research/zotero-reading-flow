@@ -166,6 +166,23 @@ test('menus keep l10n IDs for Zotero MenuManager rendering', () => {
   assert.equal(menuByL10nID('reading-flow-reset-progress').l10nID, 'reading-flow-reset-progress');
 });
 
+test('menus include direct labels as a fallback for nested native menu rendering', () => {
+  const item = makeRegularItem(20);
+  const { submenu, menuByL10nID } = setupMenu([item], { 20: flowData() });
+
+  assert.equal(submenu.label, 'Reading Flow');
+  assert.equal(menuByL10nID('reading-flow-resume-reading').label, 'Resume Reading');
+  assert.equal(menuByL10nID('reading-flow-queue-continue').label, 'Continue Reading');
+  assert.equal(menuByL10nID('reading-flow-queue-nearly-done').label, 'Nearly Done');
+  assert.equal(menuByL10nID('reading-flow-queue-stale').label, 'Stale Reading');
+  assert.equal(menuByL10nID('reading-flow-status-to-read').label, 'Mark as To Read');
+  assert.equal(menuByL10nID('reading-flow-status-reading').label, 'Mark as Reading');
+  assert.equal(menuByL10nID('reading-flow-status-skimmed').label, 'Mark as Skimmed');
+  assert.equal(menuByL10nID('reading-flow-status-read').label, 'Mark as Read');
+  assert.equal(menuByL10nID('reading-flow-status-important').label, 'Mark as Important');
+  assert.equal(menuByL10nID('reading-flow-reset-progress').label, 'Reset Reading Progress');
+});
+
 test('resume menu is disabled for a non-resumable selected item', async () => {
   const item = makeRegularItem(20);
   const { menuByL10nID } = setupMenu([item], {
@@ -239,6 +256,38 @@ test('resume menu command opens the selected resumable item', async () => {
   await menuByL10nID('reading-flow-resume-reading').onCommand();
 
   assert.deepEqual(openCalls, [[10, { pageIndex: 4 }]]);
+});
+
+test('resume menu command uses command context when current selection is unavailable', async () => {
+  const parent = makeRegularItem(20);
+  const attachment = makePdfAttachment(10, 20);
+  const { menuByL10nID, openCalls } = setupMenu([], {
+    20: flowData({ lastAttachmentId: '10', lastPage: 5 })
+  }, [parent, attachment]);
+
+  await menuByL10nID('reading-flow-resume-reading').onCommand(new Event('command'), { items: [parent] });
+
+  assert.deepEqual(openCalls, [[10, { pageIndex: 4 }]]);
+});
+
+test('status and reset commands use command context when current selection is unavailable', async () => {
+  const item = makeRegularItem(20);
+  const { menuByL10nID, mutationCalls } = setupMenu([], {
+    20: flowData()
+  }, [item]);
+  const commandContext = { items: [item] };
+
+  await menuByL10nID('reading-flow-status-reading').onCommand(new Event('command'), commandContext);
+  await menuByL10nID('reading-flow-reset-progress').onCommand(new Event('command'), commandContext);
+
+  assert.deepEqual(mutationCalls, [
+    'setStatus',
+    'refreshColumns',
+    'notifier',
+    'resetProgress',
+    'refreshColumns',
+    'notifier'
+  ]);
 });
 
 test('resume menu command logs outer resumeSelectedItem errors without rejecting', async () => {
