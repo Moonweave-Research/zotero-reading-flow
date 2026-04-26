@@ -1,19 +1,14 @@
 import { DataStore } from './dataStore';
 import { ReadingStatus } from './flowData';
-import { getReadingQueueState, ReadingQueueState } from './readingQueue';
 import { Logger } from './Logger';
 import { ResumeReader } from './resumeReader';
 
 const PLUGIN_ID = 'readingflow@moon.com';
 const MENU_ID = 'readingflow-library-item-menu';
-type QueueKey = keyof ReadingQueueState;
 
 const MENU_LABELS = {
   menu: 'Reading Flow',
   resumeReading: 'Resume Reading',
-  queueContinue: 'Continue Reading',
-  queueNearlyDone: 'Nearly Done',
-  queueStale: 'Stale Reading',
   statusToRead: 'Mark as To Read',
   statusReading: 'Mark as Reading',
   statusSkimmed: 'Mark as Skimmed',
@@ -65,12 +60,6 @@ export class ReadingFlowMenuManager {
             {
               menuType: 'separator'
             },
-            this.queueMenu('continueReading', 'reading-flow-queue-continue', MENU_LABELS.queueContinue),
-            this.queueMenu('nearlyDone', 'reading-flow-queue-nearly-done', MENU_LABELS.queueNearlyDone),
-            this.queueMenu('staleReading', 'reading-flow-queue-stale', MENU_LABELS.queueStale),
-            {
-              menuType: 'separator'
-            },
             this.statusMenu('to-read', 'reading-flow-status-to-read', MENU_LABELS.statusToRead),
             this.statusMenu('reading', 'reading-flow-status-reading', MENU_LABELS.statusReading),
             this.statusMenu('skimmed', 'reading-flow-status-skimmed', MENU_LABELS.statusSkimmed),
@@ -110,18 +99,6 @@ export class ReadingFlowMenuManager {
     };
   }
 
-  private queueMenu(queue: QueueKey, l10nID: string, label: string) {
-    return {
-      menuType: 'menuitem',
-      l10nID,
-      label,
-      onShowing: (_event: Event, context: any) => {
-        context.setChecked?.(this.selectedRegularItemsMatchQueue(queue, context));
-      },
-      onCommand: (_event: Event, context: any) => this.logQueueSelection(queue, context)
-    };
-  }
-
   private async resumeSelectedItem(context?: any) {
     const selected = this.getSelectedItems(context);
     if (selected.length !== 1) return;
@@ -144,34 +121,6 @@ export class ReadingFlowMenuManager {
     context.menuElem.setAttribute?.('label', label);
     if ('textContent' in context.menuElem) {
       context.menuElem.textContent = label;
-    }
-  }
-
-  private selectedRegularItemsMatchQueue(queue: QueueKey, context?: any): boolean {
-    const items = this.getSelectedRegularItems(context);
-    if (!items.length) return false;
-
-    const states = items.map((item) => this.getQueueStateForItem(item));
-    return states.some((state) => state?.[queue] ?? false);
-  }
-
-  private logQueueSelection(queue: QueueKey, context?: any) {
-    const itemIds = this.getSelectedRegularItems(context)
-      .filter((item) => this.getQueueStateForItem(item)?.[queue] ?? false)
-      .map((item) => item.id);
-
-    Logger.log(`Reading queue ${queue}: ${itemIds.join(', ') || 'none'}`);
-  }
-
-  private getQueueStateForItem(item: any): ReadingQueueState | null {
-    const targetItem = this.normalizeItem(item);
-    if (!targetItem) return null;
-
-    try {
-      return getReadingQueueState(this.dataStore.getData(targetItem));
-    } catch (e) {
-      Logger.warn(`failed to read queue state for item ${targetItem?.id}: ${e instanceof Error ? e.message : e}`);
-      return null;
     }
   }
 

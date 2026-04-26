@@ -3,7 +3,6 @@ import { ReaderTracker } from './readerTracker';
 import { ColumnManager } from './columnManager';
 import { StyleManager } from './styleManager';
 import { NotifierManager } from './notifierManager';
-import { PopoverManager } from './popoverManager';
 import { Logger } from './Logger';
 import { ReadingFlowMenuManager } from './menuManager';
 
@@ -13,9 +12,7 @@ class Bootstrap {
   private columnManager?: ColumnManager;
   private styleManager: StyleManager;
   private notifierManager?: NotifierManager;
-  private popoverManager?: PopoverManager;
   private menuManager?: ReadingFlowMenuManager;
-  private popoverRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private preferencePaneID: string | null = null;
   private started = false;
   private rootURI: string | null = null;
@@ -72,11 +69,6 @@ class Bootstrap {
       Logger.log('menuManager OK');
     } catch (e) { Logger.error('menuManager FAIL', e); }
 
-    try {
-      this.popoverManager = new PopoverManager();
-      this.registerPopoverWhenReady();
-    } catch (e) { Logger.error('popoverManager FAIL', e); }
-
     Logger.log('startup complete');
   }
 
@@ -84,10 +76,8 @@ class Bootstrap {
     this.started = false;
     this.rootURI = null;
     this.dataStore?.close();
-    this.clearPopoverRetry();
     this.readerTracker?.unregister();
     this.notifierManager?.unregister();
-    this.popoverManager?.unregister();
     if (!this.isAppShutdown(reason)) {
       this.columnManager?.unregister();
       this.menuManager?.unregister();
@@ -106,42 +96,12 @@ class Bootstrap {
         this.styleManager.injectLocale(window, this.rootURI);
       }
       void this.columnManager?.ensureColumnsVisibleOnFirstRun();
-      this.registerPopoverWhenReady();
     } catch (e) {
       Logger.error('onMainWindowLoad failed', e);
     }
   }
 
-  onMainWindowUnload() {
-    this.clearPopoverRetry();
-    this.popoverManager?.unregister();
-  }
-
-  private registerPopoverWhenReady() {
-    if (!this.started || !this.popoverManager) return;
-
-    const pane = Zotero.getActiveZoteroPane();
-    if (pane?.itemsView?.contentElement) {
-      this.clearPopoverRetry();
-      this.popoverManager.register();
-      Logger.log('popoverManager OK');
-      return;
-    }
-
-    if (!this.popoverRetryTimer) {
-      const win = Zotero.getMainWindow();
-      this.popoverRetryTimer = win.setTimeout(() => {
-        this.popoverRetryTimer = null;
-        this.registerPopoverWhenReady();
-      }, 1000);
-    }
-  }
-
-  private clearPopoverRetry() {
-    if (!this.popoverRetryTimer) return;
-    clearTimeout(this.popoverRetryTimer);
-    this.popoverRetryTimer = null;
-  }
+  onMainWindowUnload() {}
 
   private registerPreferencePane(pluginID: string, rootURI: string) {
     if (!Zotero.PreferencePanes?.register) return;
