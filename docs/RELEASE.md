@@ -61,7 +61,7 @@ After publishing the release, verify these URLs in a browser or with `curl -I`:
 
 ```bash
 curl -I https://github.com/Moon-python/zotero-reading-flow/releases/latest/download/updates.json
-curl -I https://github.com/Moon-python/zotero-reading-flow/releases/download/v1.1.10/zotero-reading-flow.xpi
+curl -I https://github.com/Moon-python/zotero-reading-flow/releases/download/v1.1.11/zotero-reading-flow.xpi
 ```
 
 Both should return a redirect or success response rather than `404`.
@@ -83,4 +83,4 @@ Use a clean or disposable Zotero profile when possible.
 
 ## Current Release Notes
 
-For `v1.1.10`, the release should be described as tested with Zotero `9.0.1` and compatible with Zotero `9.0.*`.
+For `v1.1.11`, the release should be described as tested with Zotero `9.0.1` and compatible with Zotero `9.0.*`.

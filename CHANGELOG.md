@@ -1,5 +1,14 @@
 # Changelog
 
+# 1.1.11 - 2026-04-26
+
+### Fixed
+
+- Fixed `Resume Reading` menu label rendering and total-page context using live-reader precedence and reader-aware fallback paths.
+- Hardened page-count resolution to ignore unrealistic totals so short PDFs no longer report inflated `400`-page counts from stale metadata.
+- Added direct and native-menu fallback coverage for readable label updates to prevent blank submenu items.
+- Rebuilt verify-safe XPI and changelog/docs release metadata for `1.1.11`.
+
 # 1.1.10 - 2026-04-26
 
 ### Fixed

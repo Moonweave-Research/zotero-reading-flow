@@ -9,7 +9,7 @@ It adds compact reading workflow columns, stores progress in Zotero item metadat
 - Zotero: `9.0` through `9.0.*`
 - Tested locally with Zotero `9.0.1` on macOS ARM64
 - Plugin ID: `readingflow@moon.com`
-- Current version: `1.1.10`
+- Current version: `1.1.11`
 
 The compatibility range is intentionally limited to Zotero 9 until newer Zotero versions are tested.
 
