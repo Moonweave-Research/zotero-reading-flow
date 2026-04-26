@@ -1,12 +1,15 @@
 # Zotero Reading Flow
 
+**Pick up your papers exactly where you left off — without re-scrolling.**
+
 [![Latest](https://img.shields.io/github/v/release/Moon-python/zotero-reading-flow?label=Latest%20Release)](https://github.com/Moon-python/zotero-reading-flow/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Moon-python/zotero-reading-flow/latest/zotero-reading-flow.xpi)](https://github.com/Moon-python/zotero-reading-flow/releases/latest/download/zotero-reading-flow.xpi)
 [![Zotero](https://img.shields.io/badge/Zotero-9.0%20%7C%209.0.*-blue)](https://www.zotero.org/download/)
 
-Zotero Reading Flow helps you resume papers quickly and keep reading progress visible at a glance.
+<!-- HERO: replace with a 10–15s GIF showing right-click → Resume Reading → reader opens at the saved page. -->
+![Zotero Reading Flow demo](docs/assets/hero.gif)
 
-It adds reading-focused columns to the library, remembers your last read position, and adds a small context menu workflow for status updates.
+Zotero Reading Flow adds reading-focused columns to your library (`Progress`, `Status`, `Last Read`), remembers the last page you read, and gives you a one-click **Resume Reading** action from the context menu.
 
 > Best for: literature researchers, thesis students, and anyone who reads many PDFs across projects and wants to pick up exactly where they stopped.
 
@@ -27,6 +30,9 @@ It adds reading-focused columns to the library, remembers your last read positio
 If this is your first use, columns appear automatically after install.
 
 ## Features
+
+<!-- Optional: place a screenshot of the three columns in the library here. -->
+![Reading Flow columns in the library](docs/assets/columns.png)
 
 - `Progress`: shows the latest tracked position for each paper in one glance.
 - `Status`: displays your reading state (`To Read`, `Reading`, `Skimmed`, `Read`, `Important`) and keeps it synced with library changes.
@@ -55,6 +61,9 @@ https://github.com/Moon-python/zotero-reading-flow/releases/latest/download/upda
 ```
 
 ## Quick start
+
+<!-- Optional: screenshot of the right-click "Reading Flow" submenu. -->
+![Reading Flow context menu](docs/assets/menu.png)
 
 1. Open a PDF in Zotero Reader and read some pages.
 2. Return to the library.
