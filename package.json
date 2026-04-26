@@ -7,7 +7,8 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "node scripts/run-unit-tests.js",
     "build": "node build.js",
-    "verify": "npm run typecheck && npm run test:unit && npm run build && node scripts/verify-xpi.js"
+    "verify": "npm run typecheck && npm run test:unit && npm run build && node scripts/verify-xpi.js",
+    "check:release-profile": "node scripts/check-release-profile.js"
   },
   "devDependencies": {
     "esbuild": "^0.28.0",

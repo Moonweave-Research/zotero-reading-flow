@@ -112,6 +112,27 @@ npm run verify
 - XPI build
 - Update manifest validation
 
+### Automated test-profile check
+
+Run a quick reproducible runtime smoke check against a local Zotero profile:
+
+```bash
+ZOTERO_TEST_PROFILE="/path/to/profile-dir" \
+ZOTERO_DATA_DIR="/path/to/zotero-data-dir" \
+npm run check:release-profile -- \
+  --itemKey "<item-key>" \
+  --attachmentKey "<attachment-key>" \
+  --attachmentPath "/path/to/zotero-data-dir/<pdf-file-path>" \
+  --json
+```
+
+The script verifies:
+
+- XPI existence and manifest metadata alignment
+- Add-on loaded/enabled state from `extensions.json`
+- `columnsInitialized` + `treePrefs.json` column visibility
+- Optional Zotero DB sample row checks (`itemKey` / `attachmentKey` / `attachmentPath`)
+
 ## Troubleshooting
 
 - If columns are not visible, restart Zotero once and check the library column chooser.

@@ -81,6 +81,18 @@ Use a clean or disposable Zotero profile when possible.
 9. Mark the item as `Read`, then reset progress.
 10. Quit Zotero and confirm no Reading Flow bootstrap error appears in the debug log.
 
+For local automation, run:
+
+```bash
+ZOTERO_TEST_PROFILE="/path/to/profile-dir" \
+ZOTERO_DATA_DIR="/path/to/zotero-data-dir" \
+npm run check:release-profile -- \
+  --itemKey "<item-key>" \
+  --attachmentKey "<attachment-key>" \
+  --attachmentPath "/path/to/zotero-data-dir/<pdf-file-path>" \
+  --json
+```
+
 ## Current Release Notes
 
 For `v1.1.12`, the release should be described as tested with Zotero `9.0.1` and compatible with Zotero `9.0.*`.
