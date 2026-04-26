@@ -1,6 +1,6 @@
 # Zotero forum announcement — copy/paste source
 
-Post this in the **Zotero forums** (https://forums.zotero.org/). Plugin-related announcements typically go in the general discussion area; staff/community will move it if a more specific category fits. Title and body are kept under 1200 chars and lead with a reproducible value claim, not a feature dump.
+Post this in the **Zotero forums** (https://forums.zotero.org/). Plugin-related announcements typically go in the general discussion area; staff/community will move it if a more specific category fits. Title and body lead with a reproducible value claim, not a feature dump.
 
 ---
 
