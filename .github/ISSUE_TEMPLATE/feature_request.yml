@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest an improvement for a real reading workflow
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the reading workflow problem first. Reading Flow is intentionally small, so workflow fit matters more than feature count.
+  - type: textarea
+    id: workflow-problem
+    attributes:
+      label: Reading workflow problem
+      description: What is hard or repetitive in your Zotero reading workflow today?
+      placeholder: "When I manage many PDFs across projects, I cannot quickly tell..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: What should Reading Flow do?
+    validations:
+      required: true
+  - type: dropdown
+    id: affected-area
+    attributes:
+      label: Related area
+      options:
+        - Columns / item tree
+        - Context menu / actions
+        - Resume Reading
+        - Progress tracking
+        - Import / sync behavior
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives tried
+      description: Existing Zotero features, plugins, or manual workflows you tried.
+    validations:
+      required: false

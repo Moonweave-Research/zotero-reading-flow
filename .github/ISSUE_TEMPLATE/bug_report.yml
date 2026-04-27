@@ -1,0 +1,91 @@
+name: Bug report
+description: Report a problem with Zotero Reading Flow
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please include enough environment detail to reproduce the issue.
+  - type: input
+    id: zotero-version
+    attributes:
+      label: Zotero version
+      description: "Example: 9.0.1"
+      placeholder: "9.0.1"
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Reading Flow version
+      description: Check Tools -> Add-ons, or the installed XPI/release version.
+      placeholder: "1.1.13"
+    validations:
+      required: true
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: dropdown
+    id: affected-area
+    attributes:
+      label: Affected area
+      options:
+        - Columns / item tree
+        - Context menu / Reading Flow submenu
+        - Resume Reading
+        - Progress tracking
+        - Install / update
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the behavior you saw and what you expected instead.
+      placeholder: "Progress shows 400 pages for a 5-page PDF..."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the shortest steps that trigger the problem.
+      placeholder: |
+        1. Open Zotero
+        2. Select an item with a PDF attachment
+        3. Right-click and open Reading Flow
+        4. ...
+    validations:
+      required: true
+  - type: textarea
+    id: attachment-structure
+    attributes:
+      label: Attachment structure
+      description: Tell us whether the item has one PDF, multiple PDFs, linked files, or stored files.
+      placeholder: "One stored PDF attachment under a journal article item."
+    validations:
+      required: false
+  - type: textarea
+    id: console-errors
+    attributes:
+      label: Console errors
+      description: Paste relevant Zotero error console messages if available.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or screen recording
+      description: Add screenshots if the problem is visual, such as missing columns or an incorrect progress bar.
+    validations:
+      required: false
