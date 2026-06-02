@@ -119,7 +119,7 @@ function checkXpi() {
   push('xpi_addon_id', zotero.id === ADDON_ID ? 'PASS' : 'FAIL', `id=${zotero.id || 'missing'}`);
   push(
     'xpi_version_range',
-    zotero.strict_min_version === '9.0' && zotero.strict_max_version === '9.0.*' ? 'PASS' : 'WARN',
+    zotero.strict_min_version === '8.999' && zotero.strict_max_version === '9.0.*' ? 'PASS' : 'WARN',
     `strict_min=${zotero.strict_min_version || 'missing'}, strict_max=${zotero.strict_max_version || 'missing'}`
   );
   push(
