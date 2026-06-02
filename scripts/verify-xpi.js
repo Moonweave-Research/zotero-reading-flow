@@ -66,8 +66,12 @@ if (manifest.applications?.zotero?.id !== ADDON_ID) {
 if (manifest.applications?.zotero?.update_url !== UPDATE_URL) {
   fail('manifest applications.zotero.update_url should point at the GitHub release updates.json asset');
 }
-if (!manifest.applications?.zotero?.strict_min_version?.startsWith('9.')) {
-  fail('strict_min_version should target Zotero 9');
+// '8.999' is Zotero's recommended prev-major sentinel: it admits all Zotero 9
+// builds including source/beta strings (e.g. 9.0.SOURCE.<hash>) that sort below
+// '9.0' under Gecko version comparison. See zotero.org/support/dev/zotero_7_for_developers.
+const strictMin = manifest.applications?.zotero?.strict_min_version;
+if (strictMin !== '8.999' && !strictMin?.startsWith('9.')) {
+  fail('strict_min_version should target Zotero 9 (9.x or the 8.999 prev-major sentinel)');
 }
 if (!manifest.applications?.zotero?.strict_max_version?.startsWith('9.')) {
   fail('strict_max_version should be constrained to Zotero 9 until tested otherwise');

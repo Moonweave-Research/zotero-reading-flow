@@ -1,5 +1,11 @@
 # Changelog
 
+# 1.1.16 - 2026-06-03
+
+### Fixed
+
+- Allow installation on source/self-built Zotero (version strings like `9.0.SOURCE.<hash>`, e.g. Arch Linux packages). Lowered `strict_min_version` from `9.0` to `8.999`, matching Zotero's recommended `prev_major.999` pattern — non-standard version strings sort below `9.0` under Gecko version comparison and were wrongly rejected as incompatible. (#3)
+
 # 1.1.15 - 2026-06-03
 
 ### Added
