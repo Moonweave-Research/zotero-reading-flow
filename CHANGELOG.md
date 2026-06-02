@@ -1,5 +1,11 @@
 # Changelog
 
+# 1.1.15 - 2026-06-03
+
+### Added
+
+- New plugin icon: an open book inside a progress ring that flows through the semantic status colors (to-read → reading → skimmed → read), shown in the Zotero Add-ons manager. Ships 48px and 96px (HiDPI) variants.
+
 # 1.1.14 - 2026-05-12
 
 ### Fixed

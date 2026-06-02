@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Zotero Reading Flow",
-  "version": "1.1.14",
+  "version": "1.1.15",
   "description": "Progress tracking and semantic colors for Zotero 9.",
   "author": "Reading Flow Team",
   "applications": {
@@ -13,6 +13,7 @@
     }
   },
   "icons": {
-    "48": "icon.png"
+    "48": "icon.png",
+    "96": "icon@96.png"
   }
 }
