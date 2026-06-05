@@ -1,5 +1,7 @@
 # Reading Flow Attention Column Implementation Plan
 
+> Superseded note: the final implementation does not persist `priority: "normal"` and does not expose a separate `Clear Priority` menu item. `Set Priority Normal` now demotes an item to the visible `To Read` baseline by clearing priority and setting `s: "to-read"`. Treat older snippets in this plan as historical planning context, not the current contract.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a single compact `Flow` column that combines reading progress, status, priority, and stale-reading signals without forcing users to keep multiple Reading Flow columns visible.

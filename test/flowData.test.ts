@@ -7,7 +7,8 @@ import {
   getDisplayProgress,
   inferStatus,
   mergeFlowData,
-  normalizeFlowData
+  normalizeFlowData,
+  ReadingPriority
 } from '../src/flowData';
 
 test('normalizeFlowData preserves valid v1 fields and drops invalid values', () => {
@@ -28,12 +29,41 @@ test('normalizeFlowData preserves valid v1 fields and drops invalid values', () 
     p: { '10': 0.5, '11': 8 },
     pageCount: { '10': 5, '11': 12 },
     c: '#123456',
-    s: 'important',
+    s: null,
+    priority: 'high',
     ts: 100,
     lastAttachmentId: '10',
     lastPage: 4,
     lastReadAt: 200
   });
+});
+
+test('normalizeFlowData preserves valid priority and drops invalid priority', () => {
+  assert.equal(normalizeFlowData({ priority: 'high' }).priority, 'high');
+  assert.equal(normalizeFlowData({ priority: 'low' }).priority, 'low');
+  assert.equal(normalizeFlowData({ priority: 'normal' }).priority, null);
+  assert.equal(normalizeFlowData({ priority: 'normal' }).s, 'to-read');
+  assert.equal(normalizeFlowData({ priority: 'urgent' }).priority, null);
+  assert.equal(normalizeFlowData({ priority: '' }).priority, null);
+  assert.equal(normalizeFlowData({}).priority, null);
+
+  const priority: ReadingPriority = 'high';
+  assert.equal(priority, 'high');
+});
+
+test('normalizeFlowData migrates legacy important status into priority', () => {
+  const important = normalizeFlowData({ s: 'important' });
+  assert.equal(important.s, null);
+  assert.equal(important.priority, 'high');
+
+  const demoted = normalizeFlowData({ s: 'important', priority: 'normal' });
+  assert.equal(demoted.s, 'to-read');
+  assert.equal(demoted.priority, null);
+});
+
+test('normalizeFlowData clears priority from terminal reading states', () => {
+  assert.equal(normalizeFlowData({ s: 'read', priority: 'high' }).priority, null);
+  assert.equal(normalizeFlowData({ s: 'skimmed', priority: 'low' }).priority, null);
 });
 
 test('getDisplayProgress prefers the most recently read attachment over max progress', () => {

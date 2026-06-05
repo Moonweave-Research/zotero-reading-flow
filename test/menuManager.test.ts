@@ -84,7 +84,12 @@ function setLabelContext() {
   };
 }
 
-function setupMenu(selectedItems: any[], dataById: Record<number, FlowData | Error>, availableItems = selectedItems) {
+function setupMenu(
+  selectedItems: any[],
+  dataById: Record<number, FlowData | Error>,
+  availableItems = selectedItems,
+  storeOverrides: Record<string, any> = {}
+) {
   let registeredMenu: any;
   const openCalls: any[] = [];
   const mutationCalls: string[] = [];
@@ -142,12 +147,19 @@ function setupMenu(selectedItems: any[], dataById: Record<number, FlowData | Err
     async setStatus() {
       mutationCalls.push('setStatus');
     },
+    async setPriority() {
+      mutationCalls.push('setPriority');
+    },
+    async setNormalPriority() {
+      mutationCalls.push('setNormalPriority');
+    },
     async resetProgress() {
       mutationCalls.push('resetProgress');
     },
     async updateData() {
       mutationCalls.push('updateData');
-    }
+    },
+    ...storeOverrides
   };
 
   const manager = new ReadingFlowMenuManager(dataStore as any);
@@ -197,6 +209,10 @@ test('menus include direct labels as a fallback for nested native menu rendering
   assert.equal(menuByL10nID('reading-flow-status-skimmed').label, 'Mark as Skimmed');
   assert.equal(menuByL10nID('reading-flow-status-read').label, 'Mark as Read');
   assert.equal(menuByL10nID('reading-flow-status-important').label, 'Mark as Important');
+  assert.equal(menuByL10nID('reading-flow-priority-high').label, 'Set Priority High');
+  assert.equal(menuByL10nID('reading-flow-priority-normal').label, 'Set Priority Normal');
+  assert.equal(menuByL10nID('reading-flow-priority-low').label, 'Set Priority Low');
+  assert.equal(menuByL10nID('reading-flow-priority-clear'), undefined);
   assert.equal(menuByL10nID('reading-flow-reset-progress').label, 'Reset Reading Progress');
 });
 
@@ -373,6 +389,47 @@ test('status and reset commands use command context when current selection is un
     'refreshColumns',
     'notifier'
   ]);
+});
+
+test('priority commands update selected regular items and refresh columns', async () => {
+  const selected = [makeRegularItem(20)];
+  const priorityCalls: any[] = [];
+  let normalPriorityCalls = 0;
+  const { menuByL10nID, mutationCalls } = setupMenu(selected, {}, selected, {
+    async setPriority(_item: any, priority: any) {
+      priorityCalls.push(priority);
+    },
+    async setNormalPriority() {
+      normalPriorityCalls += 1;
+    }
+  });
+
+  await menuByL10nID('reading-flow-priority-high').onCommand(new Event('command'), { items: selected });
+  await menuByL10nID('reading-flow-priority-normal').onCommand(new Event('command'), { items: selected });
+  await menuByL10nID('reading-flow-priority-low').onCommand(new Event('command'), { items: selected });
+
+  assert.deepEqual(priorityCalls, ['high', 'low']);
+  assert.equal(normalPriorityCalls, 1);
+  assert.equal(mutationCalls.filter((call) => call === 'refreshColumns').length, 3);
+});
+
+test('mark important uses high priority instead of a separate important status', async () => {
+  const selected = [makeRegularItem(20)];
+  const priorityCalls: any[] = [];
+  const statusCalls: any[] = [];
+  const { menuByL10nID } = setupMenu(selected, {}, selected, {
+    async setPriority(_item: any, priority: any) {
+      priorityCalls.push(priority);
+    },
+    async setStatus(_item: any, status: any) {
+      statusCalls.push(status);
+    }
+  });
+
+  await menuByL10nID('reading-flow-status-important').onCommand(new Event('command'), { items: selected });
+
+  assert.deepEqual(priorityCalls, ['high']);
+  assert.deepEqual(statusCalls, []);
 });
 
 test('resume menu command logs outer resumeSelectedItem errors without rejecting', async () => {

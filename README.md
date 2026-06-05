@@ -16,7 +16,7 @@
 
 ![Reading Flow columns in the library](docs/assets/columns.png)
 
-Best for **literature researchers, thesis students, and anyone who manages many PDFs across projects** and wants Zotero to show what is unread, in progress, important, or finished — without opening a single file.
+Best for **literature researchers, thesis students, and anyone who manages many PDFs across projects** and wants Zotero to show what is unread, in progress, prioritized, or finished — without opening a single file.
 
 ---
 
@@ -37,8 +37,8 @@ Best for **literature researchers, thesis students, and anyone who manages many 
 
 ## Why Reading Flow
 
-- **Scan your reading workload at a glance.** Progress, status, and last-read time are visible directly in the item tree.
-- **Manage reading stages.** Mark papers as `To Read`, `Reading`, `Skimmed`, `Read`, or `Important`.
+- **Scan your reading workload at a glance.** `Flow` tells you the next reading action directly in the item tree.
+- **Manage reading stages.** Mark papers as `To Read`, `Reading`, `Skimmed`, or `Read`, and use `Important` when a paper should become the next high-priority read.
 - **Find what needs attention.** Spot unfinished, recently touched, and completed papers without opening each PDF.
 - **Handle messy PDFs.** Works with items that have multiple attachments under one parent record.
 - **Resume where you left off.** Reopen the tracked PDF near its saved page from the Reading Flow menu.
@@ -59,7 +59,7 @@ Read a PDF, return to the library, and the row updates itself:
 2. In Zotero, open **Tools → Add-ons**.
 3. Click **Install Add-on From File...** and select the `.xpi`.
 4. Restart Zotero if prompted.
-5. Open your library — `Progress`, `Status`, and `Last Read` columns appear automatically on first run.
+5. Open your library — the `Flow` column appears automatically on first run.
 
 The auto-update URL is:
 
@@ -70,21 +70,24 @@ https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/downlo
 ### Use it
 
 - Right-click a paper → **Reading Flow → Mark as ...** to set its status.
+- Right-click a paper → **Reading Flow → Set Priority High** to make it appear as `Read Next` or a high-urgency `Return`.
+- Use **Set Priority Low** when a paper should stay visible as `Later` without competing with active reading.
 - Open a PDF and read as usual — progress and last-read time update on the parent item.
 - **Reading Flow → Resume Reading** to reopen the tracked PDF from its saved page.
 - **Reading Flow → Reset Reading Progress** to restart tracking for an item.
 
-If the columns are hidden later (e.g. after a layout change), open the library column menu and re-enable `Progress`, `Status`, and `Last Read`.
+Keep `Flow` visible for the most compact reading workflow. If you want separate detail columns for audit-style review, enable `Progress`, `State`, or `Last Read` from Zotero's column menu.
 
 ## Features
 
 | Column / Action | What it does |
 | --- | --- |
-| **Progress** | Latest tracked position for each paper, at a glance. |
-| **Status** | Reading state (`To Read`, `Reading`, `Skimmed`, `Read`, `Important`), kept in sync with library changes. |
-| **Last Read** | Human-friendly timestamp (`now`, `5m`, `3h`, `2d`, or a date). |
-| **Reading Flow menu** | Fast status updates, **Resume Reading**, and **Reset Reading Progress**. |
-| **Auto behavior** | First-run columns are enabled, reader page totals are preferred when available, and menu labels are robust across Zotero UI paths. |
+| **Flow** | One compact next-action column: `Read Next`, `Later`, `Resume 45%`, `Resume p. 9`, `Return 45%`, `Finish 88%`, `Skimmed`, or `Done`. |
+| **Progress** | Optional detail column for latest tracked position. |
+| **State** | Optional detail column for the underlying reading state (`To Read`, `Reading`, `Skimmed`, `Read`). |
+| **Last Read** | Optional detail column for the last tracked reading time. |
+| **Reading Flow menu** | Fast status updates, priority changes, **Resume Reading**, and **Reset Reading Progress**. |
+| **Auto behavior** | First-run and upgrade-time `Flow` column is enabled, reader page totals are preferred when available, and menu labels are robust across Zotero UI paths. |
 
 ## Compatibility
 
@@ -105,7 +108,7 @@ It preserves unrelated `Extra` metadata and only updates this plugin's own `Read
 ## FAQ
 
 **How do I know it's actually working?**
-Read one PDF, return to the library, and confirm the row shows updated `Progress`, `Status`, or `Last Read` values.
+Read one PDF, return to the library, and confirm the row shows `Resume NN%`, `Return NN%`, `Finish NN%`, or `Done` in the `Flow` column.
 
 **Can I use it on Zotero 8?**
 No. The current update channel targets Zotero `9.0` through `9.0.*`.
@@ -149,6 +152,7 @@ The script verifies:
 - XPI existence and manifest metadata alignment
 - Add-on loaded/enabled state from `extensions.json`
 - `columnsInitialized` + `treePrefs.json` column visibility
+- `flowColumnInitialized` migration state for existing installs
 - Optional Zotero DB sample row checks (`itemKey` / `attachmentKey` / `attachmentPath`)
 
 ## Troubleshooting
