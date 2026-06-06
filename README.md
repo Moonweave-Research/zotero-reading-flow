@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src=".github/assets/zotero-reading-flow-mark.svg" alt="Zotero Reading Flow mark" width="96">
+<img src=".github/assets/zotero-reading-flow-mark-512.png" alt="Zotero Reading Flow mark" width="96">
 
 </div>
 
