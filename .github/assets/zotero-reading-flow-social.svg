@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640">
+  <defs>
+    <radialGradient id="bg" cx="24%" cy="20%" r="90%">
+      <stop offset="0" stop-color="#17335f"/>
+      <stop offset="0.56" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#05070f"/>
+    </radialGradient>
+    <linearGradient id="g" x1="150" y1="510" x2="480" y2="140" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="0.5" stop-color="#39c5cf"/>
+      <stop offset="1" stop-color="#2ea043"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" rx="56" fill="url(#bg)"/>
+  <g transform="translate(132 112) scale(.82)">
+    <rect x="98" y="104" width="316" height="304" rx="40" fill="#f0f6fc"/>
+    <path d="M188 104v304M288 104v304" stroke="#d0d7de" stroke-width="14"/>
+    <rect x="126" y="146" width="42" height="218" rx="18" fill="#2563eb"/>
+    <rect x="226" y="146" width="42" height="144" rx="18" fill="#39c5cf"/>
+    <rect x="326" y="146" width="42" height="82" rx="18" fill="#2ea043"/>
+    <path d="M126 376h242" stroke="url(#g)" stroke-width="22" stroke-linecap="round"/>
+    <circle cx="168" cy="376" r="24" fill="#2563eb"/>
+    <circle cx="268" cy="376" r="24" fill="#39c5cf"/>
+    <circle cx="368" cy="376" r="24" fill="#2ea043"/>
+  </g>
+  <text x="560" y="220" fill="#f0f6fc" font-family="Inter, Arial, sans-serif" font-size="70" font-weight="800">Zotero</text>
+  <text x="560" y="294" fill="#f0f6fc" font-family="Inter, Arial, sans-serif" font-size="70" font-weight="800">Reading Flow</text>
+  <text x="564" y="360" fill="#b7c9e8" font-family="Inter, Arial, sans-serif" font-size="34">A reading dashboard inside your Zotero library</text>
+  <text x="564" y="424" fill="#56d364" font-family="Inter, Arial, sans-serif" font-size="28">progress · status · last read · resume reading</text>
+</svg>

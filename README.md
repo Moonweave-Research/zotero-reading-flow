@@ -1,12 +1,18 @@
+<div align="center">
+
+<img src=".github/assets/zotero-reading-flow-mark.svg" alt="Zotero Reading Flow mark" width="96">
+
+</div>
+
 # Zotero Reading Flow
 
 > **Stop opening every PDF just to remember where you left off.**
 > Reading Flow turns your Zotero library into a reading dashboard — see progress, status, and last-read time directly in the item tree.
 
-[![Latest](https://img.shields.io/github/v/release/moonweave/zotero-reading-flow?label=Latest%20Release)](https://github.com/moonweave/zotero-reading-flow/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/moonweave/zotero-reading-flow/latest/zotero-reading-flow.xpi?label=Downloads%20%28latest%29)](https://github.com/moonweave/zotero-reading-flow/releases/latest/download/zotero-reading-flow.xpi)
+[![Latest](https://img.shields.io/github/v/release/Moonweave-Research/zotero-reading-flow?label=Latest%20Release)](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Moonweave-Research/zotero-reading-flow/latest/zotero-reading-flow.xpi?label=Downloads%20%28latest%29)](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/zotero-reading-flow.xpi)
 [![Zotero](https://img.shields.io/badge/Zotero-9.0%20%7C%209.0.*-blue)](https://www.zotero.org/download/)
-[![License](https://img.shields.io/github/license/moonweave/zotero-reading-flow)](LICENSE)
+[![License](https://img.shields.io/github/license/Moonweave-Research/zotero-reading-flow)](LICENSE)
 
 ![Reading Flow columns in the library](docs/assets/columns.png)
 
@@ -49,7 +55,7 @@ Read a PDF, return to the library, and the row updates itself:
 
 ## Install (30 seconds)
 
-1. Download **`zotero-reading-flow.xpi`** from the [latest release](https://github.com/moonweave/zotero-reading-flow/releases/latest).
+1. Download **`zotero-reading-flow.xpi`** from the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
 2. In Zotero, open **Tools → Add-ons**.
 3. Click **Install Add-on From File...** and select the `.xpi`.
 4. Restart Zotero if prompted.
@@ -58,7 +64,7 @@ Read a PDF, return to the library, and the row updates itself:
 The auto-update URL is:
 
 ```text
-https://github.com/moonweave/zotero-reading-flow/releases/latest/download/updates.json
+https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/updates.json
 ```
 
 ### Use it
