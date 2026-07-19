@@ -1,5 +1,11 @@
 # Changelog
 
+# 1.1.17 - 2026-07-19
+
+### Fixed
+
+- Added the repository URL to the plugin metadata so Zotero displays it under Homepage in the Add-ons manager.
+
 # 1.1.16 - 2026-06-03
 
 ### Fixed
