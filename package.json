@@ -1,6 +1,6 @@
 {
   "name": "zotero-reading-flow",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Zotero 9 Reading Progress and Visual Organization",
   "license": "MIT",
   "main": "src/index.ts",

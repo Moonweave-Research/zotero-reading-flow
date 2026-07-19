@@ -14,7 +14,7 @@ npm run verify
 Expected final output:
 
 ```text
-verify-xpi: OK (8 files)
+verify-xpi: OK (9 files)
 ```
 
 The command verifies:

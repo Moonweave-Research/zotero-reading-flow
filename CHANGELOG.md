@@ -1,5 +1,13 @@
 # Changelog
 
+# 1.2.1 - 2026-07-19
+
+### Fixed
+
+- Refresh cached Reading Flow data after external or synchronized Zotero item modifications.
+- Retry temporarily dirty items before skipping a Reading Flow write.
+- Restore the focused `Progress`, `Status`, and `Last Read` workflow and remove the experimental Flow/priority UI introduced in 1.2.0.
+
 # 1.1.18 - 2026-07-19
 
 ### Fixed
