@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { execFileSync } = require('child_process');
 const crypto = require('crypto');
-const { ADDON_ID, XPI_NAME, UPDATE_URL, releaseXpiUrl } = require('./release-config');
+const { ADDON_ID, XPI_NAME, HOMEPAGE_URL, UPDATE_URL, releaseXpiUrl } = require('./release-config');
 
 const XPI_PATH = XPI_NAME;
 const UPDATES_PATH = 'updates.json';
@@ -62,6 +62,9 @@ if (manifest.version !== pkg.version) {
 }
 if (manifest.applications?.zotero?.id !== ADDON_ID) {
   fail('manifest applications.zotero.id mismatch');
+}
+if (manifest.homepage_url !== HOMEPAGE_URL) {
+  fail('manifest homepage_url should point at the canonical GitHub repository');
 }
 if (manifest.applications?.zotero?.update_url !== UPDATE_URL) {
   fail('manifest applications.zotero.update_url should point at the GitHub release updates.json asset');

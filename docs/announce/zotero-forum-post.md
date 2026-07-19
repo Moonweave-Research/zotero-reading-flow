@@ -38,14 +38,14 @@ This is still intentionally small, but I plan to keep improving it as Zotero 9 s
 **Install**
 
 XPI download (latest):
-https://github.com/moonweave/zotero-reading-flow/releases/latest/download/zotero-reading-flow.xpi
+https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/zotero-reading-flow.xpi
 
 Auto-update manifest (for Tools → Add-ons auto-update):
-https://github.com/moonweave/zotero-reading-flow/releases/latest/download/updates.json
+https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/updates.json
 
 **Repository (source, screenshots, issues)**
 
-https://github.com/moonweave/zotero-reading-flow
+https://github.com/Moonweave-Research/zotero-reading-flow
 
 Feedback welcome — especially on edge cases with multi-attachment items or unusual reader page-count metadata. Bug reports are most useful with the Zotero version and a short console snippet.
 

@@ -1,5 +1,13 @@
 # Changelog
 
+# 1.1.18 - 2026-07-19
+
+### Fixed
+
+- Updated release and auto-update metadata to use the canonical `Moonweave-Research/zotero-reading-flow` repository directly.
+- Added release verification for the plugin Homepage metadata.
+- Synchronized package and lockfile version metadata.
+
 # 1.1.17 - 2026-07-19
 
 ### Fixed

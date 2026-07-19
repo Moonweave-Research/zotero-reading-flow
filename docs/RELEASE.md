@@ -41,7 +41,7 @@ For a new release:
 The expected update link format is:
 
 ```text
-https://github.com/moonweave/zotero-reading-flow/releases/download/v<version>/zotero-reading-flow.xpi
+https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v<version>/zotero-reading-flow.xpi
 ```
 
 ## GitHub Release
@@ -60,8 +60,8 @@ Both files must be release assets. Do not rely on source archives for plugin ins
 After publishing the release, verify these URLs in a browser or with `curl -I`:
 
 ```bash
-curl -I https://github.com/moonweave/zotero-reading-flow/releases/latest/download/updates.json
-curl -I https://github.com/moonweave/zotero-reading-flow/releases/download/v1.1.14/zotero-reading-flow.xpi
+curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/updates.json
+curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v1.1.14/zotero-reading-flow.xpi
 ```
 
 Both should return a redirect or success response rather than `404`.

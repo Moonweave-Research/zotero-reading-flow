@@ -1,14 +1,14 @@
 {
   "manifest_version": 2,
   "name": "Zotero Reading Flow",
-  "version": "1.1.17",
+  "version": "1.1.18",
   "description": "Progress tracking and semantic colors for Zotero 9.",
   "author": "Reading Flow Team",
   "homepage_url": "https://github.com/Moonweave-Research/zotero-reading-flow",
   "applications": {
     "zotero": {
       "id": "readingflow@moon.com",
-      "update_url": "https://github.com/moonweave/zotero-reading-flow/releases/latest/download/updates.json",
+      "update_url": "https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/updates.json",
       "strict_min_version": "8.999",
       "strict_max_version": "9.0.*"
     }

@@ -36,7 +36,7 @@ The official plugin directory at https://www.zotero.org/support/plugins is a com
 - [ ] Reply on your own thread or send a short message asking that the plugin be added to https://www.zotero.org/support/plugins, with these fields ready:
   - **Name:** Reading Flow
   - **Description (one line):** Adds Progress / Status / Last Read columns and a Reading Flow context menu for managing Zotero reading state.
-  - **Repo:** https://github.com/moonweave/zotero-reading-flow
+  - **Repo:** https://github.com/Moonweave-Research/zotero-reading-flow
   - **Compatibility:** Zotero 9.0–9.0.*
   - **Author:** moonweave
 - [ ] If a wiki edit invitation comes back, add the entry yourself; otherwise wait for a contributor to add it. This step is informal and may take days.
