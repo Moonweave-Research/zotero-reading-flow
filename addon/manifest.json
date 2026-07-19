@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Zotero Reading Flow",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Progress tracking and semantic colors for Zotero 9.",
   "author": "Reading Flow Team",
   "homepage_url": "https://github.com/Moonweave-Research/zotero-reading-flow",

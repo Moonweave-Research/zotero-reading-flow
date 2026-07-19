@@ -89,7 +89,7 @@ If the columns are hidden later (e.g. after a layout change), open the library c
 ## Compatibility
 
 - Zotero `9.0` through `9.0.*`
-- Tested with Zotero `9.0.1` on macOS ARM64
+- Tested with Zotero `9.0.6` on macOS ARM64
 - Plugin ID: `readingflow@moon.com`
 
 ## How it stores data

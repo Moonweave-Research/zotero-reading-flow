@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { ADDON_ID, UPDATE_URL } = require('./release-config');
+const { getInstalledVersionStatus } = require('./release-profile-contract');
 
 const DEFAULT_REPO_ROOT = path.resolve(__dirname, '..');
 
@@ -25,6 +26,7 @@ if (!profileDir) {
 }
 
 const results = [];
+let xpiManifestVersion = null;
 
 checkRepo(packageJson());
 checkXpi();
@@ -103,6 +105,7 @@ function checkXpi() {
       return;
     }
     manifest = JSON.parse(manifestRaw.output);
+    xpiManifestVersion = manifest.version || null;
   } catch (error) {
     push('xpi_manifest', 'FAIL', error.message);
     return;
@@ -146,7 +149,11 @@ function checkProfile() {
     push('addon_enabled', 'FAIL', `missing addon ${ADDON_ID}`);
   } else {
     push('addon_enabled', addon.active && !addon.userDisabled && !addon.appDisabled ? 'PASS' : 'FAIL', `active=${addon.active}, userDisabled=${addon.userDisabled}, appDisabled=${addon.appDisabled}`);
-    push('addon_version', addon.version ? 'PASS' : 'WARN', `version=${addon.version || 'missing'}`);
+    push(
+      'addon_version',
+      getInstalledVersionStatus(addon.version, xpiManifestVersion),
+      `installed=${addon.version || 'missing'}, expected=${xpiManifestVersion || 'missing'}`
+    );
     push('addon_visible', addon.visible ? 'PASS' : 'WARN', `visible=${addon.visible}`);
   }
 

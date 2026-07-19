@@ -1,5 +1,12 @@
 # Changelog
 
+# 1.2.2 - 2026-07-19
+
+### Fixed
+
+- Preserve reset protection when Zotero item modification notifications invalidate cached Reading Flow data.
+- Fail release-profile verification when the installed add-on version differs from the XPI under test.
+
 # 1.2.1 - 2026-07-19
 
 ### Fixed

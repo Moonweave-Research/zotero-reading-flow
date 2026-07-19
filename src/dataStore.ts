@@ -105,6 +105,10 @@ export class DataStore {
     this.resetTimestamps.delete(itemId);
   }
 
+  public invalidateCache(itemId: number) {
+    this.cache.delete(itemId);
+  }
+
   public getResetTimestamp(itemId: number): number | null {
     return this.resetTimestamps.get(itemId) ?? null;
   }

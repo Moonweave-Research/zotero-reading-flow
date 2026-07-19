@@ -95,4 +95,4 @@ npm run check:release-profile -- \
 
 ## Current Release Notes
 
-For `v1.1.14`, the release should be described as tested with Zotero `9.0.1` and compatible with Zotero `9.0.*`.
+For `v1.2.2`, the release should be described as tested with Zotero `9.0.6` and compatible with Zotero `9.0.*`.
