@@ -11,6 +11,8 @@ import {
 } from './flowData';
 
 export class DataStore {
+  private static readonly DIRTY_RETRY_COUNT = 3;
+  private static readonly DIRTY_RETRY_MS = 100;
   private cache = new LRUCache<number, FlowData>(2000);
   private resetTimestamps = new Map<number, number>();
   private closed = false;
@@ -43,8 +45,8 @@ export class DataStore {
       return false;
     }
 
-    if (typeof item.isDirty === 'function' && item.isDirty()) {
-      Logger.warn('ReadingFlow: Item dirty, skipping write to prevent race condition');
+    if (!await this.waitUntilClean(item)) {
+      Logger.warn('ReadingFlow: Item remained dirty after retries, skipping write to prevent race condition');
       return false;
     }
 
@@ -116,5 +118,31 @@ export class DataStore {
   private isClosedOrShuttingDown(): boolean {
     const startup = (globalThis as any).Services?.startup;
     return this.closed || Boolean(startup?.shuttingDown);
+  }
+
+  private async waitUntilClean(item: any): Promise<boolean> {
+    if (typeof item.isDirty !== 'function') return true;
+
+    for (let attempt = 0; attempt < DataStore.DIRTY_RETRY_COUNT; attempt++) {
+      if (!item.isDirty()) return true;
+      if (this.isClosedOrShuttingDown()) return false;
+      if (attempt < DataStore.DIRTY_RETRY_COUNT - 1) {
+        await this.delay(DataStore.DIRTY_RETRY_MS);
+      }
+    }
+
+    return false;
+  }
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise((resolve) => {
+      const win = (globalThis as any).Zotero?.getMainWindow?.();
+      const schedule = win?.setTimeout?.bind(win) ?? (globalThis as any).setTimeout;
+      if (typeof schedule !== 'function') {
+        resolve(undefined);
+        return;
+      }
+      schedule(resolve, ms);
+    });
   }
 }
