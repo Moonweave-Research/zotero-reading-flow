@@ -1,5 +1,4 @@
-export type ReadingStatus = 'to-read' | 'reading' | 'skimmed' | 'read';
-export type ReadingPriority = 'high' | 'low';
+export type ReadingStatus = 'to-read' | 'reading' | 'skimmed' | 'read' | 'important';
 
 export interface FlowData {
   v: number;
@@ -7,7 +6,6 @@ export interface FlowData {
   pageCount?: { [attId: string]: number };
   c: string | null;
   s: ReadingStatus | null;
-  priority: ReadingPriority | null;
   ts: number;
   lastAttachmentId: string | null;
   lastPage: number | null;
@@ -22,15 +20,13 @@ export const DEFAULT_FLOW_DATA: FlowData = {
   p: {},
   c: null,
   s: null,
-  priority: null,
   ts: 0,
   lastAttachmentId: null,
   lastPage: null,
   lastReadAt: null
 };
 
-const VALID_STATUSES = new Set<ReadingStatus>(['to-read', 'reading', 'skimmed', 'read']);
-const VALID_PRIORITIES = new Set<ReadingPriority>(['high', 'low']);
+const VALID_STATUSES = new Set<ReadingStatus>(['to-read', 'reading', 'skimmed', 'read', 'important']);
 const MAX_REASONABLE_PAGE_COUNT = 100000;
 
 export function normalizeFlowData(input: any): FlowData {
@@ -49,30 +45,17 @@ export function normalizeFlowData(input: any): FlowData {
     typeof input?.lastAttachmentId === 'string' && input.lastAttachmentId
       ? input.lastAttachmentId
       : null;
-  const lastPage = finitePositiveIntegerOrNull(input?.lastPage);
-  const lastReadAt = finiteNumberOrNull(input?.lastReadAt);
-
-  const rawStatus = input?.s;
-  const rawPriority = input?.priority;
-  const isLegacyImportant = input?.s === 'important';
-  const isLegacyNormalPriority = rawPriority === 'normal';
-  const statusFromInput = VALID_STATUSES.has(rawStatus) ? rawStatus as ReadingStatus : null;
-  const isUntouched = Object.keys(progress).length === 0 && !lastPage && !lastReadAt;
-  const status = statusFromInput
-    ?? (isLegacyNormalPriority && isUntouched ? 'to-read' : null);
-  const priority = getNormalizedPriority(rawPriority, isLegacyImportant, status);
 
   return {
     v: 1,
     p: progress,
     pageCount: Object.keys(pageCount).length ? pageCount : undefined,
     c: typeof input?.c === 'string' ? input.c : null,
-    s: status,
-    priority,
+    s: VALID_STATUSES.has(input?.s) ? input.s : null,
     ts: finiteNumberOrZero(input?.ts),
     lastAttachmentId,
-    lastPage,
-    lastReadAt
+    lastPage: finitePositiveIntegerOrNull(input?.lastPage),
+    lastReadAt: finiteNumberOrNull(input?.lastReadAt)
   };
 }
 
@@ -140,17 +123,6 @@ export function formatRelativeDate(timestamp: number | null, now = Date.now()): 
 
 function finiteNumberOrZero(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
-}
-
-function getNormalizedPriority(
-  rawPriority: unknown,
-  isLegacyImportant: boolean,
-  status: ReadingStatus | null
-): ReadingPriority | null {
-  if (status === 'read' || status === 'skimmed') return null;
-  if (VALID_PRIORITIES.has(rawPriority as ReadingPriority)) return rawPriority as ReadingPriority;
-  if (isLegacyImportant && rawPriority !== 'normal') return 'high';
-  return null;
 }
 
 function finiteNumberOrNull(value: unknown): number | null {

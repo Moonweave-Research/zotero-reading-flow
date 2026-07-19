@@ -1,35 +1,26 @@
 import { DataStore } from './dataStore';
-import { getFlowAction, parseFlowAction, serializeFlowAction } from './flowAction';
 import { formatRelativeDate, getDisplayProgress, inferStatus, ReadingStatus } from './flowData';
 import { Logger } from './Logger';
 
 const PLUGIN_ID = 'readingflow@moon.com';
-const FLOW_KEY = 'readingFlowFlow';
 const PROGRESS_KEY = 'readingFlowProgress';
 const STATUS_KEY = 'readingFlowStatus';
 const LAST_READ_KEY = 'readingFlowLastRead';
-const FIRST_RUN_COLUMN_WIDTHS: Record<string, number> = {
-  [FLOW_KEY]: 180
-};
-const TONE_STYLES: Record<string, { color?: string; fontWeight?: string }> = {
-  high: { color: '#b91c1c', fontWeight: '600' },
-  finish: { color: '#15803d', fontWeight: '600' },
-  complete: { color: '#15803d', fontWeight: '500' },
-  reading: { color: '#1d4ed8', fontWeight: '500' }
-};
 
 const STATUS_LABELS: Record<ReadingStatus, string> = {
   'to-read': 'To Read',
   reading: 'Reading',
   skimmed: 'Skimmed',
-  read: 'Read'
+  read: 'Read',
+  important: 'Important'
 };
 
 const STATUS_COLORS: Record<ReadingStatus, string> = {
   'to-read': '#6b7280',
   reading: '#2563eb',
   skimmed: '#7c3aed',
-  read: '#16a34a'
+  read: '#16a34a',
+  important: '#dc2626'
 };
 
 const BASE_CELL_STYLE = [
@@ -61,7 +52,7 @@ const PROGRESS_CELL_STYLE = [
 export class ColumnManager {
   private dataStore: DataStore;
   private registeredDataKeys: string[] = [];
-  private readonly firstRunVisibleDataKeys = [FLOW_KEY];
+  private readonly dataKeys = [PROGRESS_KEY, STATUS_KEY, LAST_READ_KEY];
   private static readonly ITEMS_VIEW_RETRY_COUNT = 120;
   private static readonly ITEMS_VIEW_RETRY_MS = 250;
 
@@ -70,60 +61,6 @@ export class ColumnManager {
   }
 
   public async register() {
-    const flowKey = await Zotero.ItemTreeManager.registerColumn({
-      dataKey: FLOW_KEY,
-      label: 'Flow',
-      pluginID: PLUGIN_ID,
-      enabledTreeIDs: ['main'],
-      zoteroPersist: ['width', 'hidden', 'sortDirection'],
-      dataProvider: (item: any): string => {
-        try {
-          if (!item?.isRegularItem?.()) return '';
-          return serializeFlowAction(getFlowAction(this.dataStore.getData(item)));
-        } catch (e) {
-          Logger.error('flow dataProvider failed', e);
-          return '';
-        }
-      },
-      renderCell: (_index: number, data: string, column: any, _isFirstColumn: boolean, doc: Document): HTMLElement => {
-        const cell = doc.createElement('span');
-        cell.className = `cell ${column.className || ''}`.trim();
-        cell.style.cssText = `${BASE_CELL_STYLE};justify-content:center;gap:4px;font-size:11px;padding:0 2px;`;
-
-        const summary = parseFlowAction(data);
-        if (!summary || !summary.label) return cell;
-
-        cell.title = summary.title;
-        const toneStyle = TONE_STYLES[summary.tone] || {};
-        if (toneStyle.color) cell.style.color = toneStyle.color;
-
-        const label = doc.createElement('span');
-        label.textContent = summary.label;
-        label.style.cssText = [
-          'overflow:hidden',
-          'text-overflow:ellipsis',
-          'white-space:nowrap',
-          'min-width:0',
-          `font-weight:${toneStyle.fontWeight || '500'}`
-        ].join(';');
-        cell.appendChild(label);
-
-        if (summary.detail) {
-          const detail = doc.createElement('span');
-          detail.textContent = summary.detail;
-          detail.style.cssText = [
-            'flex:0 0 auto',
-            'color:var(--fill-secondary, #666)',
-            'font-size:10px',
-            'white-space:nowrap'
-          ].join(';');
-          cell.appendChild(detail);
-        }
-
-        return cell;
-      }
-    });
-
     const progressKey = await Zotero.ItemTreeManager.registerColumn({
       dataKey: PROGRESS_KEY,
       label: 'Progress',
@@ -206,7 +143,7 @@ export class ColumnManager {
 
     const statusKey = await Zotero.ItemTreeManager.registerColumn({
       dataKey: STATUS_KEY,
-      label: 'State',
+      label: 'Status',
       pluginID: PLUGIN_ID,
       enabledTreeIDs: ['main'],
       zoteroPersist: ['width', 'hidden', 'sortDirection'],
@@ -280,28 +217,23 @@ export class ColumnManager {
       }
     });
 
-    if (!flowKey) Logger.warn('registerColumn returned null for Flow — column will not appear');
     if (!progressKey) Logger.warn('registerColumn returned null for Progress — column will not appear');
-    if (!statusKey) Logger.warn('registerColumn returned null for State — column will not appear');
+    if (!statusKey) Logger.warn('registerColumn returned null for Status — column will not appear');
     if (!lastReadKey) Logger.warn('registerColumn returned null for Last Read — column will not appear');
 
-    this.registeredDataKeys = [flowKey, progressKey, statusKey, lastReadKey].filter(Boolean);
+    this.registeredDataKeys = [progressKey, statusKey, lastReadKey].filter(Boolean);
     void this.ensureColumnsVisibleOnFirstRun();
   }
 
   public async ensureColumnsVisibleOnFirstRun() {
-    await this.showColumnsOnFirstRun(this.firstRunVisibleDataKeys);
+    await this.showColumnsOnFirstRun(this.dataKeys);
   }
 
   private async showColumnsOnFirstRun(registeredKeys: string[]) {
     const INIT_PREF = 'extensions.readingflow.columnsInitialized';
     const INIT_PREF_LEGACY = 'extensions.zotero.extensions.readingflow.columnsInitialized';
-    const FLOW_INIT_PREF = 'extensions.readingflow.flowColumnInitialized';
     try {
-      const columnsAlreadyInitialized = Boolean(
-        Zotero.Prefs.get(INIT_PREF) || Zotero.Prefs.get(INIT_PREF_LEGACY)
-      );
-      if (Zotero.Prefs.get(FLOW_INIT_PREF)) {
+      if (Zotero.Prefs.get(INIT_PREF) || Zotero.Prefs.get(INIT_PREF_LEGACY)) {
         return;
       }
       if (!registeredKeys.length) return;
@@ -329,10 +261,7 @@ export class ColumnManager {
         await itemsView._writeColumnPrefsToFile(true);
       }
 
-      Zotero.Prefs.set(FLOW_INIT_PREF, true);
-      if (!columnsAlreadyInitialized) {
-        Zotero.Prefs.set(INIT_PREF, true);
-      }
+      Zotero.Prefs.set(INIT_PREF, true);
       Logger.log('columns shown by default (first run)');
     } catch (e) {
       Logger.error('showColumnsOnFirstRun failed', e);
@@ -398,20 +327,11 @@ export class ColumnManager {
     for (const dataKey of registeredKeys) {
       const keys = this.getTreeColumnKeys(dataKey);
       if (!keys.length) continue;
-      const preferredWidth = FIRST_RUN_COLUMN_WIDTHS[dataKey];
       for (const columnKey of keys) {
-        const current = itemsView._columnPrefs[columnKey] || {};
-        const next = { ...current, hidden: false };
-        if (preferredWidth) {
-          const currentWidth = Number(current.width);
-          next.width = Number.isFinite(currentWidth)
-            ? Math.max(currentWidth, preferredWidth)
-            : preferredWidth;
-        }
         itemsView._columnPrefs[columnKey] = Object.assign(
           {},
-          current,
-          next
+          itemsView._columnPrefs[columnKey] || {},
+          { hidden: false }
         );
       }
     }

@@ -5,7 +5,7 @@
 Open Zotero's item-tree column picker and enable:
 
 - `Progress`
-- `State`
+- `Status`
 - `Last Read`
 
 If the columns are still missing, restart Zotero and check the debug log for `readingflow@moon.com`.
@@ -24,7 +24,7 @@ Check the following:
 
 Progress is stored on the parent item, not on the attachment item.
 
-## State changes do not apply
+## Status changes do not apply
 
 The context menu operates on selected regular Zotero items.
 

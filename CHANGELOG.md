@@ -1,21 +1,5 @@
 # Changelog
 
-# 1.2.0 - 2026-07-19
-
-### Added
-
-- Added a primary `Flow` column with next-reading actions and priority controls.
-
-### Changed
-
-- Treat `Progress`, `State`, and `Last Read` as optional detail columns behind the primary `Flow` column.
-
-### Fixed
-
-- Refresh cached Reading Flow data after external or synchronized item modifications.
-- Retry temporarily dirty items before skipping a Reading Flow write.
-- Preserve legacy progress and priority behavior in the new Flow presentation.
-
 # 1.1.18 - 2026-07-19
 
 ### Fixed

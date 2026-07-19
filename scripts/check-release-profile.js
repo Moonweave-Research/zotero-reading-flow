@@ -5,7 +5,6 @@ const { execFileSync } = require('child_process');
 const { ADDON_ID, UPDATE_URL } = require('./release-config');
 
 const DEFAULT_REPO_ROOT = path.resolve(__dirname, '..');
-const MIN_FLOW_COLUMN_WIDTH = 140;
 
 const args = parseArgs(process.argv.slice(2));
 if (args.help) {
@@ -159,10 +158,6 @@ function checkProfile() {
       getPrefValue(prefsText, 'extensions.zotero.extensions.readingflow.columnsInitialized') ||
       getPrefValue(prefsText, 'extensions.readingflow.columnsInitialized');
     push('columns_initialized', columnsInitialized === 'true' ? 'PASS' : 'FAIL', `value=${columnsInitialized || 'missing'}`);
-    const flowColumnInitialized =
-      getPrefValue(prefsText, 'extensions.zotero.extensions.readingflow.flowColumnInitialized') ||
-      getPrefValue(prefsText, 'extensions.readingflow.flowColumnInitialized');
-    push('flow_column_initialized', flowColumnInitialized === 'true' ? 'PASS' : 'FAIL', `value=${flowColumnInitialized || 'missing'}`);
   }
 
   const treePrefs = readJsonSafe(treePrefsPath);
@@ -175,39 +170,18 @@ function checkProfile() {
     push('tree_prefs_shape', 'FAIL', 'missing item-tree-main-default');
     return;
   }
-  const required = [
-    'readingflow\\@moon\\.com-readingFlowFlow',
-  ];
-  const optional = [
+  const expected = [
     'readingflow\\@moon\\.com-readingFlowProgress',
     'readingflow\\@moon\\.com-readingFlowStatus',
     'readingflow\\@moon\\.com-readingFlowLastRead',
   ];
-  for (const key of required) {
+  for (const key of expected) {
     const entry = itemTree[key];
     if (!entry) {
       push(`tree_column_${key}`, 'FAIL', 'missing');
       continue;
     }
     push(`tree_column_${key}_hidden`, entry.hidden === false ? 'PASS' : 'FAIL', `hidden=${entry.hidden}`);
-    const minWidth = key.includes('readingFlowFlow') ? MIN_FLOW_COLUMN_WIDTH : 1;
-    push(
-      `tree_column_${key}_width`,
-      Number.isFinite(entry.width) && entry.width >= minWidth ? 'PASS' : 'FAIL',
-      `width=${entry.width ?? 'missing'}, min=${minWidth}`
-    );
-  }
-  for (const key of optional) {
-    const entry = itemTree[key];
-    if (!entry) {
-      push(`tree_column_${key}`, 'SKIP', 'optional detail column not initialized');
-      continue;
-    }
-    push(`tree_column_${key}_present`, 'PASS', `hidden=${entry.hidden}`);
-    if (entry.hidden === true && entry.width == null) {
-      push(`tree_column_${key}_width`, 'SKIP', 'hidden optional column has no persisted width');
-      continue;
-    }
     push(
       `tree_column_${key}_width`,
       Number.isFinite(entry.width) && entry.width > 0 ? 'PASS' : 'WARN',

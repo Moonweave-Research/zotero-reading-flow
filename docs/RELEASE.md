@@ -14,7 +14,7 @@ npm run verify
 Expected final output:
 
 ```text
-verify-xpi: OK (9 files)
+verify-xpi: OK (8 files)
 ```
 
 The command verifies:
@@ -73,18 +73,13 @@ Use a clean or disposable Zotero profile when possible.
 1. Install `zotero-reading-flow.xpi`.
 2. Restart Zotero.
 3. Confirm the add-on appears as enabled.
-4. Confirm the `Flow` column appears by default.
-5. For an upgraded profile, confirm `Flow` appears even if older Reading Flow columns had already been initialized.
-6. Optionally enable the `Progress`, `State`, and `Last Read` detail columns.
-7. Open a PDF attachment.
-8. Change pages and wait at least 5 seconds.
-9. Return to the library item tree and confirm `Flow` offers the next action.
-10. Right-click a regular item and confirm the `Reading Flow` menu appears.
-11. Set high priority and confirm `Flow` shows `Read Next`.
-12. Set normal priority and confirm `Flow` demotes the item to `To Read`.
-13. Set low priority and confirm `Flow` shows `Later`, including on a partially read item.
-14. Mark the item as `Read`, then reset progress.
-15. Quit Zotero and confirm no Reading Flow bootstrap error appears in the debug log.
+4. Enable the `Progress`, `Status`, and `Last Read` columns.
+5. Open a PDF attachment.
+6. Change pages and wait at least 5 seconds.
+7. Return to the library item tree and confirm progress appears.
+8. Right-click a regular item and confirm the `Reading Flow` menu appears.
+9. Mark the item as `Read`, then reset progress.
+10. Quit Zotero and confirm no Reading Flow bootstrap error appears in the debug log.
 
 For local automation, run:
 

@@ -7,7 +7,6 @@ import {
   isFlowDataSame,
   mergeFlowData,
   normalizeFlowData,
-  ReadingPriority,
   ReadingStatus
 } from './flowData';
 
@@ -87,29 +86,7 @@ export class DataStore {
   }
 
   public async setStatus(item: any, status: ReadingStatus | null) {
-    const updates: Partial<FlowData> = { s: status };
-    if (status === 'to-read' || status === 'reading' || status === 'read' || status === 'skimmed') {
-      updates.priority = null;
-    }
-    await this.updateData(item, updates);
-  }
-
-  public async setPriority(item: any, priority: ReadingPriority | null) {
-    const updates: Partial<FlowData> = { priority };
-    const current = this.getData(item);
-    const isUntouchedManualReading =
-      current.s === 'reading'
-      && Object.keys(current.p).length === 0
-      && !current.lastPage
-      && !current.lastReadAt;
-    if (priority && (current.s === 'read' || current.s === 'skimmed' || isUntouchedManualReading)) {
-      updates.s = 'to-read';
-    }
-    await this.updateData(item, updates);
-  }
-
-  public async setNormalPriority(item: any) {
-    await this.updateData(item, { priority: null, s: 'to-read' });
+    await this.updateData(item, { s: status });
   }
 
   public async resetProgress(item: any) {

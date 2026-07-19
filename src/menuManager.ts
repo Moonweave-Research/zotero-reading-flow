@@ -1,5 +1,5 @@
 import { DataStore } from './dataStore';
-import { ReadingPriority, ReadingStatus } from './flowData';
+import { ReadingStatus } from './flowData';
 import { Logger } from './Logger';
 import { ResumeReader } from './resumeReader';
 
@@ -14,9 +14,6 @@ const MENU_LABELS = {
   statusSkimmed: 'Mark as Skimmed',
   statusRead: 'Mark as Read',
   statusImportant: 'Mark as Important',
-  priorityHigh: 'Set Priority High',
-  priorityNormal: 'Set Priority Normal',
-  priorityLow: 'Set Priority Low',
   resetProgress: 'Reset Reading Progress'
 } as const;
 
@@ -67,16 +64,7 @@ export class ReadingFlowMenuManager {
             this.statusMenu('reading', 'reading-flow-status-reading', MENU_LABELS.statusReading),
             this.statusMenu('skimmed', 'reading-flow-status-skimmed', MENU_LABELS.statusSkimmed),
             this.statusMenu('read', 'reading-flow-status-read', MENU_LABELS.statusRead),
-            this.priorityMenu('high', 'reading-flow-status-important', MENU_LABELS.statusImportant),
-            {
-              menuType: 'separator'
-            },
-            this.priorityMenu('high', 'reading-flow-priority-high', MENU_LABELS.priorityHigh),
-            this.normalPriorityMenu('reading-flow-priority-normal', MENU_LABELS.priorityNormal),
-            this.priorityMenu('low', 'reading-flow-priority-low', MENU_LABELS.priorityLow),
-            {
-              menuType: 'separator'
-            },
+            this.statusMenu('important', 'reading-flow-status-important', MENU_LABELS.statusImportant),
             {
               menuType: 'menuitem',
               l10nID: 'reading-flow-reset-progress',
@@ -106,30 +94,6 @@ export class ReadingFlowMenuManager {
       label,
       onCommand: (_event: Event, context: any) => this.updateSelectedItems(
         (item) => this.dataStore.setStatus(item, status),
-        context
-      )
-    };
-  }
-
-  private priorityMenu(priority: ReadingPriority | null, l10nID: string, label: string) {
-    return {
-      menuType: 'menuitem',
-      l10nID,
-      label,
-      onCommand: (_event: Event, context: any) => this.updateSelectedItems(
-        (item) => this.dataStore.setPriority(item, priority),
-        context
-      )
-    };
-  }
-
-  private normalPriorityMenu(l10nID: string, label: string) {
-    return {
-      menuType: 'menuitem',
-      l10nID,
-      label,
-      onCommand: (_event: Event, context: any) => this.updateSelectedItems(
-        (item) => this.dataStore.setNormalPriority(item),
         context
       )
     };
