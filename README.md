@@ -53,7 +53,7 @@ Review the selected scope, reading-set filters, current summary, and reading pul
 
 Then choose a specific paper in **Recent Progress**: `Show in Zotero` selects it in the library, while `Resume` reopens that paper through Zotero's saved-page Reader path.
 
-![Recent Progress actions in Reading Statistics](docs/assets/reading-statistics-recent-progress.jpeg)
+![Recent Progress with the two Resume actions highlighted in Reading Statistics](docs/assets/reading-statistics-recent-progress.jpeg)
 
 ## Install (30 seconds)
 
