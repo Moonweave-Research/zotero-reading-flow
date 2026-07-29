@@ -47,18 +47,18 @@ Best for **literature researchers, thesis students, and anyone who manages many 
 
 ## Quick demo
 
-Open **Reading Statistics** to review the selected scope, reading-set filters, current summary, and recent reading pulse:
+Review the selected scope, reading-set filters, current summary, and reading pulse in **Reading Statistics**:
 
 ![Reading Statistics dashboard](docs/assets/reading-statistics-dashboard.jpeg)
 
-Read a PDF, return to the library, and the row updates itself:
+Then choose a specific paper in **Recent Progress**: `Show in Zotero` selects it in the library, while `Resume` reopens that paper through Zotero's saved-page Reader path.
 
-![Progress and last-read updating live](docs/assets/hero.gif)
+![Recent Progress actions in Reading Statistics](docs/assets/reading-statistics-recent-progress.jpeg)
 
 ## Install (30 seconds)
 
 1. Download **`zotero-reading-flow.xpi`** from the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
-2. In Zotero, open **Tools → Add-ons**.
+2. In Zotero, open **Tools → Plugins**.
 3. Click **Install Add-on From File...** and select the `.xpi`.
 4. Restart Zotero if prompted.
 5. Open your library — `Progress`, `Status`, and `Last Read` columns appear automatically on first run.
@@ -76,7 +76,7 @@ https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/downlo
 - **Reading Flow → Resume Reading** to reopen the tracked PDF from its saved page.
 - **Reading Flow → Reset Reading Progress** to restart tracking for an item.
 - Open **Tools → Reading Statistics** from anywhere in Zotero. The selected view is reflected by `Current View`; use `Entire Library` when you want the whole active library.
-- Keep `Tracked papers` for the intentional Reading Flow set, or choose `All papers` for a broader inventory. Status and history-range filters refine that same paper set.
+- Keep `Reading set (tracked)` for the intentional Reading Flow set, or choose `All papers (inventory)` for a broader inventory. Status and history-range filters refine that same paper set.
 - You can also right-click a paper and choose **Reading Flow → View Current View Statistics**. Both entries reuse the same modeless dashboard window.
 - In `Recent Progress`, use `Show in Zotero` to select a paper or `Resume` to reopen that selected paper in the Zotero Reader. Resume is always user-invoked; it does not choose a next paper automatically.
 
