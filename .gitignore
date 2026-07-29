@@ -1,7 +1,9 @@
 .worktrees/
+.witnessd/
 tmp/
 node_modules/
 addon/bootstrap.js
+addon/dashboard.js
 updates.json
 zotero-reading-flow.xpi
 

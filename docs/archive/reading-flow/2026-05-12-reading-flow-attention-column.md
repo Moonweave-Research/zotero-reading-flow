@@ -1,5 +1,12 @@
 # Reading Flow Attention Column Implementation Plan
 
+> **Status: STALE / HISTORICAL ONLY — DO NOT EXECUTE**
+>
+> Superseded on 2026-07-28 by the sole active authority:
+> [Reading Flow Authoritative Design and Implementation Plan](../../READING_FLOW_AUTHORITY.md).
+> Preserve this file only as historical context. Agents must not execute its
+> tasks or use it to override the authoritative plan.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a single compact `Flow` column that combines reading progress, status, priority, and stale-reading signals without forcing users to keep multiple Reading Flow columns visible.

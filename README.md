@@ -42,6 +42,8 @@ Best for **literature researchers, thesis students, and anyone who manages many 
 - **Find what needs attention.** Spot unfinished, recently touched, and completed papers without opening each PDF.
 - **Handle messy PDFs.** Works with items that have multiple attachments under one parent record.
 - **Resume where you left off.** Reopen the tracked PDF near its saved page from the Reading Flow menu.
+- **Review your reading history.** Open **Tools → Reading Statistics** to see current-scope status, progress, remaining pages, activity days, first completions, and retained per-paper changes.
+- **Return from the dashboard.** Choose a paper in `Recent Progress` and click `Resume` to use the same saved-page Reader path; the dashboard shows the eight most recent rows first and can expand to all matching papers.
 
 ## Quick demo
 
@@ -73,6 +75,10 @@ https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/downlo
 - Open a PDF and read as usual — progress and last-read time update on the parent item.
 - **Reading Flow → Resume Reading** to reopen the tracked PDF from its saved page.
 - **Reading Flow → Reset Reading Progress** to restart tracking for an item.
+- Open **Tools → Reading Statistics** from anywhere in Zotero. The selected view is reflected by `Current View`; use `Entire Library` when you want the whole active library.
+- Keep `Tracked papers` for the intentional Reading Flow set, or choose `All papers` for a broader inventory. Status and history-range filters refine that same paper set.
+- You can also right-click a paper and choose **Reading Flow → View Current View Statistics**. Both entries reuse the same modeless dashboard window.
+- In `Recent Progress`, use `Show in Zotero` to select a paper or `Resume` to reopen that selected paper in the Zotero Reader. Resume is always user-invoked; it does not choose a next paper automatically.
 
 If the columns are hidden later (e.g. after a layout change), open the library column menu and re-enable `Progress`, `Status`, and `Last Read`.
 
@@ -84,6 +90,7 @@ If the columns are hidden later (e.g. after a layout change), open the library c
 | **Status** | Reading state (`To Read`, `Reading`, `Skimmed`, `Read`, `Important`), kept in sync with library changes. |
 | **Last Read** | Human-friendly timestamp (`now`, `5m`, `3h`, `2d`, or a date). |
 | **Reading Flow menu** | Fast status updates, **Resume Reading**, and **Reset Reading Progress**. |
+| **Reading Statistics** | Modeless, read-only dashboard for the tracked reading set or all papers, with scope metrics, status/progress distribution, remaining-page coverage, bounded history, and user-selected Recent Progress actions. |
 | **Auto behavior** | First-run columns are enabled, reader page totals are preferred when available, and menu labels are robust across Zotero UI paths. |
 
 ## Compatibility
@@ -97,10 +104,10 @@ If the columns are hidden later (e.g. after a layout change), open the library c
 Reading Flow stores progress in the parent item's `Extra` field as one namespaced line:
 
 ```text
-ReadingFlow: {"v":1, ...}
+ReadingFlow: {"v":2, ...}
 ```
 
-It preserves unrelated `Extra` metadata and only updates this plugin's own `ReadingFlow:` line. Your PDFs are never modified.
+Version 1 metadata remains readable. When historical tracking is available, version 2 adds at most 366 retained local-calendar daily rollups with progress, status, reset, and first-completion markers. Existing current progress remains separate from retrospective history: the dashboard never invents past activity from an old timestamp. Reading Flow preserves unrelated `Extra` metadata and only updates this plugin's own `ReadingFlow:` line. Your PDFs are never modified.
 
 ## FAQ
 
@@ -114,7 +121,8 @@ No. The current update channel targets Zotero `9.0` through `9.0.*`.
 No. Reading metadata is stored only in Zotero item metadata.
 
 **Where is my data?**
-In each item's `Extra` field, on a single `ReadingFlow:` line. It syncs with your normal Zotero sync.
+
+In each item's `Extra` field, on a single `ReadingFlow:` line. It syncs with your normal Zotero sync. Detailed history is bounded to the retained window; `All time` keeps lifetime first-completion totals but does not imply that pruned daily detail is available.
 
 ## Build and verification
 

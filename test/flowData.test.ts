@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEFAULT_FLOW_DATA,
+  HISTORY_RETENTION_DAYS,
   formatRelativeDate,
   getDisplayAttachmentId,
   getDisplayProgress,
@@ -34,6 +35,52 @@ test('normalizeFlowData preserves valid v1 fields and drops invalid values', () 
     lastPage: 4,
     lastReadAt: 200
   });
+});
+
+test('normalizeFlowData reads valid v2 history without changing current fields', () => {
+  const data = normalizeFlowData({
+    v: 2,
+    p: { '10': 0.5 },
+    s: 'reading',
+    history: {
+      startedAt: 100,
+      completedAt: null,
+      activeDaysTotal: 1,
+      days: {
+        '2026-07-28': {
+          activity: true,
+          lastReadAt: 200,
+          progress: { '10': 0.5 },
+          status: 'reading',
+          reset: false,
+          completed: false
+        }
+      }
+    }
+  });
+
+  assert.equal(data.v, 2);
+  assert.equal(data.p['10'], 0.5);
+  assert.equal(data.history?.activeDaysTotal, 1);
+  assert.equal(data.history?.days['2026-07-28'].status, 'reading');
+});
+
+test('normalizeFlowData drops malformed or oversized history but keeps current state', () => {
+  const days = Object.fromEntries(Array.from({ length: HISTORY_RETENTION_DAYS + 1 }, (_, index) => [
+    `2026-01-${String(index + 1).padStart(2, '0')}`,
+    { activity: false }
+  ]));
+  const data = normalizeFlowData({
+    v: 2,
+    p: { '10': 0.5 },
+    s: 'reading',
+    history: { startedAt: 'bad', activeDaysTotal: 4, days }
+  });
+
+  assert.equal(data.v, 1);
+  assert.equal(data.p['10'], 0.5);
+  assert.equal(data.s, 'reading');
+  assert.equal(data.history, undefined);
 });
 
 test('getDisplayProgress prefers the most recently read attachment over max progress', () => {

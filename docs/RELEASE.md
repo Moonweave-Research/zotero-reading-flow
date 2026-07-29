@@ -14,7 +14,7 @@ npm run verify
 Expected final output:
 
 ```text
-verify-xpi: OK (9 files)
+verify-xpi: OK (12 files)
 ```
 
 The command verifies:
@@ -78,8 +78,11 @@ Use a clean or disposable Zotero profile when possible.
 6. Change pages and wait at least 5 seconds.
 7. Return to the library item tree and confirm progress appears.
 8. Right-click a regular item and confirm the `Reading Flow` menu appears.
-9. Mark the item as `Read`, then reset progress.
-10. Quit Zotero and confirm no Reading Flow bootstrap error appears in the debug log.
+9. Open **Tools → Reading Statistics** and confirm `Current View`, `Entire Library`, `Tracked papers`, `All papers`, status, history range, and Refresh work.
+10. Open the dashboard from the item context menu and confirm it focuses the same window; close it and confirm it can reopen.
+11. Select a Recent Progress row and confirm `Show in Zotero` selects it while `Resume` opens that paper through the saved-page Reader path.
+12. Mark the item as `Read`, then reset progress.
+13. Quit Zotero and confirm no Reading Flow bootstrap error appears in the debug log.
 
 For local automation, run:
 
@@ -95,4 +98,4 @@ npm run check:release-profile -- \
 
 ## Current Release Notes
 
-For `v1.2.2`, the release should be described as tested with Zotero `9.0.6` and compatible with Zotero `9.0.*`.
+For `v1.3.0`, the release should be described as tested with Zotero `9.0.6` and compatible with Zotero `9.0.*`. Release notes must describe the tracked-paper default, bounded prospective history, global and context dashboard entries, user-selected Recent Progress Resume, and the fact that Reading Flow does not modify PDF or annotation content.

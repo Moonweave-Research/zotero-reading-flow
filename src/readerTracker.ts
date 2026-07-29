@@ -121,17 +121,12 @@ export class ReaderTracker {
             Logger.log(`save skipped: parent=${parentId} was reset after page change`);
             return;
           }
-          const current = this.dataStore.getData(parentItem).p?.[attachmentId];
-          const nextProgress = typeof current === 'number' ? Math.max(current, progress) : progress;
-          if (nextProgress !== progress) {
-            Logger.log(`save adjusted to preserve max progress current=${current} attempted=${progress}`);
-          }
-          await this.dataStore.updateData(parentItem, {
-            p: { [attachmentId]: nextProgress },
-            pageCount: pageCount ? { [attachmentId]: pageCount } : undefined,
-            lastAttachmentId: attachmentId,
+          await this.dataStore.recordProgress(parentItem, {
+            attachmentId,
+            progress,
+            pageCount,
             lastPage,
-            lastReadAt: Date.now()
+            at: Date.now()
           });
           if (this.shouldSkipSave(generation)) {
             Logger.log('post-save refresh skipped: tracker inactive or Zotero shutting down');

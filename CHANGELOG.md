@@ -1,5 +1,23 @@
 # Changelog
 
+# 1.3.0 - 2026-07-29
+
+### Added
+
+- Added a modeless **Reading Statistics** dashboard from the global **Tools** menu and the existing Reading Flow context menu; both entries reuse one window.
+- Added `Current View` and `Entire Library` scopes plus `Tracked papers` (default) and `All papers` datasets for status composition, progress distribution, and known remaining-page coverage.
+- Added bounded reading history with `7d`, `30d`, `90d`, `1y`, and `All time` views, including an activity calendar, papers with progress activity, unique first completions, and a semantic Recent Progress table.
+- Added user-selected `Show in Zotero` and `Resume` actions to Recent Progress; Resume reuses the existing saved-page Reader path and never chooses a paper automatically.
+
+### Changed
+
+- Reading Flow now stores version-2 bounded daily history alongside its existing item metadata when progress is recorded.
+- `All time` reports lifetime completion totals while clearly limiting detailed activity and progress views to retained history.
+- Existing version-1 metadata remains readable, and unrelated `Extra` content remains preserved.
+- The dashboard now uses a clean white default appearance with subtle neutral boundaries while preserving semantic status colors and system dark appearance.
+- History-free libraries keep current statistics visible and show one onboarding message instead of presenting existing progress as past activity.
+- Recent Progress initially shows eight rows and can expand in memory to all matching papers without adding persistent event records.
+
 # 1.2.2 - 2026-07-19
 
 ### Fixed

@@ -84,16 +84,25 @@ function setLabelContext() {
   };
 }
 
-function setupMenu(selectedItems: any[], dataById: Record<number, FlowData | Error>, availableItems = selectedItems) {
-  let registeredMenu: any;
+function setupMenu(
+  selectedItems: any[],
+  dataById: Record<number, FlowData | Error>,
+  availableItems = selectedItems,
+  dashboardManager?: { open(): void }
+) {
+  const registeredMenus: any[] = [];
+  const unregisteredMenuIDs: string[] = [];
   const openCalls: any[] = [];
   const mutationCalls: string[] = [];
 
   (globalThis as any).Zotero = {
     MenuManager: {
       registerMenu(menu: any) {
-        registeredMenu = menu;
-        return 'registered-menu-id';
+        registeredMenus.push(menu);
+        return `${menu.menuID}-registered`;
+      },
+      unregisterMenu(menuID: string) {
+        unregisteredMenuIDs.push(menuID);
       }
     },
     getActiveZoteroPane() {
@@ -150,15 +159,20 @@ function setupMenu(selectedItems: any[], dataById: Record<number, FlowData | Err
     }
   };
 
-  const manager = new ReadingFlowMenuManager(dataStore as any);
+  const manager = new ReadingFlowMenuManager(dataStore as any, dashboardManager as any);
   manager.register();
-  const submenu = registeredMenu.menus[0];
+  const contextMenu = registeredMenus.find((menu) => menu.target === 'main/library/item');
+  const globalMenu = registeredMenus.find((menu) => menu.target === 'main/menubar/tools');
+  const submenu = contextMenu.menus[0];
 
   return {
+    globalMenu,
     openCalls,
     manager,
     mutationCalls,
+    registeredMenus,
     submenu,
+    unregisteredMenuIDs,
     menuByL10nID(l10nID: string) {
       return submenu.menus.find((menu: any) => (menu.l10nID ?? menu.l10nId) === l10nID);
     }
@@ -179,18 +193,22 @@ test('submenu is enabled for a selected regular item', async () => {
 
 test('menus keep l10n IDs for Zotero MenuManager rendering', () => {
   const item = makeRegularItem(20);
-  const { submenu, menuByL10nID } = setupMenu([item], { 20: flowData() });
+  const { globalMenu, submenu, menuByL10nID } = setupMenu([item], { 20: flowData() }, [], { open() {} });
 
   assert.equal(submenu.l10nID, 'reading-flow-menu');
+  assert.equal(globalMenu.menus[0].l10nID, 'reading-flow-reading-statistics');
+  assert.equal(menuByL10nID('reading-flow-view-statistics').l10nID, 'reading-flow-view-statistics');
   assert.equal(menuByL10nID('reading-flow-resume-reading').l10nID, 'reading-flow-resume-reading');
   assert.equal(menuByL10nID('reading-flow-reset-progress').l10nID, 'reading-flow-reset-progress');
 });
 
 test('menus include direct labels as a fallback for nested native menu rendering', () => {
   const item = makeRegularItem(20);
-  const { submenu, menuByL10nID } = setupMenu([item], { 20: flowData() });
+  const { globalMenu, submenu, menuByL10nID } = setupMenu([item], { 20: flowData() }, [], { open() {} });
 
   assert.equal(submenu.label, 'Reading Flow');
+  assert.equal(globalMenu.menus[0].label, 'Reading Statistics');
+  assert.equal(menuByL10nID('reading-flow-view-statistics').label, 'View Current View Statistics');
   assert.equal(menuByL10nID('reading-flow-resume-reading').label, 'Resume Reading');
   assert.equal(menuByL10nID('reading-flow-status-to-read').label, 'Mark as To Read');
   assert.equal(menuByL10nID('reading-flow-status-reading').label, 'Mark as Reading');
@@ -198,6 +216,57 @@ test('menus include direct labels as a fallback for nested native menu rendering
   assert.equal(menuByL10nID('reading-flow-status-read').label, 'Mark as Read');
   assert.equal(menuByL10nID('reading-flow-status-important').label, 'Mark as Important');
   assert.equal(menuByL10nID('reading-flow-reset-progress').label, 'Reset Reading Progress');
+});
+
+test('dashboard menu keeps the submenu available without an item selection and opens modeless UI', async () => {
+  let opens = 0;
+  const { submenu, menuByL10nID, mutationCalls } = setupMenu([], {}, [], {
+    open() { opens += 1; }
+  });
+  const context = enabledContext();
+
+  await submenu.onShowing(new Event('showing'), context);
+  menuByL10nID('reading-flow-view-statistics').onCommand();
+
+  assert.equal(context.enabled, true);
+  assert.equal(opens, 1);
+  assert.deepEqual(mutationCalls, []);
+});
+
+test('dashboard entries are omitted when the dashboard runtime is unavailable', () => {
+  const { globalMenu, submenu, menuByL10nID, registeredMenus } = setupMenu([]);
+
+  assert.equal(globalMenu, undefined);
+  assert.equal(menuByL10nID('reading-flow-view-statistics'), undefined);
+  assert.equal(registeredMenus.length, 1);
+  assert.equal(submenu.menus.some((menu: any) => menu.l10nID === 'reading-flow-resume-reading'), true);
+});
+
+test('global and context entries use one dashboard manager and registration lifecycle', async () => {
+  let opens = 0;
+  const {
+    globalMenu,
+    manager,
+    menuByL10nID,
+    registeredMenus,
+    unregisteredMenuIDs
+  } = setupMenu([], {}, [], {
+    open() { opens += 1; }
+  });
+
+  manager.register();
+  assert.equal(registeredMenus.length, 2);
+  assert.equal(globalMenu.target, 'main/menubar/tools');
+
+  globalMenu.menus[0].onCommand();
+  menuByL10nID('reading-flow-view-statistics').onCommand();
+  assert.equal(opens, 2);
+
+  manager.unregister();
+  assert.deepEqual(unregisteredMenuIDs.sort(), [
+    'readingflow-library-item-menu-registered',
+    'readingflow-tools-menu-registered'
+  ]);
 });
 
 test('resume menu is disabled for a non-resumable selected item', async () => {

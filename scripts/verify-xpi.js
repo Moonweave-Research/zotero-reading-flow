@@ -8,7 +8,10 @@ const UPDATES_PATH = 'updates.json';
 const REQUIRED_FILES = [
   'manifest.json',
   'bootstrap.js',
+  'dashboard.js',
   'prefs.js',
+  'dashboard.xhtml',
+  'dashboard.css',
   'icon.png',
   'locale/en-US/reading-flow.ftl'
 ];

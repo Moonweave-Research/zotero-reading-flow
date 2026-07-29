@@ -1,5 +1,12 @@
 # Reading Flow Attention Column PRD
 
+> **Status: STALE / HISTORICAL ONLY — DO NOT EXECUTE**
+>
+> Superseded on 2026-07-28 by the sole active authority:
+> [Reading Flow Authoritative Design and Implementation Plan](../../READING_FLOW_AUTHORITY.md).
+> Preserve this file only as historical context. Agents must not use its product
+> decisions to override the authoritative plan.
+
 ## Problem Statement
 
 Researchers and graduate students often keep many papers in Zotero across

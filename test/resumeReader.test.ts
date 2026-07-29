@@ -1,8 +1,35 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ResumeReader } from '../src/resumeReader';
+import { resumeDashboardItem } from '../src/bootstrap';
 import { DEFAULT_FLOW_DATA, FlowData } from '../src/flowData';
 import { Logger } from '../src/Logger';
+
+test('dashboard resume bridge resolves one top-level item and delegates unchanged to ResumeReader', async () => {
+  const originalZotero = (globalThis as any).Zotero;
+  const item = { id: 42, parentID: null, isRegularItem: () => true };
+  const delegated: unknown[] = [];
+  (globalThis as any).Zotero = {
+    Items: { get: (id: number) => id === 42 ? item : null }
+  };
+
+  try {
+    const resumed = await resumeDashboardItem('42', {
+      async resume(candidate) {
+        delegated.push(candidate);
+        return true;
+      }
+    } as any);
+    assert.equal(resumed, true);
+    assert.deepEqual(delegated, [item]);
+
+    assert.equal(await resumeDashboardItem('invalid', { resume: async () => true } as any), false);
+    assert.equal(await resumeDashboardItem(9, { resume: async () => true } as any), false);
+    assert.deepEqual(delegated, [item]);
+  } finally {
+    (globalThis as any).Zotero = originalZotero;
+  }
+});
 
 function flowData(updates: Partial<FlowData> = {}): FlowData {
   return { ...DEFAULT_FLOW_DATA, ...updates };

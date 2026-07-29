@@ -5,6 +5,17 @@ import { StyleManager } from './styleManager';
 import { NotifierManager } from './notifierManager';
 import { Logger } from './Logger';
 import { ReadingFlowMenuManager } from './menuManager';
+import { DashboardManager } from './dashboardManager';
+import {
+  calculateStatisticsSnapshot,
+  type HistoryRange,
+  type StatisticsDataset
+} from './statistics';
+import type { DashboardBridge, DashboardStatusFilter } from './dashboard';
+import { createStatisticsScopeAdapter } from './statisticsScope';
+import { ResumeReader } from './resumeReader';
+
+const DASHBOARD_CHROME_URI = 'chrome://readingflow/content/';
 
 class Bootstrap {
   public dataStore?: DataStore;
@@ -13,9 +24,11 @@ class Bootstrap {
   private styleManager: StyleManager;
   private notifierManager?: NotifierManager;
   private menuManager?: ReadingFlowMenuManager;
+  private dashboardManager?: DashboardManager;
   private preferencePaneID: string | null = null;
   private started = false;
   private rootURI: string | null = null;
+  private dashboardChromeHandle: { destruct?: () => void } | null = null;
 
   constructor() {
     this.styleManager = new StyleManager();
@@ -39,6 +52,7 @@ class Bootstrap {
     } catch (e) { Logger.error('preferencePane FAIL', e); }
 
     try {
+      this.dashboardChromeHandle = this.registerDashboardChrome(rootURI);
       const win = Zotero.getMainWindow();
       this.styleManager.injectCSS(win.document);
       this.styleManager.injectLocale(win, rootURI);
@@ -64,7 +78,50 @@ class Bootstrap {
     } catch (e) { Logger.error('notifierManager FAIL', e); }
 
     try {
-      this.menuManager = new ReadingFlowMenuManager(this.dataStore!);
+      const scopeAdapter = createStatisticsScopeAdapter();
+      const dataStore = this.dataStore!;
+      const resumeReader = new ResumeReader(dataStore);
+      const dashboardBridge: DashboardBridge = {
+          async getSnapshot(
+            scope,
+            historyRange: HistoryRange = '7d',
+            statusFilter: DashboardStatusFilter = 'all',
+            dataset: StatisticsDataset = 'tracked'
+          ) {
+            const items = await scopeAdapter.getItems(scope);
+            return calculateStatisticsSnapshot(items.map((item) => ({
+              id: item.id,
+              title: item.getField?.('title') ?? undefined,
+              tracked: dataStore.hasReadingFlowData(item),
+              flowData: dataStore.getData(item)
+            })), {
+              dataset,
+              historyRange,
+              statusFilter: statusFilter === 'all' ? undefined : statusFilter
+            });
+          },
+          async focusItem(id) {
+            const itemID = typeof id === 'number' ? id : Number(id);
+            if (!Number.isInteger(itemID) || itemID <= 0) return false;
+
+            const pane = Zotero.getActiveZoteroPane?.();
+            if (!pane?.selectItem) return false;
+            const selected = await pane.selectItem(itemID);
+            if (selected) Zotero.getMainWindow()?.focus?.();
+            return Boolean(selected);
+          },
+          async resumeItem(id) {
+            return resumeDashboardItem(id, resumeReader);
+          }
+      };
+      if (this.dashboardChromeHandle) {
+        this.dashboardManager = new DashboardManager(
+          Zotero.getMainWindow(),
+          DASHBOARD_CHROME_URI,
+          dashboardBridge
+        );
+      }
+      this.menuManager = new ReadingFlowMenuManager(this.dataStore!, this.dashboardManager);
       this.menuManager.register();
       Logger.log('menuManager OK');
     } catch (e) { Logger.error('menuManager FAIL', e); }
@@ -74,6 +131,8 @@ class Bootstrap {
 
   shutdown(reason?: number) {
     this.started = false;
+    this.dashboardManager?.close();
+    this.dashboardManager = undefined;
     this.rootURI = null;
     this.dataStore?.close();
     this.readerTracker?.unregister();
@@ -84,6 +143,8 @@ class Bootstrap {
       this.unregisterPreferencePane();
     }
     this.styleManager.unregister();
+    this.dashboardChromeHandle?.destruct?.();
+    this.dashboardChromeHandle = null;
   }
 
   uninstall() {}
@@ -112,6 +173,25 @@ class Bootstrap {
     Logger.log('preferencePane OK');
   }
 
+  private registerDashboardChrome(rootURI: string) {
+    const services = (globalThis as any).Services;
+    const cc = (globalThis as any).Cc;
+    const ci = (globalThis as any).Ci;
+    const components = (globalThis as any).Components;
+    const addonManagerStartup = cc?.['@mozilla.org/addons/addon-manager-startup;1']
+      ?.getService?.(ci?.amIAddonManagerStartup)
+      ?? components?.classes?.['@mozilla.org/addons/addon-manager-startup;1']
+        ?.getService?.(components.interfaces.amIAddonManagerStartup);
+    if (!addonManagerStartup || !services?.io?.newURI) {
+      throw new Error('Zotero chrome registration APIs are unavailable');
+    }
+
+    const manifestURI = services.io.newURI(`${rootURI}manifest.json`);
+    return addonManagerStartup.registerChrome(manifestURI, [
+      ['content', 'readingflow', rootURI]
+    ]);
+  }
+
   private unregisterPreferencePane() {
     if (!this.preferencePaneID || !Zotero.PreferencePanes?.unregister) return;
     Zotero.PreferencePanes.unregister(this.preferencePaneID);
@@ -123,6 +203,20 @@ class Bootstrap {
       && typeof (globalThis as any).APP_SHUTDOWN === 'number'
       && reason === (globalThis as any).APP_SHUTDOWN;
   }
+}
+
+type DashboardResumeReader = Pick<ResumeReader, 'resume'>;
+
+export async function resumeDashboardItem(
+  id: number | string,
+  resumeReader: DashboardResumeReader
+): Promise<boolean> {
+  const itemID = typeof id === 'number' ? id : Number(id);
+  if (!Number.isInteger(itemID) || itemID <= 0) return false;
+
+  const item = Zotero.Items?.get?.(itemID);
+  if (!item || item.parentID || !item.isRegularItem?.()) return false;
+  return resumeReader.resume(item);
 }
 
 const BOOTSTRAP = new Bootstrap();

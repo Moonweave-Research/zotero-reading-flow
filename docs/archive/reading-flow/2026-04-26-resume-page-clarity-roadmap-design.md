@@ -1,5 +1,12 @@
 # Resume Page Clarity and Reading Flow Roadmap Design
 
+> **Status: STALE / HISTORICAL ONLY — DO NOT EXECUTE**
+>
+> Superseded on 2026-07-28 by the sole active authority:
+> [Reading Flow Authoritative Design and Implementation Plan](../../READING_FLOW_AUTHORITY.md).
+> Preserve this file only as historical context. Agents must not execute its
+> phases or use it to override the authoritative plan.
+
 ## Goal
 
 Make `Resume Reading` understandable and useful from a researcher's point of

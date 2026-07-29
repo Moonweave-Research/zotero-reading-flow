@@ -205,10 +205,7 @@ test('ReaderTracker skips a pending save when the parent was reset after schedul
       assert.equal(parentId, 20);
       return 2000;
     },
-    getData() {
-      return { p: {} };
-    },
-    async updateData(...args: any[]) {
+    async recordProgress(...args: any[]) {
       updates.push(args);
     }
   };
@@ -243,6 +240,57 @@ test('ReaderTracker skips a pending save when the parent was reset after schedul
     await callbacks[0]();
 
     assert.deepEqual(updates, []);
+  } finally {
+    (globalThis as any).setTimeout = originalSetTimeout;
+    Date.now = originalDateNow;
+  }
+});
+
+test('ReaderTracker delegates the debounced capture to recordProgress', async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalDateNow = Date.now;
+  const callbacks: Array<() => Promise<void>> = [];
+  const calls: any[] = [];
+  const dataStore = {
+    getResetTimestamp() {
+      return null;
+    },
+    async recordProgress(...args: any[]) {
+      calls.push(args);
+    }
+  };
+  const tracker = new ReaderTracker(dataStore as any);
+
+  (globalThis as any).setTimeout = (callback: () => Promise<void>) => {
+    callbacks.push(callback);
+    return 1;
+  };
+  Date.now = () => 3000;
+  (globalThis as any).Zotero = {
+    Items: {
+      async getAsync(id: number) {
+        assert.equal(id, 20);
+        return { id: 20 };
+      }
+    },
+    ItemTreeManager: {
+      refreshColumns() {}
+    },
+    Notifier: {
+      trigger() {}
+    }
+  };
+  (tracker as any).active = true;
+  (tracker as any).generation = 1;
+
+  try {
+    (tracker as any).debounceSave(20, '10', 0.5, 2, 4);
+    await callbacks[0]();
+
+    assert.deepEqual(calls, [[
+      { id: 20 },
+      { attachmentId: '10', progress: 0.5, pageCount: 4, lastPage: 2, at: 3000 }
+    ]]);
   } finally {
     (globalThis as any).setTimeout = originalSetTimeout;
     Date.now = originalDateNow;

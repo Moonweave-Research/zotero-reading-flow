@@ -1,5 +1,23 @@
 export type ReadingStatus = 'to-read' | 'reading' | 'skimmed' | 'read' | 'important';
 
+export const HISTORY_RETENTION_DAYS = 366;
+
+export interface DailyReadingRollup {
+  activity: boolean;
+  lastReadAt: number | null;
+  progress: { [attachmentId: string]: number };
+  status: ReadingStatus | null;
+  reset: boolean;
+  completed: boolean;
+}
+
+export interface ReadingHistory {
+  startedAt: number;
+  completedAt: number | null;
+  activeDaysTotal: number;
+  days: { [day: string]: DailyReadingRollup };
+}
+
 export interface FlowData {
   v: number;
   p: { [attId: string]: number };
@@ -10,6 +28,7 @@ export interface FlowData {
   lastAttachmentId: string | null;
   lastPage: number | null;
   lastReadAt: number | null;
+  history?: ReadingHistory;
 }
 
 export const FLOW_PREFIX = 'ReadingFlow: ';
@@ -30,24 +49,18 @@ const VALID_STATUSES = new Set<ReadingStatus>(['to-read', 'reading', 'skimmed', 
 const MAX_REASONABLE_PAGE_COUNT = 100000;
 
 export function normalizeFlowData(input: any): FlowData {
-  const progress: { [attId: string]: number } = {};
-  if (input?.p && typeof input.p === 'object') {
-    for (const [key, value] of Object.entries(input.p)) {
-      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-        progress[key] = value > 1 ? Math.round(value) : Math.min(1, value);
-      }
-    }
-  }
+  const progress = normalizeProgressMap(input?.p);
 
   const pageCount = normalizePageCountMap(input?.pageCount);
+  const history = normalizeReadingHistory(input?.history);
 
   const lastAttachmentId =
     typeof input?.lastAttachmentId === 'string' && input.lastAttachmentId
       ? input.lastAttachmentId
       : null;
 
-  return {
-    v: 1,
+  const normalized: FlowData = {
+    v: history ? 2 : 1,
     p: progress,
     pageCount: Object.keys(pageCount).length ? pageCount : undefined,
     c: typeof input?.c === 'string' ? input.c : null,
@@ -57,6 +70,9 @@ export function normalizeFlowData(input: any): FlowData {
     lastPage: finitePositiveIntegerOrNull(input?.lastPage),
     lastReadAt: finiteNumberOrNull(input?.lastReadAt)
   };
+
+  if (history) normalized.history = history;
+  return normalized;
 }
 
 export function mergeFlowData(current: FlowData, updates: Partial<FlowData>, now = Date.now()): FlowData {
@@ -121,6 +137,28 @@ export function formatRelativeDate(timestamp: number | null, now = Date.now()): 
   return new Date(timestamp).toISOString().slice(0, 10);
 }
 
+export function getLocalDayKey(timestamp: number): string {
+  const date = new Date(timestamp);
+  const year = String(date.getFullYear()).padStart(4, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function pruneReadingHistory(history: ReadingHistory, timestamp: number): ReadingHistory {
+  const reference = new Date(timestamp);
+  const cutoff = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());
+  cutoff.setDate(cutoff.getDate() - (HISTORY_RETENTION_DAYS - 1));
+  const cutoffKey = getLocalDayKey(cutoff.getTime());
+  const days: { [day: string]: DailyReadingRollup } = {};
+
+  for (const [day, rollup] of Object.entries(history.days)) {
+    if (day >= cutoffKey) days[day] = rollup;
+  }
+
+  return { ...history, days };
+}
+
 function finiteNumberOrZero(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
@@ -131,6 +169,71 @@ function finiteNumberOrNull(value: unknown): number | null {
 
 function finitePositiveIntegerOrNull(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.round(value) : null;
+}
+
+function normalizeProgressMap(input: unknown): { [attId: string]: number } {
+  const progress: { [attId: string]: number } = {};
+  if (!input || typeof input !== 'object') return progress;
+
+  for (const [key, value] of Object.entries(input)) {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      progress[key] = value > 1 ? Math.round(value) : Math.min(1, value);
+    }
+  }
+
+  return progress;
+}
+
+function normalizeReadingHistory(input: unknown): ReadingHistory | undefined {
+  if (!input || typeof input !== 'object') return undefined;
+  const candidate = input as any;
+  if (!candidate.days || typeof candidate.days !== 'object') return undefined;
+
+  const dayKeys = Object.keys(candidate.days);
+  if (dayKeys.length > HISTORY_RETENTION_DAYS) return undefined;
+
+  const startedAt = finiteTimestampOrNull(candidate.startedAt);
+  if (startedAt === null) return undefined;
+
+  const days: { [day: string]: DailyReadingRollup } = {};
+  for (const [day, value] of Object.entries(candidate.days)) {
+    if (!isValidDayKey(day) || !value || typeof value !== 'object') continue;
+    const rollup = value as any;
+    days[day] = {
+      activity: rollup.activity === true,
+      lastReadAt: finiteNumberOrNull(rollup.lastReadAt),
+      progress: normalizeProgressMap(rollup.progress),
+      status: VALID_STATUSES.has(rollup.status) ? rollup.status : null,
+      reset: rollup.reset === true,
+      completed: rollup.completed === true
+    };
+  }
+
+  const completedAt = rollupTimestampOrNull(candidate.completedAt);
+  const activeDaysTotal = typeof candidate.activeDaysTotal === 'number'
+    && Number.isFinite(candidate.activeDaysTotal)
+    && candidate.activeDaysTotal >= 0
+    ? Math.floor(candidate.activeDaysTotal)
+    : 0;
+
+  return { startedAt, completedAt, activeDaysTotal, days };
+}
+
+function finiteTimestampOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function rollupTimestampOrNull(value: unknown): number | null {
+  return value === null ? null : finiteTimestampOrNull(value);
+}
+
+function isValidDayKey(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year
+    && date.getMonth() === month - 1
+    && date.getDate() === day;
 }
 
 function normalizePageCountMap(input: unknown): { [attId: string]: number } {

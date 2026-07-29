@@ -2,9 +2,11 @@ import { DataStore } from './dataStore';
 import { ReadingStatus } from './flowData';
 import { Logger } from './Logger';
 import { ResumeReader } from './resumeReader';
+import { DashboardManager } from './dashboardManager';
 
 const PLUGIN_ID = 'readingflow@moon.com';
-const MENU_ID = 'readingflow-library-item-menu';
+const CONTEXT_MENU_ID = 'readingflow-library-item-menu';
+const GLOBAL_MENU_ID = 'readingflow-tools-menu';
 
 const MENU_LABELS = {
   menu: 'Reading Flow',
@@ -14,22 +16,38 @@ const MENU_LABELS = {
   statusSkimmed: 'Mark as Skimmed',
   statusRead: 'Mark as Read',
   statusImportant: 'Mark as Important',
-  resetProgress: 'Reset Reading Progress'
+  resetProgress: 'Reset Reading Progress',
+  viewStatistics: 'View Current View Statistics',
+  readingStatistics: 'Reading Statistics'
 } as const;
 
 export class ReadingFlowMenuManager {
-  private registeredMenuID: string | false | null = null;
+  private registeredMenuIDs: string[] = [];
   private resumeReader: ResumeReader;
 
-  constructor(private dataStore: DataStore) {
+  constructor(
+    private dataStore: DataStore,
+    private dashboardManager?: DashboardManager
+  ) {
     this.resumeReader = new ResumeReader(dataStore);
   }
 
   public register() {
-    if (!Zotero.MenuManager?.registerMenu || this.registeredMenuID) return;
+    if (!Zotero.MenuManager?.registerMenu || this.registeredMenuIDs.length) return;
 
-    this.registeredMenuID = Zotero.MenuManager.registerMenu({
-      menuID: MENU_ID,
+    const dashboardContextMenu = this.dashboardManager
+      ? [{
+          menuType: 'menuitem',
+          l10nID: 'reading-flow-view-statistics',
+          label: MENU_LABELS.viewStatistics,
+          onCommand: () => this.openDashboard()
+        }, {
+          menuType: 'separator'
+        }]
+      : [];
+
+    const contextMenuID = Zotero.MenuManager.registerMenu({
+      menuID: CONTEXT_MENU_ID,
       pluginID: PLUGIN_ID,
       target: 'main/library/item',
       menus: [
@@ -38,10 +56,13 @@ export class ReadingFlowMenuManager {
           l10nID: 'reading-flow-menu',
           label: MENU_LABELS.menu,
           onShowing: async (_event: Event, context: any) => {
-            context?.setEnabled?.(await this.canShowSubmenu(context));
+            context?.setEnabled?.(
+              Boolean(this.dashboardManager) || await this.canShowSubmenu(context)
+            );
             context?.setVisible?.(true);
           },
           menus: [
+            ...dashboardContextMenu,
             {
               menuType: 'menuitem',
               l10nID: 'reading-flow-resume-reading',
@@ -78,13 +99,41 @@ export class ReadingFlowMenuManager {
         }
       ]
     });
+    const globalMenuID = this.dashboardManager
+      ? Zotero.MenuManager.registerMenu({
+          menuID: GLOBAL_MENU_ID,
+          pluginID: PLUGIN_ID,
+          target: 'main/menubar/tools',
+          menus: [
+            {
+              menuType: 'menuitem',
+              l10nID: 'reading-flow-reading-statistics',
+              label: MENU_LABELS.readingStatistics,
+              onCommand: () => this.openDashboard()
+            }
+          ]
+        })
+      : null;
+
+    const registered = [contextMenuID, globalMenuID]
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+    const expectedCount = this.dashboardManager ? 2 : 1;
+    if (registered.length !== expectedCount) {
+      for (const id of registered) Zotero.MenuManager.unregisterMenu?.(id);
+      throw new Error(this.dashboardManager
+        ? 'Reading Flow could not register both dashboard menu entry points'
+        : 'Reading Flow could not register its context menu');
+    }
+    this.registeredMenuIDs = registered;
   }
 
   public unregister() {
-    if (this.registeredMenuID && Zotero.MenuManager?.unregisterMenu) {
-      Zotero.MenuManager.unregisterMenu(this.registeredMenuID);
+    if (Zotero.MenuManager?.unregisterMenu) {
+      for (const id of this.registeredMenuIDs) {
+        Zotero.MenuManager.unregisterMenu(id);
+      }
     }
-    this.registeredMenuID = null;
+    this.registeredMenuIDs = [];
   }
 
   private statusMenu(status: ReadingStatus, l10nID: string, label: string) {
@@ -97,6 +146,14 @@ export class ReadingFlowMenuManager {
         context
       )
     };
+  }
+
+  private openDashboard() {
+    try {
+      this.dashboardManager?.open();
+    } catch (e) {
+      Logger.error('open dashboard failed', e);
+    }
   }
 
   private async resumeSelectedItem(context?: any) {

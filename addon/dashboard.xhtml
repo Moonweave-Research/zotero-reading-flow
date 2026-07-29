@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://zotero/skin/zotero.css" type="text/css"?>
+<html id="reading-flow-dashboard"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+      windowtype="reading-flow-dashboard"
+      sizemode="normal"
+      persist="screenX screenY width height sizemode">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-l10n-id="reading-flow-dashboard-title">Reading Statistics</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body class="zotero-window">
+  <main aria-busy="false">
+    <header class="dashboard-header">
+      <div class="dashboard-title-group">
+        <h1 data-l10n-id="reading-flow-dashboard-title">Reading Statistics</h1>
+        <p id="dashboard-state" class="dashboard-state" aria-live="polite">Loading current statistics…</p>
+      </div>
+      <div class="dashboard-controls" aria-label="Reading statistics filters">
+        <span class="dashboard-control-group">
+          <label for="dashboard-scope" data-l10n-id="reading-flow-dashboard-scope">Scope</label>
+          <select id="dashboard-scope">
+            <option value="current-view" data-l10n-id="reading-flow-dashboard-current-view">Current View</option>
+            <option value="entire-library" data-l10n-id="reading-flow-dashboard-entire-library">Entire Library</option>
+          </select>
+        </span>
+        <span class="dashboard-control-group">
+          <label for="dashboard-dataset" data-l10n-id="reading-flow-dashboard-papers-filter">Papers</label>
+          <select id="dashboard-dataset">
+            <option value="tracked" data-l10n-id="reading-flow-dashboard-tracked-papers">Reading set (tracked)</option>
+            <option value="all" data-l10n-id="reading-flow-dashboard-all-papers">All papers (inventory)</option>
+          </select>
+        </span>
+        <span class="dashboard-control-group">
+          <label for="dashboard-status-filter" data-l10n-id="reading-flow-dashboard-status">Status</label>
+          <select id="dashboard-status-filter">
+            <option value="all" data-l10n-id="reading-flow-dashboard-all-statuses">All statuses</option>
+            <option value="to-read" data-l10n-id="reading-flow-status-to-read">To Read</option>
+            <option value="reading" data-l10n-id="reading-flow-status-reading">Reading</option>
+            <option value="skimmed" data-l10n-id="reading-flow-status-skimmed">Skimmed</option>
+            <option value="read" data-l10n-id="reading-flow-status-read">Read</option>
+            <option value="important" data-l10n-id="reading-flow-status-important">Important</option>
+          </select>
+        </span>
+        <span class="dashboard-control-group">
+          <label for="dashboard-history-range" data-l10n-id="reading-flow-dashboard-history-range">History range</label>
+          <select id="dashboard-history-range">
+            <option value="7d" data-l10n-id="reading-flow-dashboard-history-7d">7 days</option>
+            <option value="30d" data-l10n-id="reading-flow-dashboard-history-30d">30 days</option>
+            <option value="90d" data-l10n-id="reading-flow-dashboard-history-90d">90 days</option>
+            <option value="1y" data-l10n-id="reading-flow-dashboard-history-1y">1 year</option>
+            <option value="all-time" data-l10n-id="reading-flow-dashboard-history-all-time">All time</option>
+          </select>
+        </span>
+        <span class="dashboard-refresh-group">
+          <button id="dashboard-refresh" type="button" data-l10n-id="reading-flow-dashboard-refresh">Refresh</button>
+          <span id="dashboard-updated" class="dashboard-updated" aria-live="polite">Not updated</span>
+        </span>
+      </div>
+    </header>
+
+    <p id="dashboard-error" class="dashboard-error" role="alert" hidden="hidden"></p>
+    <p id="dashboard-filter-note" class="dashboard-filter-note">Tracked papers · all statuses · selected Zotero scope.</p>
+
+    <section class="summary-grid" aria-labelledby="summary-heading">
+      <h2 id="summary-heading" class="visually-hidden" data-l10n-id="reading-flow-dashboard-summary">Summary</h2>
+      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-papers">Papers</h3><strong id="dashboard-papers">—</strong></article>
+      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-in-progress">In progress</h3><strong id="dashboard-in-progress">—</strong></article>
+      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-read">Read</h3><strong id="dashboard-read">—</strong></article>
+      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-remaining-pages">Known remaining pages</h3><strong id="dashboard-remaining-pages">—</strong><span id="dashboard-remaining-coverage" class="summary-detail">—</span></article>
+    </section>
+
+    <aside id="dashboard-history-onboarding" class="dashboard-onboarding" role="note" hidden="hidden">
+      <h2 data-l10n-id="reading-flow-dashboard-history-starts">History starts with your next reading update</h2>
+      <p data-l10n-id="reading-flow-dashboard-history-note">Reading history starts after this feature records its first reading update. Existing current progress is included in current statistics but is not presented as past activity.</p>
+    </aside>
+
+    <section id="dashboard-reading-pulse" class="dashboard-panel dashboard-pulse" aria-labelledby="pulse-heading" hidden="hidden">
+      <div class="panel-heading-row"><h2 id="pulse-heading" data-l10n-id="reading-flow-dashboard-pulse">Reading pulse</h2><span id="dashboard-history-range-note" class="dashboard-history-range-note">7 days: loading.</span></div>
+      <p id="dashboard-history-range-empty" class="dashboard-empty" hidden="hidden">No progress updates in this selected range. Retained history is available for this reading set.</p>
+      <div class="pulse-layout">
+        <div class="pulse-metrics">
+          <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-active-days">Days with a progress update</h3><strong id="dashboard-range-active-days">—</strong><span class="summary-detail">in selected range</span></article>
+          <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-papers-progress-activity">Papers with a progress update</h3><strong id="dashboard-range-progress-activity">—</strong><span class="summary-detail">in selected range</span></article>
+          <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-first-completions">First completions</h3><strong id="dashboard-range-completions">—</strong><span class="summary-detail">in selected range</span></article>
+        </div>
+        <div class="pulse-calendar" aria-labelledby="activity-calendar-heading">
+          <h3 id="activity-calendar-heading" data-l10n-id="reading-flow-dashboard-activity-calendar">Activity calendar</h3>
+          <div id="dashboard-history-calendar"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="dashboard-panels-grid">
+      <section class="dashboard-panel" aria-labelledby="status-heading"><h2 id="status-heading" data-l10n-id="reading-flow-dashboard-status-composition">Status composition</h2><div id="dashboard-status-composition"></div></section>
+      <section class="dashboard-panel" aria-labelledby="progress-heading"><h2 id="progress-heading" data-l10n-id="reading-flow-dashboard-progress-distribution">Progress distribution</h2><div id="dashboard-progress-distribution"></div></section>
+    </div>
+
+    <section id="dashboard-recent-progress-panel" class="dashboard-panel" aria-labelledby="recent-progress-heading" hidden="hidden">
+      <div class="panel-heading-row"><h2 id="recent-progress-heading" data-l10n-id="reading-flow-dashboard-recent-progress">Recent progress</h2><span class="dashboard-history-range-note">retained history</span></div>
+      <div class="recent-progress-meta">
+        <p id="dashboard-recent-progress-summary" class="dashboard-history-range-note"></p>
+        <button id="dashboard-recent-progress-toggle" type="button" hidden="hidden">Show all</button>
+      </div>
+      <p id="dashboard-recent-progress-empty" class="dashboard-empty" hidden="hidden">No retained progress updates in this range.</p>
+      <table id="dashboard-recent-progress">
+        <caption class="visually-hidden">Per-paper progress updates and user-selected actions in the selected retained history range</caption>
+        <thead>
+          <tr>
+            <th scope="col">Paper</th>
+            <th scope="col">Current progress</th>
+            <th scope="col">Change in range</th>
+            <th scope="col">Last update</th>
+            <th scope="col">Status</th>
+            <th scope="col">Reset</th>
+          </tr>
+        </thead>
+        <tbody id="dashboard-recent-progress-body"></tbody>
+      </table>
+      <p id="dashboard-recent-progress-action-status" class="dashboard-action-status" aria-live="polite"></p>
+    </section>
+
+    <section id="dashboard-completion-trend-panel" class="dashboard-panel" aria-labelledby="completion-trend-heading" hidden="hidden">
+      <h2 id="completion-trend-heading" data-l10n-id="reading-flow-dashboard-completion-trend">First-completion trend</h2>
+      <div id="dashboard-completion-trend"></div>
+    </section>
+
+    <p id="dashboard-history-footnote" class="dashboard-history-footnote" hidden="hidden"></p>
+  </main>
+  <script src="dashboard.js"></script>
+</body>
+</html>
