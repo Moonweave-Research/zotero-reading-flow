@@ -47,10 +47,6 @@ Best for **literature researchers, thesis students, and anyone who manages many 
 
 ## Quick demo
 
-Right-click any paper and update its reading state in one click:
-
-![Reading Flow context menu](docs/assets/menu.png)
-
 Open **Reading Statistics** to review the selected scope, reading-set filters, current summary, and recent reading pulse:
 
 ![Reading Statistics dashboard](docs/assets/reading-statistics-dashboard.jpeg)
