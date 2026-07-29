@@ -51,6 +51,10 @@ Right-click any paper and update its reading state in one click:
 
 ![Reading Flow context menu](docs/assets/menu.png)
 
+Open **Reading Statistics** to review the selected scope, reading-set filters, current summary, and recent reading pulse:
+
+![Reading Statistics dashboard](docs/assets/reading-statistics-dashboard.jpeg)
+
 Read a PDF, return to the library, and the row updates itself:
 
 ![Progress and last-read updating live](docs/assets/hero.gif)

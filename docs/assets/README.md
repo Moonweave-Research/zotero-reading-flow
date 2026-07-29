@@ -7,6 +7,7 @@ These files support the README and forum announcement. The README should lead wi
 | `columns.png` | Primary README image. Library item tree with `Progress`, `Status`, and `Last Read` columns visible on several papers in mixed states (`To Read`, `Reading`, `Important`, `Read`). | 1200-1600 px wide, PNG |
 | `hero.gif` | Optional demo GIF: library view with Reading Flow columns visible → status change or PDF progress update → row updates in the item tree. Avoid making Resume Reading the only payoff. | 1200-1400 px wide, <= 4 MB |
 | `menu.png` | Optional secondary screenshot. Right-click context menu opened on a tracked item, **Reading Flow** submenu expanded with only shipped entries (`Resume Reading`, `Mark as ...`, `Reset Reading Progress`). | 800-1000 px wide, PNG |
+| `reading-statistics-dashboard.jpeg` | Reading Statistics dashboard with scope, paper-set, status, and history controls plus summary and reading-pulse metrics. Use disposable sample data only. | 900 px wide, JPEG |
 
 ## Capture tips
 
