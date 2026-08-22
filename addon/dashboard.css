@@ -405,6 +405,26 @@ button:focus-visible {
   font-size: 0.68rem;
 }
 
+.history-calendar-selectable {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.history-calendar-selectable:hover {
+  border-color: Highlight;
+}
+
+.history-calendar-selectable.is-selected {
+  border-color: Highlight;
+  box-shadow: 0 0 0 2px color-mix(in srgb, Highlight 35%, transparent);
+}
+
+.history-calendar-selectable:focus-visible {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+}
+
 .history-activity-1 {
   background: color-mix(in srgb, Highlight 20%, Canvas);
   color: CanvasText;
@@ -423,6 +443,20 @@ button:focus-visible {
 .history-activity-4 {
   background: color-mix(in srgb, Highlight 70%, Canvas);
   color: CanvasText;
+}
+
+.dashboard-activity-day-detail {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+}
+
+.dashboard-activity-day-detail h3 {
+  color: CanvasText;
+}
+
+.dashboard-activity-day-detail .dashboard-history-range-note {
+  margin: 0 0 0.6rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -466,8 +500,17 @@ button:focus-visible {
   font-size: 0.84rem;
 }
 
+#dashboard-activity-day-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.8rem;
+}
+
 #dashboard-recent-progress th,
-#dashboard-recent-progress td {
+#dashboard-recent-progress td,
+#dashboard-activity-day-detail-table th,
+#dashboard-activity-day-detail-table td {
   padding: 0.55rem 0.45rem;
   border-bottom: 1px solid color-mix(in srgb, CanvasText 10%, transparent);
   overflow-wrap: anywhere;
@@ -483,12 +526,29 @@ button:focus-visible {
   text-transform: uppercase;
 }
 
+#dashboard-activity-day-detail-table th {
+  color: var(--muted-text);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
 #dashboard-recent-progress th:first-child,
 #dashboard-recent-progress td:first-child {
   width: 32%;
 }
 
+#dashboard-activity-day-detail-table th:first-child,
+#dashboard-activity-day-detail-table td:first-child {
+  width: 36%;
+}
+
 #dashboard-recent-progress tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+#dashboard-activity-day-detail-table tbody tr:last-child td {
   border-bottom: 0;
 }
 
@@ -615,7 +675,8 @@ button:focus-visible {
     gap: 0.15rem;
   }
 
-  #dashboard-recent-progress thead {
+  #dashboard-recent-progress thead,
+  #dashboard-activity-day-detail-table thead {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -625,12 +686,16 @@ button:focus-visible {
 
   #dashboard-recent-progress tbody,
   #dashboard-recent-progress tr,
-  #dashboard-recent-progress td {
+  #dashboard-recent-progress td,
+  #dashboard-activity-day-detail-table tbody,
+  #dashboard-activity-day-detail-table tr,
+  #dashboard-activity-day-detail-table td {
     display: block;
     width: 100%;
   }
 
-  #dashboard-recent-progress tr {
+  #dashboard-recent-progress tr,
+  #dashboard-activity-day-detail-table tr {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.45rem 0.75rem;
@@ -638,18 +703,21 @@ button:focus-visible {
     border-bottom: 1px solid color-mix(in srgb, CanvasText 14%, transparent);
   }
 
-  #dashboard-recent-progress td {
+  #dashboard-recent-progress td,
+  #dashboard-activity-day-detail-table td {
     padding: 0;
     border: 0;
   }
 
-  #dashboard-recent-progress td:first-child {
+  #dashboard-recent-progress td:first-child,
+  #dashboard-activity-day-detail-table td:first-child {
     grid-column: 1 / -1;
     width: 100%;
     font-weight: 600;
   }
 
-  #dashboard-recent-progress td::before {
+  #dashboard-recent-progress td::before,
+  #dashboard-activity-day-detail-table td::before {
     display: block;
     margin-bottom: 0.1rem;
     content: attr(data-label);
@@ -662,11 +730,13 @@ button:focus-visible {
 @media (max-width: 26rem) {
   .summary-grid,
   .pulse-metrics,
-  #dashboard-recent-progress tr {
+  #dashboard-recent-progress tr,
+  #dashboard-activity-day-detail-table tr {
     grid-template-columns: 1fr;
   }
 
-  #dashboard-recent-progress td:first-child {
+  #dashboard-recent-progress td:first-child,
+  #dashboard-activity-day-detail-table td:first-child {
     grid-column: auto;
   }
 }

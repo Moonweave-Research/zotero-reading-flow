@@ -75,6 +75,14 @@ export interface RecentProgressSnapshot {
   resetCount: number;
 }
 
+export interface ActivityDayDetailPaper {
+  itemID: number | string;
+  title: string;
+  recordedProgress: number | null;
+  status: ReadingStatus;
+  lastRecordedAt: number | null;
+}
+
 export interface StatisticsOptions {
   dataset?: StatisticsDataset;
   historyRange?: HistoryRange;
@@ -98,6 +106,8 @@ export interface StatisticsPaper {
 }
 
 export interface StatisticsSnapshot {
+  /** Runtime-only opaque identity added by the dashboard bridge. */
+  snapshotId?: string;
   totalPapers: number;
   inProgress: number;
   read: number;
@@ -120,19 +130,27 @@ interface DisplayState {
 
 const READ_PROGRESS_THRESHOLD = 0.95;
 
-export function calculateStatisticsSnapshot(
+export function selectStatisticsPapers(
   papers: readonly StatisticsPaper[],
-  options: StatisticsOptions = {}
-): StatisticsSnapshot {
+  options: Pick<StatisticsOptions, 'dataset' | 'statusFilter'> = {}
+): StatisticsPaper[] {
   const datasetPapers = options.dataset === 'all'
     ? papers
     : papers.filter((paper) => paper.tracked !== false);
-  const selectedPapers = options.statusFilter
+
+  return options.statusFilter
     ? datasetPapers.filter((paper) => {
       const display = getDisplayState(paper.flowData);
       return resolveStatus(paper.flowData, display) === options.statusFilter;
     })
-    : datasetPapers;
+    : [...datasetPapers];
+}
+
+export function calculateStatisticsSnapshot(
+  papers: readonly StatisticsPaper[],
+  options: StatisticsOptions = {}
+): StatisticsSnapshot {
+  const selectedPapers = selectStatisticsPapers(papers, options);
   const statusCounts = emptyStatusCounts();
   const progressDistribution = emptyProgressDistribution();
   let knownRemainingPages = 0;
@@ -208,14 +226,15 @@ export function calculateHistorySnapshot(
       if (!isInWindow(day, window)) continue;
       detailedDays.add(day);
       const aggregate = dayAggregates.get(day) ?? emptyDayAggregate();
-      if (rollup.activity) {
+      const progress = maxRollupProgress(rollup);
+      const hasProgressActivity = rollup.activity && progress !== null;
+      if (hasProgressActivity) {
         aggregate.activePapers += 1;
         activeDayKeys.add(day);
       }
       if (rollup.reset) aggregate.resetPapers += 1;
 
-      const progress = maxRollupProgress(rollup);
-      if (progress !== null) {
+      if (hasProgressActivity) {
         aggregate.progressPapers += 1;
         progressActivityPaperKeys.add(paperKey);
       }
@@ -271,6 +290,36 @@ export function calculateHistorySnapshot(
   };
 }
 
+/**
+ * Projects one recorded local-day update from an already scoped paper set.
+ * It deliberately does not apply scope, dataset, status, or range filtering;
+ * the dashboard bridge owns that selection before it places papers in its
+ * ephemeral snapshot cache.
+ */
+export function calculateActivityDayDetail(
+  papers: readonly StatisticsPaper[],
+  day: string
+): ActivityDayDetailPaper[] {
+  if (!isValidDayKey(day)) return [];
+
+  return papers
+    .map((paper) => {
+      const rollup = paper.flowData.history?.days[day];
+      if (!rollup || !rollup.activity || maxRollupProgress(rollup) === null) return null;
+
+      const display = getDisplayState(paper.flowData);
+      return {
+        itemID: paper.id,
+        title: paper.title?.trim() || `Paper ${paper.id}`,
+        recordedProgress: normalizeRecordedDayProgress(paper.flowData, rollup),
+        status: resolveStatus(paper.flowData, display),
+        lastRecordedAt: rollup.lastReadAt
+      };
+    })
+    .filter((entry): entry is ActivityDayDetailPaper => entry !== null)
+    .sort((a, b) => a.title.localeCompare(b.title) || String(a.itemID).localeCompare(String(b.itemID)));
+}
+
 function buildRecentProgressSnapshot(
   paper: StatisticsPaper,
   window: HistoryWindow
@@ -280,8 +329,15 @@ function buildRecentProgressSnapshot(
 
   const progressDays = Object.entries(history.days)
     .filter(([day]) => isInWindow(day, window))
-    .map(([day, rollup]) => ({ day, progress: maxRollupProgress(rollup), reset: rollup.reset }))
-    .filter((entry): entry is { day: string; progress: number; reset: boolean } => entry.progress !== null)
+    .map(([day, rollup]) => ({
+      day,
+      activity: rollup.activity,
+      progress: maxRollupProgress(rollup),
+      reset: rollup.reset
+    }))
+    .filter((entry): entry is { day: string; activity: true; progress: number; reset: boolean } => (
+      entry.activity && entry.progress !== null
+    ))
     .sort((a, b) => a.day.localeCompare(b.day));
   if (progressDays.length === 0) return null;
 
@@ -353,6 +409,19 @@ function maxRollupProgress(rollup: ReadingHistory['days'][string]): number | nul
     (value) => typeof value === 'number' && Number.isFinite(value) && value > 0
   );
   return values.length ? Math.max(...values) : null;
+}
+
+function normalizeRecordedDayProgress(
+  data: FlowData,
+  rollup: ReadingHistory['days'][string]
+): number | null {
+  const highest = Object.entries(rollup.progress)
+    .filter(([, value]) => typeof value === 'number' && Number.isFinite(value) && value > 0)
+    .sort(([leftID, left], [rightID, right]) => right - left || leftID.localeCompare(rightID))[0];
+  if (!highest) return null;
+
+  const [attachmentID, rawProgress] = highest;
+  return normalizeProgress(rawProgress, validPageCount(data.pageCount?.[attachmentID]));
 }
 
 function emptyDayAggregate(): DayAggregate {

@@ -1,11 +1,22 @@
 # Changelog
 
+# 1.3.1 - 2026-08-23
+
+### Added
+
+- Selecting an active day in the Reading Statistics activity calendar now shows every matching paper, its recorded location, current status, last recorded update, and explicit `Show in Zotero` or `Resume` actions.
+
+### Fixed
+
+- Calendar drill-down results now retain the exact dashboard scope, reading-set dataset, and status filter that produced the selected snapshot.
+- Serialized unit execution prevents the generated dashboard bundle from racing its deterministic packaging check.
+
 # 1.3.0 - 2026-07-29
 
 ### Added
 
 - Added a modeless **Reading Statistics** dashboard from the global **Tools** menu and the existing Reading Flow context menu; both entries reuse one window.
-- Added `Current View` and `Entire Library` scopes plus `Tracked papers` (default) and `All papers` datasets for status composition, progress distribution, and known remaining-page coverage.
+- Added `Current View` and `Entire Library` scopes plus `Reading set (tracked)` (default) and `All papers (inventory)` datasets for status composition, progress distribution, and known remaining-page coverage.
 - Added bounded reading history with `7d`, `30d`, `90d`, `1y`, and `All time` views, including an activity calendar, papers with progress activity, unique first completions, and a semantic Recent Progress table.
 - Added user-selected `Show in Zotero` and `Resume` actions to Recent Progress; Resume reuses the existing saved-page Reader path and never chooses a paper automatically.
 

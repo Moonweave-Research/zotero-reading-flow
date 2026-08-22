@@ -7,5 +7,6 @@ current design.
 The sole active Reading Flow authority is
 [Reading Flow Authoritative Design and Implementation Plan](../../READING_FLOW_AUTHORITY.md).
 
-Archived documents describe superseded Attention, Priority, Next Action, and
-early dashboard directions retained only to explain past decisions.
+Archived documents describe superseded Attention, Priority, Next Action, early
+dashboard directions, and completed promotion records retained only to explain
+past decisions. They are not reusable checklists or implementation inputs.

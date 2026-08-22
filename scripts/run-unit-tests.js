@@ -25,4 +25,4 @@ const outfiles = testFiles.map((file) => {
   return outfile;
 });
 
-execFileSync(process.execPath, ['--test', ...outfiles], { stdio: 'inherit' });
+execFileSync(process.execPath, ['--test', '--test-concurrency=1', ...outfiles], { stdio: 'inherit' });

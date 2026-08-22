@@ -61,7 +61,7 @@ After publishing the release, verify these URLs in a browser or with `curl -I`:
 
 ```bash
 curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/updates.json
-curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v1.1.14/zotero-reading-flow.xpi
+curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v1.3.1/zotero-reading-flow.xpi
 ```
 
 Both should return a redirect or success response rather than `404`.
@@ -78,11 +78,12 @@ Use a clean or disposable Zotero profile when possible.
 6. Change pages and wait at least 5 seconds.
 7. Return to the library item tree and confirm progress appears.
 8. Right-click a regular item and confirm the `Reading Flow` menu appears.
-9. Open **Tools → Reading Statistics** and confirm `Current View`, `Entire Library`, `Tracked papers`, `All papers`, status, history range, and Refresh work.
+9. Open **Tools → Reading Statistics** and confirm `Current View`, `Entire Library`, `Reading set (tracked)`, `All papers (inventory)`, status, history range, and Refresh work.
 10. Open the dashboard from the item context menu and confirm it focuses the same window; close it and confirm it can reopen.
-11. Select a Recent Progress row and confirm `Show in Zotero` selects it while `Resume` opens that paper through the saved-page Reader path.
-12. Mark the item as `Read`, then reset progress.
-13. Quit Zotero and confirm no Reading Flow bootstrap error appears in the debug log.
+11. Select an active calendar date and confirm its detail lists only matching papers from the displayed scope, dataset, status filter, and range; clear it by selecting the same date again.
+12. Select a Recent Progress or calendar-detail row and confirm `Show in Zotero` selects it while `Resume` opens that paper through the saved-page Reader path.
+13. Mark the item as `Read`, then reset progress.
+14. Quit Zotero and confirm no Reading Flow bootstrap error appears in the debug log.
 
 For local automation, run:
 
@@ -98,4 +99,4 @@ npm run check:release-profile -- \
 
 ## Current Release Notes
 
-For `v1.3.0`, the release should be described as tested with Zotero `9.0.6` and compatible with Zotero `9.0.*`. Release notes must describe the tracked-paper default, bounded prospective history, global and context dashboard entries, user-selected Recent Progress Resume, and the fact that Reading Flow does not modify PDF or annotation content.
+For `v1.3.1`, the release should be described as tested with Zotero `9.0.6` and compatible with Zotero `9.0.*`. Release notes must describe the active-calendar-day drill-down, the `Reading set (tracked)` default, `All papers (inventory)` audit view, bounded prospective history, global and context dashboard entries, user-selected Resume, and the fact that Reading Flow does not modify PDF or annotation content.

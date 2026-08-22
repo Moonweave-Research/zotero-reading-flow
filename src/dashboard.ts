@@ -2,6 +2,7 @@ import type { ReadingStatus } from './flowData';
 import {
   HISTORY_RANGES,
   STATISTICS_DATASETS,
+  type ActivityDayDetailPaper,
   type HistoryRange,
   type ProgressBucket,
   type StatisticsDataset,
@@ -11,6 +12,21 @@ import type { StatisticsScope } from './statisticsScope';
 
 export type DashboardStatusFilter = 'all' | ReadingStatus;
 
+export interface ActivityDayDetailSnapshot {
+  snapshotId: string;
+  day: string;
+  state: 'available';
+  papers: ActivityDayDetailPaper[];
+}
+
+export interface UnavailableActivityDayDetail {
+  snapshotId: string;
+  day: string;
+  state: 'unavailable';
+}
+
+export type ActivityDayDetailResult = ActivityDayDetailSnapshot | UnavailableActivityDayDetail;
+
 export interface DashboardBridge {
   getSnapshot(
     scope: StatisticsScope,
@@ -18,6 +34,8 @@ export interface DashboardBridge {
     statusFilter?: DashboardStatusFilter,
     dataset?: StatisticsDataset
   ): Promise<StatisticsSnapshot>;
+  getActivityDayDetail?(snapshotId: string, day: string): Promise<ActivityDayDetailResult>;
+  discardActivityDayDetailCache?(): void;
   focusItem?(id: number | string): Promise<boolean>;
   resumeItem?(id: number | string): Promise<boolean>;
 }
@@ -71,6 +89,11 @@ interface DashboardRenderOptions {
   onToggleRecentProgress?: () => void;
   onFocusItem?: (id: number | string, title: string) => void;
   onResumeItem?: (id: number | string, title: string) => void;
+  selectedActivityDay?: string | null;
+  activityDayDetail?: ActivityDayDetailResult | null;
+  onToggleActivityDay?: (day: string) => void;
+  onFocusActivityDayItem?: (id: number | string, title: string) => void;
+  onResumeActivityDayItem?: (id: number | string, title: string) => void;
 }
 
 interface DashboardQuery {
@@ -124,6 +147,9 @@ export class DashboardApp {
   private latestQuery: DashboardQuery | null = null;
   private lastUpdatedAt: number | null = null;
   private recentProgressExpanded = false;
+  private selectedActivityDay: string | null = null;
+  private activityDayDetail: ActivityDayDetailResult | null = null;
+  private activityDayDetailSequence = 0;
 
   constructor(
     private readonly doc: Document,
@@ -199,6 +225,7 @@ export class DashboardApp {
       this.latestSnapshot = snapshot;
       this.latestQuery = query;
       this.lastUpdatedAt = this.now();
+      this.clearActivityDayDetail();
       this.renderLatestSnapshot();
       this.setError(null);
     } catch (error) {
@@ -253,50 +280,113 @@ export class DashboardApp {
           this.renderLatestSnapshot();
         },
         onFocusItem: (id, title) => { void this.focusItem(id, title); },
-        onResumeItem: (id, title) => { void this.resumeItem(id, title); }
+        onResumeItem: (id, title) => { void this.resumeItem(id, title); },
+        selectedActivityDay: this.selectedActivityDay,
+        activityDayDetail: this.activityDayDetail,
+        onToggleActivityDay: (day) => { void this.toggleActivityDay(day); },
+        onFocusActivityDayItem: (id, title) => {
+          void this.focusItem(id, title, 'dashboard-activity-day-action-status');
+        },
+        onResumeActivityDayItem: (id, title) => {
+          void this.resumeItem(id, title, 'dashboard-activity-day-action-status');
+        }
       }
     );
   }
 
-  private async resumeItem(id: number | string, title: string) {
-    if (!this.bridge?.resumeItem) {
-      setText(this.doc, 'dashboard-recent-progress-action-status', `Resume is unavailable for ${title} in this runtime.`);
+  private clearActivityDayDetail() {
+    this.activityDayDetailSequence += 1;
+    this.selectedActivityDay = null;
+    this.activityDayDetail = null;
+  }
+
+  private async toggleActivityDay(day: string) {
+    if (this.selectedActivityDay === day) {
+      this.clearActivityDayDetail();
+      this.renderLatestSnapshot();
       return;
     }
 
-    setText(this.doc, 'dashboard-recent-progress-action-status', `Resuming ${title}…`);
+    const snapshotId = this.latestSnapshot?.snapshotId;
+    const detailSequence = ++this.activityDayDetailSequence;
+    this.selectedActivityDay = day;
+    this.activityDayDetail = null;
+    this.renderLatestSnapshot();
+
+    if (!snapshotId || !this.bridge?.getActivityDayDetail) {
+      this.activityDayDetail = { snapshotId: snapshotId ?? '', day, state: 'unavailable' };
+      this.renderLatestSnapshot();
+      return;
+    }
+
+    try {
+      const detail = await this.bridge.getActivityDayDetail(snapshotId, day);
+      if (
+        detailSequence !== this.activityDayDetailSequence
+        || this.selectedActivityDay !== day
+        || this.latestSnapshot?.snapshotId !== snapshotId
+      ) return;
+      this.activityDayDetail = detail.snapshotId === snapshotId
+        ? detail
+        : { snapshotId, day, state: 'unavailable' };
+    } catch {
+      if (
+        detailSequence !== this.activityDayDetailSequence
+        || this.selectedActivityDay !== day
+        || this.latestSnapshot?.snapshotId !== snapshotId
+      ) return;
+      this.activityDayDetail = { snapshotId, day, state: 'unavailable' };
+    }
+    this.renderLatestSnapshot();
+  }
+
+  private async resumeItem(
+    id: number | string,
+    title: string,
+    actionStatusId = 'dashboard-recent-progress-action-status'
+  ) {
+    if (!this.bridge?.resumeItem) {
+      setText(this.doc, actionStatusId, `Resume is unavailable for ${title} in this runtime.`);
+      return;
+    }
+
+    setText(this.doc, actionStatusId, `Resuming ${title}…`);
     try {
       const resumed = await this.bridge.resumeItem(id);
       setText(
         this.doc,
-        'dashboard-recent-progress-action-status',
+        actionStatusId,
         resumed
           ? `Opened ${title} in the Zotero Reader.`
           : `Resume is unavailable for ${title}. Check that the paper still has a PDF attachment.`
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown resume error';
-      setText(this.doc, 'dashboard-recent-progress-action-status', `Could not resume ${title}: ${message}`);
+      setText(this.doc, actionStatusId, `Could not resume ${title}: ${message}`);
     }
   }
 
-  private async focusItem(id: number | string, title: string) {
+  private async focusItem(
+    id: number | string,
+    title: string,
+    actionStatusId = 'dashboard-recent-progress-action-status'
+  ) {
     if (!this.bridge?.focusItem) {
-      setText(this.doc, 'dashboard-recent-progress-action-status', 'Selecting papers is unavailable in this runtime.');
+      setText(this.doc, actionStatusId, 'Selecting papers is unavailable in this runtime.');
       return;
     }
 
-    setText(this.doc, 'dashboard-recent-progress-action-status', `Selecting ${title} in Zotero…`);
+    setText(this.doc, actionStatusId, `Selecting ${title} in Zotero…`);
     try {
       const selected = await this.bridge.focusItem(id);
       setText(
         this.doc,
-        'dashboard-recent-progress-action-status',
+        actionStatusId,
         selected ? `Selected ${title} in Zotero.` : `Could not select ${title} in the current Zotero view.`
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown selection error';
-      setText(this.doc, 'dashboard-recent-progress-action-status', `Could not select ${title}: ${message}`);
+      setText(this.doc, actionStatusId, `Could not select ${title}: ${message}`);
     }
   }
 
@@ -317,6 +407,7 @@ export function startDashboard(
     ? args[0] as DashboardBridge
     : null;
   const app = new DashboardApp(doc, bridge);
+  win.addEventListener?.('unload', () => bridge?.discardActivityDayDetailCache?.(), { once: true });
   (win as any).readingFlowDashboard = {
     refresh: () => app.refresh()
   };
@@ -364,6 +455,7 @@ function renderHistory(doc: Document, snapshot: StatisticsSnapshot, options: Das
     clearChildren(doc, 'dashboard-recent-progress-body');
     clearChildren(doc, 'dashboard-completion-trend');
     setHidden(doc, 'dashboard-history-range-empty', true);
+    renderActivityDayDetail(doc, null, null, options);
     return;
   }
 
@@ -380,7 +472,13 @@ function renderHistory(doc: Document, snapshot: StatisticsSnapshot, options: Das
       : 'Activity uses retained local-day history. Status-only and reset-only days do not count as reading activity.'
   );
 
-  renderActivityCalendar(doc, history);
+  renderActivityCalendar(doc, history, options);
+  renderActivityDayDetail(
+    doc,
+    options.selectedActivityDay ?? null,
+    options.activityDayDetail ?? null,
+    options
+  );
   renderRecentProgress(doc, history, options);
   renderCompletionTrend(doc, history);
 }
@@ -463,6 +561,21 @@ function formatProgress(progress: number | null): string {
   return progress === null ? '—' : formatPercent(progress);
 }
 
+function formatRecordedLocation(progress: number | null): string {
+  return progress === null ? 'Unknown' : formatPercent(progress);
+}
+
+function formatRecordedAt(timestamp: number | null): string {
+  if (timestamp === null || !Number.isFinite(timestamp)) return 'Unknown time';
+  return new Date(timestamp).toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
 function formatDelta(delta: number | null): string {
   if (delta === null) return 'New';
   if (delta > 0 && delta * 100 < 1) return '+<1%';
@@ -471,7 +584,11 @@ function formatDelta(delta: number | null): string {
   return `${percent > 0 ? '+' : ''}${percent}%`;
 }
 
-function renderActivityCalendar(doc: Document, history: StatisticsSnapshot['history']) {
+function renderActivityCalendar(
+  doc: Document,
+  history: StatisticsSnapshot['history'],
+  options: DashboardRenderOptions
+) {
   const container = doc.getElementById('dashboard-history-calendar');
   if (!container) return;
   container.replaceChildren();
@@ -479,16 +596,109 @@ function renderActivityCalendar(doc: Document, history: StatisticsSnapshot['hist
   const grid = doc.createElement('div');
   grid.className = 'history-calendar-grid';
   for (const day of history.days) {
-    const cell = doc.createElement('span');
+    const selectable = day.activePapers > 0;
+    const cell = doc.createElement(selectable ? 'button' : 'span');
     cell.className = `history-calendar-cell history-activity-${Math.min(day.activePapers, 4)}`;
     cell.setAttribute(
       'aria-label',
       `${day.day}: ${day.activePapers} papers with a progress update, ${day.completedPapers} first completions, ${day.resetPapers} resets`
     );
+    if (selectable) {
+      const selected = options.selectedActivityDay === day.day;
+      (cell as HTMLButtonElement).type = 'button';
+      cell.className += ` history-calendar-selectable${selected ? ' is-selected' : ''}`;
+      cell.setAttribute('aria-pressed', String(selected));
+      cell.addEventListener('click', () => options.onToggleActivityDay?.(day.day));
+    }
     cell.textContent = `${day.day.slice(5)} ${day.activePapers > 0 ? day.activePapers : '·'}`;
     grid.append(cell);
   }
   container.append(grid);
+}
+
+function renderActivityDayDetail(
+  doc: Document,
+  selectedDay: string | null,
+  detail: ActivityDayDetailResult | null,
+  options: DashboardRenderOptions
+) {
+  const panel = doc.getElementById('dashboard-activity-day-detail');
+  const heading = doc.getElementById('dashboard-activity-day-detail-heading');
+  const summary = doc.getElementById('dashboard-activity-day-detail-summary');
+  const empty = doc.getElementById('dashboard-activity-day-detail-empty');
+  const table = doc.getElementById('dashboard-activity-day-detail-table');
+  const body = doc.getElementById('dashboard-activity-day-detail-body');
+  if (!panel || !heading || !summary || !empty || !table || !body) return;
+
+  body.replaceChildren();
+  if (!selectedDay) {
+    panel.hidden = true;
+    summary.textContent = '';
+    empty.hidden = true;
+    table.hidden = true;
+    return;
+  }
+
+  panel.hidden = false;
+  heading.textContent = `Progress updates on ${selectedDay}`;
+  empty.hidden = true;
+  table.hidden = true;
+  if (!detail) {
+    summary.textContent = `Loading progress updates for ${selectedDay}…`;
+    return;
+  }
+  if (detail.state === 'unavailable' || detail.day !== selectedDay) {
+    summary.textContent = 'This day’s details are no longer available. Refresh to load the current snapshot.';
+    return;
+  }
+
+  const total = detail.papers.length;
+  summary.textContent = `Showing ${total} of ${total} papers with a progress update on this date.`;
+  table.hidden = total === 0;
+  empty.hidden = total > 0;
+  if (total === 0) {
+    empty.textContent = 'No matching progress updates are available for this date.';
+    return;
+  }
+
+  for (const paper of detail.papers) {
+    const row = doc.createElement('tr');
+    const paperCell = doc.createElement('td');
+    paperCell.setAttribute('data-label', 'Paper');
+    paperCell.setAttribute('title', paper.title);
+    const title = doc.createElement('span');
+    title.textContent = paper.title;
+    const focus = doc.createElement('button');
+    focus.type = 'button';
+    focus.className = 'recent-progress-focus';
+    focus.textContent = 'Show in Zotero';
+    focus.addEventListener('click', () => options.onFocusActivityDayItem?.(paper.itemID, paper.title));
+    const resume = doc.createElement('button');
+    resume.type = 'button';
+    resume.className = 'recent-progress-resume';
+    resume.textContent = 'Resume';
+    resume.addEventListener('click', () => options.onResumeActivityDayItem?.(paper.itemID, paper.title));
+    const actions = doc.createElement('span');
+    actions.className = 'recent-progress-actions';
+    actions.append(focus, resume);
+    paperCell.append(title, actions);
+    row.append(paperCell);
+
+    const values = [
+      formatRecordedLocation(paper.recordedProgress),
+      STATUS_LABELS[paper.status],
+      formatRecordedAt(paper.lastRecordedAt)
+    ];
+    const labels = ['Recorded location', 'Current status', 'Last recorded update'];
+    values.forEach((value, index) => {
+      const cell = doc.createElement('td');
+      cell.textContent = value;
+      cell.setAttribute('data-label', labels[index]);
+      if (index === 1) cell.className = `recent-progress-status status-${paper.status}`;
+      row.append(cell);
+    });
+    body.append(row);
+  }
 }
 
 function renderCompletionTrend(doc: Document, history: StatisticsSnapshot['history']) {

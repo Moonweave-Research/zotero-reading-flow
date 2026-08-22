@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { DEFAULT_FLOW_DATA } from '../src/flowData';
 import { DashboardApp, renderDashboard } from '../src/dashboard';
 import type { HistoricalSnapshot, StatisticsDataset, StatisticsSnapshot } from '../src/statistics';
@@ -42,6 +43,7 @@ class FakeElement {
 
 class FakeDocument {
   public readonly elements = new Map<string, FakeElement>();
+  public documentElement: FakeElement | null = null;
 
   getElementById(id: string) {
     return this.elements.get(id) ?? null;
@@ -61,7 +63,7 @@ class FakeDocument {
 
 function documentFixture() {
   const doc = new FakeDocument();
-  doc.add('reading-flow-dashboard', 'main');
+  doc.documentElement = doc.add('reading-flow-dashboard', 'main');
   doc.add('dashboard-scope', 'select', 'current-view');
   doc.add('dashboard-dataset', 'select', 'tracked');
   doc.add('dashboard-status-filter', 'select', 'all');
@@ -85,17 +87,24 @@ function documentFixture() {
     'dashboard-recent-progress-empty',
     'dashboard-history-range-empty',
     'dashboard-recent-progress-summary',
-    'dashboard-recent-progress-action-status'
+    'dashboard-recent-progress-action-status',
+    'dashboard-activity-day-detail-heading',
+    'dashboard-activity-day-detail-summary',
+    'dashboard-activity-day-detail-empty',
+    'dashboard-activity-day-action-status'
   ]) doc.add(id);
   for (const id of [
     'dashboard-history-onboarding',
     'dashboard-reading-pulse',
     'dashboard-recent-progress-panel',
-    'dashboard-completion-trend-panel'
+    'dashboard-completion-trend-panel',
+    'dashboard-activity-day-detail'
   ]) doc.add(id, 'section');
   doc.add('dashboard-status-composition');
   doc.add('dashboard-progress-distribution');
   doc.add('dashboard-history-calendar');
+  doc.add('dashboard-activity-day-detail-table', 'table');
+  doc.add('dashboard-activity-day-detail-body', 'tbody');
   doc.add('dashboard-recent-progress', 'table');
   doc.add('dashboard-recent-progress-body', 'tbody');
   doc.add('dashboard-recent-progress-toggle', 'button');
@@ -165,6 +174,32 @@ function findBar(doc: FakeDocument, containerId: string, label: string) {
 
 function flush() {
   return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function packagedDashboardFixture(bridge: any) {
+  const doc = documentFixture();
+  const unloadListeners: Array<() => void> = [];
+  const win = {
+    arguments: [bridge],
+    addEventListener(type: string, listener: () => void) {
+      if (type === 'unload') unloadListeners.push(listener);
+    }
+  };
+  const dashboardBundle = readFileSync('addon/dashboard.js', 'utf8');
+
+  runInNewContext(dashboardBundle, {
+    window: win,
+    document: doc,
+    Date,
+    setTimeout,
+    clearTimeout
+  });
+
+  return {
+    doc,
+    win: win as typeof win & { readingFlowDashboard?: { refresh(): Promise<void> } },
+    close() { unloadListeners.forEach((listener) => listener()); }
+  };
 }
 
 test('renderDashboard keeps current summary honest and uses semantic status colors with text labels', () => {
@@ -315,6 +350,239 @@ test('Resume invokes its row bridge exactly once only after direct activation', 
   await flush();
   assert.deepEqual(resumes, [42]);
   assert.equal(doc.getElementById('dashboard-recent-progress-action-status')?.textContent, 'Opened Chosen paper in the Zotero Reader.');
+});
+
+test('calendar selection projects only its cached day, can clear, and does not resume without a row action', async () => {
+  const doc = documentFixture();
+  const detailRequests: Array<[string, string]> = [];
+  const focuses: Array<number | string> = [];
+  const resumes: Array<number | string> = [];
+  const current = snapshot({
+    snapshotId: 'snapshot-1',
+    history: history({
+      days: [
+        { day: '2026-07-27', activePapers: 2, completedPapers: 0, resetPapers: 0, progressPapers: 2 },
+        { day: '2026-07-28', activePapers: 0, completedPapers: 0, resetPapers: 1, progressPapers: 0 }
+      ]
+    })
+  });
+  const app = new DashboardApp(doc as any, {
+    async getSnapshot() { return current; },
+    async getActivityDayDetail(snapshotId, day) {
+      detailRequests.push([snapshotId, day]);
+      return {
+        snapshotId,
+        day,
+        state: 'available' as const,
+        papers: [
+          { itemID: 2, title: 'Alpha', recordedProgress: null, status: 'skimmed' as const, lastRecordedAt: null },
+          { itemID: 1, title: 'Zeta', recordedProgress: 0.4, status: 'reading' as const, lastRecordedAt: 0 }
+        ]
+      };
+    },
+    async focusItem(id) { focuses.push(id); return true; },
+    async resumeItem(id) { resumes.push(id); return true; }
+  }, () => 0);
+
+  app.start();
+  await flush();
+  const calendar = doc.getElementById('dashboard-history-calendar')!;
+  const firstDay = calendar.children[0].children[0];
+  const resetOnlyDay = calendar.children[0].children[1];
+  assert.equal(firstDay.tagName, 'button');
+  assert.equal(firstDay.attributes['aria-pressed'], 'false');
+  assert.equal(resetOnlyDay.tagName, 'span');
+
+  firstDay.listeners.click[0]();
+  await flush();
+  assert.deepEqual(detailRequests, [['snapshot-1', '2026-07-27']]);
+  assert.deepEqual(resumes, []);
+  assert.equal(doc.getElementById('dashboard-activity-day-detail')?.hidden, false);
+  assert.equal(doc.getElementById('dashboard-activity-day-detail-heading')?.textContent, 'Progress updates on 2026-07-27');
+  assert.equal(doc.getElementById('dashboard-activity-day-detail-summary')?.textContent, 'Showing 2 of 2 papers with a progress update on this date.');
+  assert.equal(doc.getElementById('dashboard-activity-day-detail-body')?.children.length, 2);
+  assert.equal(doc.getElementById('dashboard-activity-day-detail-body')?.children[0].children[1].textContent, 'Unknown');
+
+  const actions = doc.getElementById('dashboard-activity-day-detail-body')!.children[0].children[0].children[1];
+  actions.children[0].listeners.click[0]();
+  await flush();
+  assert.deepEqual(focuses, [2]);
+  assert.deepEqual(resumes, []);
+
+  actions.children[1].listeners.click[0]();
+  await flush();
+  assert.deepEqual(resumes, [2]);
+  assert.equal(doc.getElementById('dashboard-activity-day-action-status')?.textContent, 'Opened Alpha in the Zotero Reader.');
+
+  doc.getElementById('dashboard-history-calendar')!.children[0].children[0].listeners.click[0]();
+  assert.equal(doc.getElementById('dashboard-activity-day-detail')?.hidden, true);
+  assert.deepEqual(detailRequests, [['snapshot-1', '2026-07-27']]);
+});
+
+test('the packaged dashboard bundle loads an activity detail, clears it, and releases its cache across close/reopen', async () => {
+  let snapshotRequests = 0;
+  const detailRequests: Array<[string, string]> = [];
+  const focuses: Array<number | string> = [];
+  const resumes: Array<number | string> = [];
+  let discardedCaches = 0;
+  const current = snapshot({
+    snapshotId: 'packaged-snapshot',
+    history: history({
+      days: [{ day: '2026-07-27', activePapers: 2, completedPapers: 0, resetPapers: 0, progressPapers: 2 }]
+    })
+  });
+  const bridge = {
+    async getSnapshot() { snapshotRequests += 1; return current; },
+    async getActivityDayDetail(snapshotId: string, day: string) {
+      detailRequests.push([snapshotId, day]);
+      return {
+        snapshotId,
+        day,
+        state: 'available' as const,
+        papers: [
+          { itemID: 4, title: 'Selected paper', recordedProgress: 0.5, status: 'reading' as const, lastRecordedAt: 0 },
+          { itemID: 9, title: 'Unknown location', recordedProgress: null, status: 'skimmed' as const, lastRecordedAt: null }
+        ]
+      };
+    },
+    async focusItem(id: number | string) { focuses.push(id); return true; },
+    async resumeItem(id: number | string) { resumes.push(id); return true; },
+    discardActivityDayDetailCache() { discardedCaches += 1; }
+  };
+
+  const first = packagedDashboardFixture(bridge);
+  await flush();
+  assert.ok(first.win.readingFlowDashboard);
+  assert.equal(first.doc.getElementById('dashboard-papers')?.textContent, '10');
+  assert.equal(snapshotRequests, 1);
+  assert.deepEqual(focuses, []);
+  assert.deepEqual(resumes, []);
+
+  const day = first.doc.getElementById('dashboard-history-calendar')!.children[0].children[0];
+  assert.equal(day.tagName, 'button');
+  day.listeners.click[0]();
+  await flush();
+
+  assert.deepEqual(detailRequests, [['packaged-snapshot', '2026-07-27']]);
+  assert.equal(first.doc.getElementById('dashboard-activity-day-detail-heading')?.textContent, 'Progress updates on 2026-07-27');
+  assert.equal(first.doc.getElementById('dashboard-activity-day-detail-summary')?.textContent, 'Showing 2 of 2 papers with a progress update on this date.');
+  const rows = first.doc.getElementById('dashboard-activity-day-detail-body')!.children;
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].children[0].children[0].textContent, 'Selected paper');
+  assert.equal(rows[1].children[1].textContent, 'Unknown');
+  assert.deepEqual(rows[0].children[0].children[1].children.map((button) => button.textContent), ['Show in Zotero', 'Resume']);
+  assert.equal(snapshotRequests, 1);
+  assert.deepEqual(focuses, []);
+  assert.deepEqual(resumes, []);
+
+  day.listeners.click[0]();
+  assert.equal(first.doc.getElementById('dashboard-activity-day-detail')?.hidden, true);
+  assert.deepEqual(detailRequests, [['packaged-snapshot', '2026-07-27']]);
+  assert.equal(snapshotRequests, 1);
+  assert.deepEqual(focuses, []);
+  assert.deepEqual(resumes, []);
+
+  first.close();
+  assert.equal(discardedCaches, 1);
+  assert.equal(snapshotRequests, 1);
+  assert.deepEqual(focuses, []);
+  assert.deepEqual(resumes, []);
+
+  const reopened = packagedDashboardFixture(bridge);
+  await flush();
+  assert.ok(reopened.win.readingFlowDashboard);
+  assert.equal(snapshotRequests, 2);
+  assert.equal(reopened.doc.getElementById('dashboard-activity-day-detail')?.hidden, true);
+  assert.deepEqual(focuses, []);
+  assert.deepEqual(resumes, []);
+});
+
+test('an unavailable activity-day cache asks for Refresh and never turns into a new scope query', async () => {
+  const doc = documentFixture();
+  const detailRequests: Array<[string, string]> = [];
+  const current = snapshot({
+    snapshotId: 'evicted-snapshot',
+    history: history({
+      days: [{ day: '2026-07-28', activePapers: 1, completedPapers: 0, resetPapers: 0, progressPapers: 1 }]
+    })
+  });
+  const app = new DashboardApp(doc as any, {
+    async getSnapshot() { return current; },
+    async getActivityDayDetail(snapshotId, day) {
+      detailRequests.push([snapshotId, day]);
+      return { snapshotId, day, state: 'unavailable' as const };
+    }
+  }, () => 0);
+
+  app.start();
+  await flush();
+  doc.getElementById('dashboard-history-calendar')!.children[0].children[0].listeners.click[0]();
+  await flush();
+
+  assert.deepEqual(detailRequests, [['evicted-snapshot', '2026-07-28']]);
+  assert.match(
+    doc.getElementById('dashboard-activity-day-detail-summary')?.textContent ?? '',
+    /Refresh to load the current snapshot/
+  );
+  assert.equal(doc.getElementById('dashboard-activity-day-detail-table')?.hidden, true);
+});
+
+test('a refreshed snapshot clears a pending calendar detail and uses only the replacement snapshot ID', async () => {
+  const doc = documentFixture();
+  const detailRequests: Array<[string, string]> = [];
+  let resolveFirstDetail: ((value: {
+    snapshotId: string;
+    day: string;
+    state: 'available';
+    papers: [];
+  }) => void) | null = null;
+  const first = snapshot({
+    snapshotId: 'snapshot-before-refresh',
+    history: history({
+      days: [{ day: '2026-07-28', activePapers: 1, completedPapers: 0, resetPapers: 0, progressPapers: 1 }]
+    })
+  });
+  const replacement = snapshot({
+    snapshotId: 'snapshot-after-refresh',
+    history: history({
+      days: [{ day: '2026-07-28', activePapers: 1, completedPapers: 0, resetPapers: 0, progressPapers: 1 }]
+    })
+  });
+  let current = first;
+  const app = new DashboardApp(doc as any, {
+    async getSnapshot() { return current; },
+    getActivityDayDetail(snapshotId, day) {
+      detailRequests.push([snapshotId, day]);
+      if (snapshotId === first.snapshotId) {
+        return new Promise((resolve) => { resolveFirstDetail = resolve; });
+      }
+      return Promise.resolve({ snapshotId, day, state: 'available' as const, papers: [] });
+    }
+  }, () => 0);
+
+  app.start();
+  await flush();
+  doc.getElementById('dashboard-history-calendar')!.children[0].children[0].listeners.click[0]();
+  await flush();
+  current = replacement;
+  await app.refresh();
+  assert.equal(doc.getElementById('dashboard-activity-day-detail')?.hidden, true);
+
+  resolveFirstDetail?.({
+    snapshotId: 'snapshot-before-refresh',
+    day: '2026-07-28',
+    state: 'available',
+    papers: []
+  });
+  await flush();
+  assert.equal(doc.getElementById('dashboard-activity-day-detail')?.hidden, true);
+
+  doc.getElementById('dashboard-history-calendar')!.children[0].children[0].listeners.click[0]();
+  await flush();
+  assert.deepEqual(detailRequests, [
+    ['snapshot-before-refresh', '2026-07-28'],
+    ['snapshot-after-refresh', '2026-07-28']
+  ]);
 });
 
 test('unavailable and failed Resume outcomes keep the row and explain the result', async () => {
@@ -620,12 +888,14 @@ test('XHTML and CSS preserve native control order, table semantics, visible focu
   assert.ok(scopeIndex < datasetIndex && datasetIndex < statusIndex && statusIndex < rangeIndex && rangeIndex < refreshIndex);
   assert.match(xhtml, /<label for="dashboard-dataset"/);
   assert.match(xhtml, /<table id="dashboard-recent-progress">[\s\S]*<thead>[\s\S]*<th scope="col">Paper<\/th>[\s\S]*<th scope="col">Current progress<\/th>[\s\S]*<tbody id="dashboard-recent-progress-body">/);
+  assert.match(xhtml, /<section id="dashboard-activity-day-detail"[\s\S]*aria-labelledby="dashboard-activity-day-detail-heading"[\s\S]*<table id="dashboard-activity-day-detail-table">[\s\S]*<tbody id="dashboard-activity-day-detail-body">/);
   assert.match(xhtml, /id="dashboard-recent-progress-toggle"/);
   assert.match(xhtml, /id="dashboard-history-range-empty"/);
   assert.doesNotMatch(xhtml, /Retained progress trajectory|dashboard-progress-trajectory/);
   assert.doesNotMatch(xhtml, /<h2[^>]*>Reading history<\/h2>/);
   assert.equal((xhtml.match(/reading-flow-dashboard-history-note/g) ?? []).length, 1);
   assert.match(css, /:focus-visible/);
+  assert.match(css, /history-calendar-selectable/);
   assert.match(css, /@media \(max-width: 42rem\)/);
   assert.match(css, /grid-template-areas:[\s\S]*"label value"[\s\S]*"meter meter"/);
   assert.match(css, /#dashboard-recent-progress td::before/);

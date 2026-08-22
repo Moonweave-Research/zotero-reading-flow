@@ -93,6 +93,24 @@
         <div class="pulse-calendar" aria-labelledby="activity-calendar-heading">
           <h3 id="activity-calendar-heading" data-l10n-id="reading-flow-dashboard-activity-calendar">Activity calendar</h3>
           <div id="dashboard-history-calendar"></div>
+          <section id="dashboard-activity-day-detail" class="dashboard-activity-day-detail" aria-labelledby="dashboard-activity-day-detail-heading" hidden="hidden">
+            <h3 id="dashboard-activity-day-detail-heading" data-l10n-id="reading-flow-dashboard-activity-day-detail">Progress updates</h3>
+            <p id="dashboard-activity-day-detail-summary" class="dashboard-history-range-note" aria-live="polite"></p>
+            <p id="dashboard-activity-day-detail-empty" class="dashboard-empty" hidden="hidden"></p>
+            <table id="dashboard-activity-day-detail-table">
+              <caption class="visually-hidden" data-l10n-id="reading-flow-dashboard-activity-day-detail-caption">Papers with a recorded progress update on the selected date, plus user-selected actions</caption>
+              <thead>
+                <tr>
+                  <th scope="col" data-l10n-id="reading-flow-dashboard-paper">Paper</th>
+                  <th scope="col" data-l10n-id="reading-flow-dashboard-recorded-location">Recorded location</th>
+                  <th scope="col" data-l10n-id="reading-flow-dashboard-current-status">Current status</th>
+                  <th scope="col" data-l10n-id="reading-flow-dashboard-last-recorded-update">Last recorded update</th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-activity-day-detail-body"></tbody>
+            </table>
+            <p id="dashboard-activity-day-action-status" class="dashboard-action-status" aria-live="polite"></p>
+          </section>
         </div>
       </div>
     </section>

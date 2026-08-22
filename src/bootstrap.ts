@@ -7,11 +7,18 @@ import { Logger } from './Logger';
 import { ReadingFlowMenuManager } from './menuManager';
 import { DashboardManager } from './dashboardManager';
 import {
+  calculateActivityDayDetail,
   calculateStatisticsSnapshot,
+  selectStatisticsPapers,
   type HistoryRange,
-  type StatisticsDataset
+  type StatisticsDataset,
+  type StatisticsPaper
 } from './statistics';
-import type { DashboardBridge, DashboardStatusFilter } from './dashboard';
+import type {
+  ActivityDayDetailResult,
+  DashboardBridge,
+  DashboardStatusFilter
+} from './dashboard';
 import { createStatisticsScopeAdapter } from './statisticsScope';
 import { ResumeReader } from './resumeReader';
 
@@ -81,6 +88,18 @@ class Bootstrap {
       const scopeAdapter = createStatisticsScopeAdapter();
       const dataStore = this.dataStore!;
       const resumeReader = new ResumeReader(dataStore);
+      let nextSnapshotID = 0;
+      let activityDayCache: {
+        snapshotId: string;
+        papers: StatisticsPaper[];
+        query: {
+          scope: 'current-view' | 'entire-library';
+          historyRange: HistoryRange;
+          statusFilter: DashboardStatusFilter;
+          dataset: StatisticsDataset;
+        };
+        activeDays: Set<string>;
+      } | null = null;
       const dashboardBridge: DashboardBridge = {
           async getSnapshot(
             scope,
@@ -89,16 +108,48 @@ class Bootstrap {
             dataset: StatisticsDataset = 'tracked'
           ) {
             const items = await scopeAdapter.getItems(scope);
-            return calculateStatisticsSnapshot(items.map((item) => ({
+            const papers = items.map((item) => ({
               id: item.id,
               title: item.getField?.('title') ?? undefined,
               tracked: dataStore.hasReadingFlowData(item),
               flowData: dataStore.getData(item)
-            })), {
+            }));
+            const snapshot = calculateStatisticsSnapshot(papers, {
               dataset,
               historyRange,
               statusFilter: statusFilter === 'all' ? undefined : statusFilter
             });
+            const selectedPapers = selectStatisticsPapers(papers, {
+              dataset,
+              statusFilter: statusFilter === 'all' ? undefined : statusFilter
+            });
+            const snapshotId = `reading-flow-${Date.now().toString(36)}-${++nextSnapshotID}`;
+            activityDayCache = {
+              snapshotId,
+              papers: selectedPapers,
+              query: { scope, historyRange, statusFilter, dataset },
+              activeDays: new Set(
+                snapshot.history.days
+                  .filter((day) => day.activePapers > 0)
+                  .map((day) => day.day)
+              )
+            };
+            return { ...snapshot, snapshotId };
+          },
+          async getActivityDayDetail(snapshotId, day): Promise<ActivityDayDetailResult> {
+            const cache = activityDayCache;
+            if (!cache || cache.snapshotId !== snapshotId || !cache.activeDays.has(day)) {
+              return { snapshotId, day, state: 'unavailable' };
+            }
+            return {
+              snapshotId,
+              day,
+              state: 'available',
+              papers: calculateActivityDayDetail(cache.papers, day)
+            };
+          },
+          discardActivityDayDetailCache() {
+            activityDayCache = null;
           },
           async focusItem(id) {
             const itemID = typeof id === 'number' ? id : Number(id);

@@ -43,6 +43,7 @@ Best for **literature researchers, thesis students, and anyone who manages many 
 - **Handle messy PDFs.** Works with items that have multiple attachments under one parent record.
 - **Resume where you left off.** Reopen the tracked PDF near its saved page from the Reading Flow menu.
 - **Review your reading history.** Open **Tools → Reading Statistics** to see current-scope status, progress, remaining pages, activity days, first completions, and retained per-paper changes.
+- **Inspect an active day.** Select a highlighted calendar date to see every paper with a recorded progress update that day; each action remains your choice.
 - **Return from the dashboard.** Choose a paper in `Recent Progress` and click `Resume` to use the same saved-page Reader path; the dashboard shows the eight most recent rows first and can expand to all matching papers.
 
 ## Quick demo
@@ -79,6 +80,7 @@ https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/downlo
 - Keep `Reading set (tracked)` for the intentional Reading Flow set, or choose `All papers (inventory)` for a broader inventory. Status and history-range filters refine that same paper set.
 - You can also right-click a paper and choose **Reading Flow → View Current View Statistics**. Both entries reuse the same modeless dashboard window.
 - In `Recent Progress`, use `Show in Zotero` to select a paper or `Resume` to reopen that selected paper in the Zotero Reader. Resume is always user-invoked; it does not choose a next paper automatically.
+- Select a highlighted date in the activity calendar to inspect the matching papers. The detail respects the current scope, dataset, status filter, and range; use `Show in Zotero` or `Resume` only when you choose a row action.
 
 If the columns are hidden later (e.g. after a layout change), open the library column menu and re-enable `Progress`, `Status`, and `Last Read`.
 
@@ -90,7 +92,7 @@ If the columns are hidden later (e.g. after a layout change), open the library c
 | **Status** | Reading state (`To Read`, `Reading`, `Skimmed`, `Read`, `Important`), kept in sync with library changes. |
 | **Last Read** | Human-friendly timestamp (`now`, `5m`, `3h`, `2d`, or a date). |
 | **Reading Flow menu** | Fast status updates, **Resume Reading**, and **Reset Reading Progress**. |
-| **Reading Statistics** | Modeless, read-only dashboard for the tracked reading set or all papers, with scope metrics, status/progress distribution, remaining-page coverage, bounded history, and user-selected Recent Progress actions. |
+| **Reading Statistics** | Modeless, read-only dashboard for the tracked reading set or all papers, with scope metrics, status/progress distribution, remaining-page coverage, bounded history, active-day drill-down, and user-selected paper actions. |
 | **Auto behavior** | First-run columns are enabled, reader page totals are preferred when available, and menu labels are robust across Zotero UI paths. |
 
 ## Compatibility

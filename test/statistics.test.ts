@@ -2,8 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_FLOW_DATA, FlowData, ReadingStatus } from '../src/flowData';
 import {
+  calculateActivityDayDetail,
   calculateHistorySnapshot,
   calculateStatisticsSnapshot,
+  selectStatisticsPapers,
   StatisticsPaper
 } from '../src/statistics';
 
@@ -277,6 +279,129 @@ test('history coverage excludes status-only and reset-only records but keeps exp
   assert.equal(snapshot.coverage.papersWithHistory, 1);
 });
 
+test('activity day detail keeps every real progress update, excludes status/reset-only records, and preserves unknown locations', () => {
+  const papers: StatisticsPaper[] = [
+    {
+      ...paper(1, {
+        s: 'reading',
+        p: { a: 0.4 },
+        pageCount: { a: 100 },
+        history: {
+          startedAt: localTimestamp('2026-07-27'),
+          completedAt: null,
+          activeDaysTotal: 1,
+          days: {
+            '2026-07-28': {
+              activity: true,
+              lastReadAt: localTimestamp('2026-07-28', 9),
+              progress: { a: 0.4 },
+              status: 'reading',
+              reset: false,
+              completed: false
+            }
+          }
+        }
+      }),
+      title: 'Zeta paper'
+    },
+    {
+      ...paper(2, {
+        s: 'skimmed',
+        p: { b: 12 },
+        history: {
+          startedAt: localTimestamp('2026-07-27'),
+          completedAt: null,
+          activeDaysTotal: 1,
+          days: {
+            '2026-07-28': {
+              activity: true,
+              lastReadAt: null,
+              progress: { b: 12 },
+              status: 'skimmed',
+              reset: false,
+              completed: false
+            }
+          }
+        }
+      }),
+      title: 'Alpha paper'
+    },
+    {
+      ...paper(3, {
+        history: {
+          startedAt: localTimestamp('2026-07-27'),
+          completedAt: null,
+          activeDaysTotal: 0,
+          days: {
+            '2026-07-28': {
+              activity: false,
+              lastReadAt: null,
+              progress: { c: 0.6 },
+              status: 'reading',
+              reset: false,
+              completed: false
+            }
+          }
+        }
+      }),
+      title: 'Status-only paper'
+    },
+    {
+      ...paper(4, {
+        history: {
+          startedAt: localTimestamp('2026-07-27'),
+          completedAt: null,
+          activeDaysTotal: 0,
+          days: {
+            '2026-07-28': {
+              activity: false,
+              lastReadAt: null,
+              progress: {},
+              status: 'to-read',
+              reset: true,
+              completed: false
+            }
+          }
+        }
+      }),
+      title: 'Reset-only paper'
+    }
+  ];
+
+  assert.deepEqual(calculateActivityDayDetail(papers, '2026-07-28'), [
+    {
+      itemID: 2,
+      title: 'Alpha paper',
+      recordedProgress: null,
+      status: 'skimmed',
+      lastRecordedAt: null
+    },
+    {
+      itemID: 1,
+      title: 'Zeta paper',
+      recordedProgress: 0.4,
+      status: 'reading',
+      lastRecordedAt: localTimestamp('2026-07-28', 9)
+    }
+  ]);
+  assert.deepEqual(calculateActivityDayDetail(papers, '2026-02-30'), []);
+
+  const daySnapshot = calculateHistorySnapshot(papers, '7d', localTimestamp('2026-07-28'));
+  assert.deepEqual(daySnapshot.days.at(-1), {
+    day: '2026-07-28',
+    activePapers: 2,
+    completedPapers: 0,
+    resetPapers: 1,
+    progressPapers: 2
+  });
+  assert.deepEqual(daySnapshot.rangeSummary, {
+    activeDays: 1,
+    papersWithProgressActivity: 2,
+    firstCompletions: 0
+  });
+  assert.deepEqual(daySnapshot.recentProgress.map((entry) => entry.id), [2, 1]);
+});
+
 test('Recent Progress preserves every matching paper for the UI to disclose or expand', () => {
   const papers = Array.from({ length: 9 }, (_, index) => paper(index + 1, {
     history: {
@@ -436,4 +561,21 @@ test('tracked and all datasets use the same paper set for current metrics and hi
   assert.equal(all.totalPapers, 2);
   assert.equal(all.history.coverage.totalPapers, 2);
   assert.equal(all.history.rangeSummary.papersWithProgressActivity, 2);
+});
+
+test('cacheable paper selection matches the dashboard dataset and status filters', () => {
+  const papers: StatisticsPaper[] = [
+    { ...paper(1, { s: 'reading' }), tracked: true },
+    { ...paper(2, { s: 'skimmed' }), tracked: true },
+    { ...paper(3, { s: 'reading' }), tracked: false }
+  ];
+
+  assert.deepEqual(
+    selectStatisticsPapers(papers, { dataset: 'tracked', statusFilter: 'reading' }).map((entry) => entry.id),
+    [1]
+  );
+  assert.deepEqual(
+    selectStatisticsPapers(papers, { dataset: 'all', statusFilter: 'reading' }).map((entry) => entry.id),
+    [1, 3]
+  );
 });
