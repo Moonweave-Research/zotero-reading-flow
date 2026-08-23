@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { DEFAULT_FLOW_DATA } from '../src/flowData';
-import { DashboardApp, renderDashboard } from '../src/dashboard';
+import { DashboardApp, renderDashboard, startDashboard } from '../src/dashboard';
 import type { HistoricalSnapshot, StatisticsDataset, StatisticsSnapshot } from '../src/statistics';
 
 class FakeElement {
@@ -495,6 +495,43 @@ test('the packaged dashboard bundle loads an activity detail, clears it, and rel
   assert.equal(reopened.doc.getElementById('dashboard-activity-day-detail')?.hidden, true);
   assert.deepEqual(focuses, []);
   assert.deepEqual(resumes, []);
+});
+
+test('startDashboard begins cache ownership before app start and binds that exact token to once-only unload', async () => {
+  const doc = documentFixture();
+  const lifecycleToken = {} as any;
+  const events: string[] = [];
+  let unload: (() => void) | null = null;
+  let unloadOptions: unknown;
+  const bridge = {
+    beginActivityDayDetailCacheLifecycle() {
+      events.push('begin');
+      return lifecycleToken;
+    },
+    async getSnapshot() {
+      events.push('snapshot');
+      return snapshot();
+    },
+    discardActivityDayDetailCache(token?: unknown) {
+      assert.equal(token, lifecycleToken);
+      events.push('discard');
+    }
+  };
+  const win = {
+    arguments: [bridge],
+    addEventListener(type: string, listener: () => void, options?: unknown) {
+      if (type === 'unload') {
+        unload = listener;
+        unloadOptions = options;
+      }
+    }
+  };
+
+  startDashboard(win as any, doc as any);
+  assert.deepEqual(events, ['begin', 'snapshot']);
+  assert.deepEqual(unloadOptions, { once: true });
+  unload?.();
+  assert.deepEqual(events, ['begin', 'snapshot', 'discard']);
 });
 
 test('an unavailable activity-day cache asks for Refresh and never turns into a new scope query', async () => {

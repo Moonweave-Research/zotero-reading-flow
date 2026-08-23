@@ -117,19 +117,19 @@ export class ReaderTracker {
           return;
         }
         if (parentItem) {
-          if (this.wasParentResetAfter(parentId, scheduledAt)) {
-            Logger.log(`save skipped: parent=${parentId} was reset after page change`);
-            return;
-          }
-          await this.dataStore.recordProgress(parentItem, {
+          const saved = await this.dataStore.recordProgressUnlessResetAfter(parentItem, {
             attachmentId,
             progress,
             pageCount,
             lastPage,
-            at: Date.now()
-          });
+            at: scheduledAt
+          }, scheduledAt);
           if (this.shouldSkipSave(generation)) {
             Logger.log('post-save refresh skipped: tracker inactive or Zotero shutting down');
+            return;
+          }
+          if (!saved) {
+            Logger.log(`save skipped: parent=${parentId} progress was not persisted`);
             return;
           }
           Zotero.ItemTreeManager.refreshColumns?.();
@@ -150,11 +150,6 @@ export class ReaderTracker {
 
   private shouldSkipSave(generation: number): boolean {
     return !this.active || generation !== this.generation || this.isZoteroShuttingDown();
-  }
-
-  private wasParentResetAfter(parentId: number, timestamp: number): boolean {
-    const resetAt = this.dataStore.getResetTimestamp(parentId);
-    return typeof resetAt === 'number' && resetAt > timestamp;
   }
 
   private normalizeProgress(progress: number): number {
