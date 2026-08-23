@@ -104,15 +104,37 @@ test('compact and icons render full accessible text while changing only composit
   assert.equal(icons.children.length, 1);
 });
 
-test('compact unknown progress renders an honest micro-progress state', async () => {
+test('composite status icons use the approved eye-free mapping in both densities', async () => {
+  const expected = {
+    'to-read': '📙', reading: '📖', skimmed: '📘', read: '📗', important: '⭐'
+  } as const;
+  for (const [status, icon] of Object.entries(expected)) {
+    const zotero = setupZotero('compact');
+    const manager = new ColumnManager(dataStoreFor({ s: status, p: { a: 0.42 }, lastReadAt: 1700000000000, lastAttachmentId: 'a' }));
+    await manager.register();
+    const column = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowDisplay');
+    const compact = column.renderCell(0, column.dataProvider({ id: 8, isRegularItem: () => true }), {}, false, fakeDocument());
+    assert.equal(compact.children[0].textContent, icon);
+    assert.doesNotMatch(compact.children[0].textContent, /👁|👀/u);
+    (globalThis as any).Zotero.Prefs.get = () => 'icons';
+    const icons = column.renderCell(0, column.dataProvider({ id: 8, isRegularItem: () => true }), {}, false, fakeDocument());
+    assert.equal(icons.children[0].textContent, icon);
+    assert.equal(icons.children.length, 1);
+    assert.equal(icons.title, icons['aria-label']);
+  }
+});
+
+test('compact never-read To Read state renders one Not started phrase without unknown text', async () => {
   const zotero = setupZotero('compact');
   const manager = new ColumnManager(dataStoreFor({ s: 'to-read', p: {}, lastReadAt: null }));
   await manager.register();
   const column = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowDisplay');
   const cell = column.renderCell(0, column.dataProvider({ id: 8, isRegularItem: () => true }), {}, false, fakeDocument());
   assert.equal(cell.children.length, 3);
-  assert.equal(cell.children[1]['data-progress'], 'unknown');
-  assert.match(cell.children[1].textContent, /unknown/i);
+  assert.equal(cell.children.filter((child: any) => child.textContent === 'Not started').length, 1);
+  assert.equal(cell['aria-label'], 'To Read, not started, never read');
+  assert.equal(cell.title, 'To Read, not started, never read');
+  assert.doesNotMatch(JSON.stringify(cell), /unknown/i);
 });
 
 test('register initializes missing density to compact without layout writes', async () => {
@@ -145,14 +167,15 @@ test('preserves Detailed renderer presentation independently of composite densit
   assert.ok(lastReadCell.textContent);
 });
 
-test('unknown and never-read values are honest and accessible', async () => {
+test('other absent-progress states use plain non-technical wording without duplicate text', async () => {
   const zotero = setupZotero('compact');
-  const manager = new ColumnManager(dataStoreFor({ s: null, p: {}, lastReadAt: null }));
+  const manager = new ColumnManager(dataStoreFor({ s: 'reading', p: {}, lastReadAt: 1700000000000 }));
   await manager.register();
   const column = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowDisplay');
-  const cell = column.renderCell(0, column.dataProvider({}), {}, false, fakeDocument());
-  assert.match(cell['aria-label'], /To Read, progress unknown, never read/);
-  assert.match(JSON.stringify(cell), /unknown/);
+  const cell = column.renderCell(0, column.dataProvider({ id: 9, isRegularItem: () => true }), {}, false, fakeDocument());
+  assert.match(cell['aria-label'], /^Reading, no progress recorded, last read /);
+  assert.equal(cell.children.filter((child: any) => /No progress recorded/.test(child.textContent)).length, 1);
+  assert.doesNotMatch(JSON.stringify(cell), /unknown/i);
 });
 
 test('data-provider failures use the same never-read-last native sort class', async () => {

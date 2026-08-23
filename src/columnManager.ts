@@ -32,7 +32,7 @@ const STATUS_COLORS: Record<ReadingStatus, string> = {
   important: '#dc2626'
 };
 const STATUS_SYMBOLS: Record<ReadingStatus, string> = {
-  'to-read': '○', reading: '◐', skimmed: '◑', read: '●', important: '★'
+  'to-read': '📙', reading: '📖', skimmed: '📘', read: '📗', important: '⭐'
 };
 const BASE_CELL_STYLE = 'display:flex;align-items:center;width:100%;max-width:100%;min-width:0;height:100%;padding:0 6px;box-sizing:border-box;overflow:hidden;';
 
@@ -64,11 +64,14 @@ function nativeSortKey(value: CompositeValue): string {
 }
 
 function progressText(progress: number | null): string {
-  if (progress === null || !Number.isFinite(progress) || progress <= 0) return 'progress unknown';
+  if (progress === null || !Number.isFinite(progress) || progress <= 0) return 'no progress recorded';
   return progress > 1 ? `page ${Math.round(progress)}` : `${Math.round(progress * 100)}% read`;
 }
 
 function accessibleText(value: CompositeValue): string {
+  if (value.status === 'to-read' && progressText(value.progress) === 'no progress recorded' && !value.lastReadAt) {
+    return 'To Read, not started, never read';
+  }
   const lastRead = value.lastReadAt && value.lastReadAt > 0
     ? `last read ${formatRelativeDate(value.lastReadAt)}`
     : 'never read';
@@ -189,14 +192,19 @@ export class ColumnManager {
       const percent = numericProgress ? Math.round(value.progress as number * 100) : 0;
       microProgress.className = 'reading-flow-micro-progress';
       microProgress.setAttribute('aria-hidden', 'true');
-      microProgress.setAttribute('data-progress', numericProgress ? String(percent) : 'unknown');
-      microProgress.textContent = numericProgress ? '' : 'unknown';
+      microProgress.setAttribute('data-progress', numericProgress ? String(percent) : 'none');
+      microProgress.textContent = numericProgress ? '' : '—';
       microProgress.style.cssText = numericProgress
         ? `display:block;width:24px;height:4px;background:linear-gradient(to right,currentColor ${percent}%,rgba(127,127,127,.25) ${percent}%);border-radius:2px;flex:0 0 24px;`
-        : 'display:flex;align-items:center;justify-content:center;width:24px;height:8px;color:currentColor;opacity:.7;font-size:9px;line-height:1;flex:0 0 24px;';
+        : 'display:flex;align-items:center;justify-content:center;width:24px;height:8px;color:currentColor;opacity:.55;font-size:9px;line-height:1;flex:0 0 24px;';
       cell.appendChild(microProgress);
       const details = doc.createElement('span');
-      details.textContent = `${progressText(value.progress)} · ${value.lastReadAt ? formatRelativeDate(value.lastReadAt) : 'never'}`;
+      const progress = progressText(value.progress);
+      const notStarted = value.status === 'to-read' && progress === 'no progress recorded' && !value.lastReadAt;
+      const visualProgress = progress === 'no progress recorded' ? 'No progress recorded' : progress;
+      details.textContent = notStarted
+        ? 'Not started'
+        : `${visualProgress} · ${value.lastReadAt ? formatRelativeDate(value.lastReadAt) : 'never read'}`;
       details.setAttribute('aria-hidden', 'true');
       details.style.cssText = 'min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;';
       cell.appendChild(details);
