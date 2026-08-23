@@ -61,7 +61,7 @@ After publishing the release, verify these URLs in a browser or with `curl -I`:
 
 ```bash
 curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/updates.json
-curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v1.3.1/zotero-reading-flow.xpi
+curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v1.3.2/zotero-reading-flow.xpi
 ```
 
 Both should return a redirect or success response rather than `404`.
@@ -73,17 +73,21 @@ Use a clean or disposable Zotero profile when possible.
 1. Install `zotero-reading-flow.xpi`.
 2. Restart Zotero.
 3. Confirm the add-on appears as enabled.
-4. Enable the `Progress`, `Status`, and `Last Read` columns.
-5. Open a PDF attachment.
-6. Change pages and wait at least 5 seconds.
-7. Return to the library item tree and confirm progress appears.
-8. Right-click a regular item and confirm the `Reading Flow` menu appears.
-9. Open **Tools → Reading Statistics** and confirm `Current View`, `Entire Library`, `Reading set (tracked)`, `All papers (inventory)`, status, history range, and Refresh work.
-10. Open the dashboard from the item context menu and confirm it focuses the same window; close it and confirm it can reopen.
-11. Select an active calendar date and confirm its detail lists only matching papers from the displayed scope, dataset, status filter, and range; clear it by selecting the same date again.
-12. Select a Recent Progress or calendar-detail row and confirm `Show in Zotero` selects it while `Resume` opens that paper through the saved-page Reader path.
-13. Mark the item as `Read`, then reset progress.
-14. Quit Zotero and confirm no Reading Flow bootstrap error appears in the debug log.
+4. Confirm the existing `Progress`, `Status`, and `Last Read` layout remains unchanged.
+5. Use Zotero's native column chooser to enable the optional `Reading Flow` column, then show and hide it again without changing the existing columns.
+6. In **Settings → Zotero Reading Flow**, switch **Reading Flow column density** between **Compact** and **Icons** and confirm only that column's contents change.
+7. Confirm Compact shows the correct status icon with progress/date, Icons shows only the icon, and a never-read `To Read` item says `Not started` in Compact mode.
+8. Confirm tooltip/accessibility text retains status, progress, and last-read meaning, and the optional column sorts recently read items first with never-read items last.
+9. Open a PDF attachment.
+10. Change pages and wait at least 5 seconds.
+11. Return to the library item tree and confirm progress appears.
+12. Right-click a regular item and confirm the `Reading Flow` menu appears.
+13. Open **Tools → Reading Statistics** and confirm `Current View`, `Entire Library`, `Reading set (tracked)`, `All papers (inventory)`, status, history range, and Refresh work.
+14. Open the dashboard from the item context menu and confirm it focuses the same window; close it and confirm it can reopen.
+15. Select an active calendar date and confirm its detail lists only matching papers from the displayed scope, dataset, status filter, and range; clear it by selecting the same date again.
+16. Select a Recent Progress or calendar-detail row and confirm `Show in Zotero` selects it while `Resume` opens that paper through the saved-page Reader path.
+17. Mark the item as `Read`, then reset progress.
+18. Quit Zotero and confirm no Reading Flow bootstrap error appears in the debug log.
 
 For local automation, run:
 
@@ -99,4 +103,13 @@ npm run check:release-profile -- \
 
 ## Current Release Notes
 
-For `v1.3.1`, the release should be described as tested with Zotero `9.0.6` and compatible with Zotero `9.0.*`. Release notes must describe the active-calendar-day drill-down, the `Reading set (tracked)` default, `All papers (inventory)` audit view, bounded prospective history, global and context dashboard entries, user-selected Resume, and the fact that Reading Flow does not modify PDF or annotation content.
+For `v1.3.2`, the release should be described as tested with Zotero `9.0.6` and compatible with Zotero `9.0.*`.
+
+### v1.3.2 summary
+
+- Adds an optional `Reading Flow` composite column that users enable through Zotero's native column chooser; it is never shown automatically.
+- Adds **Compact** (status icon plus progress/date) and **Icons** (icon only) modes under **Settings → Zotero Reading Flow → Reading Flow column density**.
+- Uses 📙 `To Read`, 📖 `Reading`, 📘 `Skimmed`, 📗 `Read`, and ⭐ `Important`, and shows `Not started` for never-read `To Read` items in Compact mode.
+- Preserves complete tooltip/accessibility meaning and recent-first sorting with never-read items last.
+- Leaves the existing `Progress`, `Status`, and `Last Read` visibility, order, width, and sorting unchanged; density changes only the optional composite column.
+- Retains the v1.3.1 Reading Statistics dashboard and activity-day drill-down behavior, and does not modify PDF or annotation content.

@@ -74,6 +74,8 @@ https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/downlo
 
 - Right-click a paper → **Reading Flow → Mark as ...** to set its status.
 - Open a PDF and read as usual — progress and last-read time update on the parent item.
+- For a denser optional view, enable **Reading Flow** in Zotero's native library column chooser. It is not shown automatically and does not replace or rearrange `Progress`, `Status`, or `Last Read`.
+- In **Settings → Zotero Reading Flow → Reading Flow column density**, choose **Compact** (status icon plus progress/date) or **Icons** (status icon only). This setting changes only the optional `Reading Flow` column.
 - **Reading Flow → Resume Reading** to reopen the tracked PDF from its saved page.
 - **Reading Flow → Reset Reading Progress** to restart tracking for an item.
 - Open **Tools → Reading Statistics** from anywhere in Zotero. The selected view is reflected by `Current View`; use `Entire Library` when you want the whole active library.
@@ -82,7 +84,7 @@ https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/downlo
 - In `Recent Progress`, use `Show in Zotero` to select a paper or `Resume` to reopen that selected paper in the Zotero Reader. Resume is always user-invoked; it does not choose a next paper automatically.
 - Select a highlighted date in the activity calendar to inspect the matching papers. The detail respects the current scope, dataset, status filter, and range; use `Show in Zotero` or `Resume` only when you choose a row action.
 
-If the columns are hidden later (e.g. after a layout change), open the library column menu and re-enable `Progress`, `Status`, and `Last Read`.
+If the detailed columns are hidden later (e.g. after a layout change), open the library column menu and re-enable `Progress`, `Status`, and `Last Read`. Use the same native chooser to show or hide the optional `Reading Flow` column.
 
 ## Features
 
@@ -91,9 +93,10 @@ If the columns are hidden later (e.g. after a layout change), open the library c
 | **Progress** | Latest tracked position for each paper, at a glance. |
 | **Status** | Reading state (`To Read`, `Reading`, `Skimmed`, `Read`, `Important`), kept in sync with library changes. |
 | **Last Read** | Human-friendly timestamp (`now`, `5m`, `3h`, `2d`, or a date). |
+| **Reading Flow** *(optional)* | User-enabled composite column with 📙 `To Read`, 📖 `Reading`, 📘 `Skimmed`, 📗 `Read`, and ⭐ `Important`. **Compact** shows the icon with progress/date; **Icons** shows only the icon. Never-read `To Read` items show `Not started` in Compact mode. Full status, progress, and last-read meaning remains available in the tooltip and accessible name, and sorting places recently read items first with never-read items last. |
 | **Reading Flow menu** | Fast status updates, **Resume Reading**, and **Reset Reading Progress**. |
 | **Reading Statistics** | Modeless, read-only dashboard for the tracked reading set or all papers, with scope metrics, status/progress distribution, remaining-page coverage, bounded history, active-day drill-down, and user-selected paper actions. |
-| **Auto behavior** | First-run columns are enabled, reader page totals are preferred when available, and menu labels are robust across Zotero UI paths. |
+| **Auto behavior** | The detailed `Progress`, `Status`, and `Last Read` columns are enabled on first run; the optional `Reading Flow` column remains user-controlled. Reader page totals are preferred when available, and menu labels are robust across Zotero UI paths. |
 
 ## Compatibility
 
@@ -125,6 +128,10 @@ No. Reading metadata is stored only in Zotero item metadata.
 **Where is my data?**
 
 In each item's `Extra` field, on a single `ReadingFlow:` line. It syncs with your normal Zotero sync. Detailed history is bounded to the retained window; `All time` keeps lifetime first-completion totals but does not imply that pruned daily detail is available.
+
+**Will changing Reading Flow column density change my existing columns?**
+
+No. The existing `Progress`, `Status`, and `Last Read` layout remains unchanged. Density affects only the optional `Reading Flow` column; Zotero's native column chooser continues to control whether that column is visible.
 
 ## Build and verification
 
@@ -163,7 +170,7 @@ The script verifies:
 
 ## Troubleshooting
 
-- **Columns missing?** Restart Zotero once and check the library column chooser.
+- **Columns missing?** Restart Zotero once and check the library column chooser. The optional `Reading Flow` column must be enabled there manually.
 - **Context menu actions missing?** Make sure a regular item is selected (or a PDF attachment for `Resume Reading`).
 - **Internal warnings in the Zotero log?** Item-tree or add-on initialization warnings are usually harmless as long as columns and menu items appear. If they block normal use, file an issue with your Zotero version and a short error snippet.
 - For full help, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
