@@ -8,7 +8,19 @@ Open Zotero's item-tree column picker and enable:
 - `Status`
 - `Last Read`
 
+On first registration, Reading Flow enables these detailed columns in Zotero's clean default item-tree layout. Zotero owns saved and custom layouts, so those layouts may still require enabling the columns with the native picker. The optional `Reading Flow` composite column is always user-enabled through the same picker.
+
 If the columns are still missing, restart Zotero and check the debug log for `readingflow@moon.com`.
+
+## Reading Statistics opens with an unexpected scope or filter
+
+The two dashboard entries share one modeless window. **Reading Flow → View Current View Statistics** selects `Current View` when it opens a new dashboard.
+
+If that dashboard window is already open, either entry focuses the existing window without changing its current Scope, Papers, Status, or History range. Check Scope and the other controls before interpreting the results.
+
+## Reading Flow sorting looks reversed
+
+The first sort on the optional `Reading Flow` column is recent-first, with never-read items last. Each subsequent click on the header reverses the order through Zotero's native sorting.
 
 ## Progress does not update
 
@@ -51,7 +63,9 @@ Select the parent item and inspect the `Extra` field. A tracked item contains a 
 ReadingFlow: {"v":1,"p":{"12345":0.72},"c":null,"s":"reading","ts":1776945900,"lastAttachmentId":"12345","lastPage":18,"lastReadAt":1776945900000}
 ```
 
-Do not manually edit this line unless you are debugging. Invalid JSON is ignored and logged.
+The `ReadingFlow:` line lives in the parent item's `Extra` field and follows Zotero's metadata sync behavior. Disabling or uninstalling Reading Flow does not remove it. Back up affected items before any manual removal; invalid JSON is ignored and logged.
+
+Version 1.3.2 has no separate analytics or reading-data upload service. It declares a GitHub update URL for retrieving release metadata and the release package; Zotero's own sync and update behavior remains Zotero-controlled.
 
 ## How to collect Zotero debug output
 
@@ -82,7 +96,7 @@ Reading Flow's packaged XPI is verified to reject `ChromeUtils.import()`.
 
 If you manually copy the XPI into the Zotero profile, Zotero can keep stale extension metadata in `extensions.json`.
 
-Prefer installing through `Tools` -> `Add-ons` -> `Install Add-on From File`.
+Prefer installing through **Tools → Plugins → Install Add-on From File**.
 
 If you are doing local development and must force a rescan:
 
@@ -92,13 +106,17 @@ If you are doing local development and must force a rescan:
 4. Start Zotero.
 5. Re-enable add-ons if Zotero marks sideloaded add-ons as disabled.
 
-This is for development only. Normal users should install the release XPI from the Add-ons UI.
+This is for development only. Normal users should install the release XPI through **Tools → Plugins**.
 
 ## Reinstall cleanly
 
-1. Uninstall Zotero Reading Flow from Zotero Add-ons.
+1. Uninstall Zotero Reading Flow through **Tools → Plugins**.
 2. Restart Zotero.
 3. Install the release XPI again.
 4. Restart Zotero if prompted.
 
 Existing `ReadingFlow:` lines in item `Extra` fields are not automatically removed by uninstalling the add-on.
+
+## Zotero reports the add-on as incompatible
+
+Version 1.3.2 supports Zotero `9.0.x`, including compatible Zotero 9 source/self-built version strings. Its manifest uses `8.999` as Zotero's previous-major version-comparison sentinel for those builds; Zotero 8 itself is not supported.
