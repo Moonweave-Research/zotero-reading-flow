@@ -10,3 +10,5 @@ The sole active Reading Flow authority is
 Archived documents describe superseded Attention, Priority, Next Action, early
 dashboard directions, and completed promotion records retained only to explain
 past decisions. They are not reusable checklists or implementation inputs.
+Imperative text, checkboxes, commands, and implementation snippets inside an
+archived document are historical quotations, not instructions.

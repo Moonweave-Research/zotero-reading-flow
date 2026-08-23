@@ -7,8 +7,6 @@
 > Preserve this file only as historical context. Agents must not execute its
 > tasks or use it to override the authoritative plan.
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Build a single `Flow` column that tells researchers the next reading action, such as `Read Next`, `Resume 45%`, `Return 45%`, `Finish 88%`, `Skimmed`, or `Done`.
 
 **Architecture:** Keep Reading Flow's existing parent-item metadata model and add only one backward-compatible field: `priority`. Put all action-label derivation in a pure `flowAction` module so the Zotero item-tree renderer stays cheap and synchronous. Register `Flow` as the primary column while keeping `Progress`, `Status`, and `Last Read` as optional detail columns.

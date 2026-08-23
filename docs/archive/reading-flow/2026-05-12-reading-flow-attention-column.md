@@ -7,8 +7,6 @@
 > Preserve this file only as historical context. Agents must not execute its
 > tasks or use it to override the authoritative plan.
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Build a single compact `Flow` column that combines reading progress, status, priority, and stale-reading signals without forcing users to keep multiple Reading Flow columns visible.
 
 **Architecture:** Add priority as a backward-compatible field on the existing Reading Flow metadata, then isolate display derivation in a new `attention` module. `ColumnManager` renders the compact scan column, while `ReadingFlowMenuManager` adds priority controls under the existing context menu.

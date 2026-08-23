@@ -4,7 +4,7 @@
 >
 > **Last updated:** 2026-08-23
 > **Released baseline:** Zotero Reading Flow v1.3.1
-> **Active planning target:** Slice K — User-Initiated Snapshot Copy
+> **Active planning target:** Slice K — Opt-In Reading Display Density
 > **Execution surface:** ORRO (`scout -> flowplan -> proofrun -> proofcheck -> handoff`)
 
 ## Authority and Document Routing
@@ -257,7 +257,70 @@ or user data for this slice.
   shows a selected calendar date, the exact matching rows, `Show in Zotero`,
   `Resume`, and close/reopen behavior without writes to the user profile.
 
-### Priority 1 — Slice K: User-Initiated Snapshot Copy
+### Priority 1 — Slice K: Opt-In Reading Display Density
+
+#### User problem
+
+The released `Progress`, `Status`, and `Last Read` columns are independently
+useful, but together consume too much horizontal space in narrow Zotero item
+trees. Users need to choose a denser scan surface without an update silently
+replacing their established library layout.
+
+#### Decision
+
+Keep the released three-column layout as the detailed, default presentation and
+add two explicit, opt-in alternatives. These are user-facing display choices,
+not new reading semantics:
+
+| Display mode | Visible Reading Flow surface | Intended use |
+| --- | --- | --- |
+| Detailed columns | Existing `Progress`, `Status`, and `Last Read` columns | Full independent detail and sorting |
+| Compact Reading Flow | One `Reading Flow` column with a status icon, micro progress bar, and short last-read label | Preserve title width while retaining the main scan signals |
+| Icons only | One `Reading Flow` status icon | The narrowest library layouts; full state remains available through accessible text |
+
+On an existing profile, an update must not change any Reading Flow column's
+visibility, width, or sort direction. A layout changes only after the user
+explicitly chooses it. New installs continue to start with detailed columns.
+Selecting a compact mode is permission to change only Reading Flow-owned
+columns; it must never change Zotero's other columns, selected items, active
+view, tags, saved searches, or item metadata.
+
+#### Interaction and data contract
+
+- The compact and icon-only columns are display-only. Hover/focus text and the
+  accessible name must state the complete reading state: status, progress (or
+  unknown), and last-read value (or never read). Color alone is never the
+  signal.
+- `Important` remains the released `ReadingStatus` value. This slice must not
+  reinterpret it as a separate priority system or introduce a schema migration.
+- Detailed columns retain their independent native sort behavior. Each compact
+  mode has one documented sort: most recently read first, with never-read
+  items last. It must not imply that it preserves separate status, progress,
+  and last-read sorts.
+- The choice must be reversible. Before applying a compact layout, retain the
+  user's Reading Flow column arrangement so returning to detailed restores that
+  arrangement. If it cannot be restored safely, leave the current arrangement
+  untouched and direct the user to Zotero's column chooser instead.
+- This slice does not create, remove, rename, or synchronize Zotero tags; it
+  does not add a sidebar, dashboard control, new metadata field, or background
+  action.
+
+#### Write region and proof
+
+Start with an implementation design that proves the Zotero item-tree API can
+apply and restore the three layouts without touching non-Reading-Flow columns.
+The expected write region is this authority, `src/columnManager.ts`, the
+preferences UI and locale strings, plus focused column/preference tests. Add
+other files only after updating this authority.
+
+Required proof includes: no-op upgrade behavior for an existing customized
+layout; deliberate switch and reverse switch for each mode; independent
+detailed sorting; compact recency sort; full icon-only accessible text; unknown
+progress and never-read states; and direct disposable-profile verification at
+normal and 200% zoom. The result must be inspected in a real Zotero item tree,
+not only an HTML prototype.
+
+### Priority 2 — Slice L: User-Initiated Snapshot Copy
 
 #### User problem
 
@@ -296,7 +359,7 @@ path, and the absence of metadata writes. Verify the packaged dashboard in a
 disposable profile.
 
 CSV export, detailed-title export, scheduled reports, and PDF export are not
-part of Slice K. Reconsider them only after real users ask for a specific
+part of Slice L. Reconsider them only after real users ask for a specific
 reporting format.
 
 ### Priority 3 — Deferred Discovery: Recurring Views
@@ -306,11 +369,37 @@ views, or persisted filter preference yet. `Current View` already gives users
 Zotero-native collections, searches, and tag filters without duplicating
 Zotero's organization model.
 
-After Slice J and Slice K have runtime acceptance and real feedback,
+After Slice K and Slice L have runtime acceptance and real feedback,
 measure whether users repeatedly need a dashboard-only way to re-enter a
 specific view. If so, write a new authority decision first. The default answer
 is to improve scope labelling or use Zotero's existing saved searches, not to
 create a second collection system.
+
+### Priority 4 — Deferred Discovery: Tag Mirror and Sidebar
+
+These are not rejected ideas. They are deliberately separate from display
+density because they respectively change user data and introduce a persistent
+work surface.
+
+#### Tag Mirror
+
+A future opt-in tag mirror may map Reading Flow states to clearly
+Reading-Flow-owned emoji tags. It requires a new authority decision that fixes
+the exact tag names, ownership marker, add/remove rules, behavior after manual
+tag edits, sync-conflict behavior, migration/disable cleanup, and the complete
+write path. It must be off by default and may never claim ownership of an
+unprefixed user tag. Do not add it as a side effect of status, progress, or
+display-mode work.
+
+#### Sidebar
+
+A future sidebar needs evidence that a Zotero-supported placement can preserve
+selection, focus, lifecycle, and accessibility across the library and Reader.
+It must be an optional companion to the item list and Reader, not a replacement
+reading application or a source of next-paper recommendations. It may reuse
+the user-selected `Current View`, but must not duplicate Zotero's tag,
+saved-search, or collection system. Prototype the interaction against real
+Zotero before authorizing implementation.
 
 ## Explicitly Deferred Ideas
 
@@ -324,7 +413,9 @@ work:
 | Goals, streaks, productivity scores | Do not implement | They turn observational feedback into pressure and false judgment. |
 | Next-paper recommendation | Do not implement | It violates the user-selected return-path principle. |
 | Tags/saved-search controls inside dashboard | Hold | `Current View` already inherits Zotero's native scope. |
-| CSV/PDF/detailed export | Hold after Slice K | First validate whether a concise private summary solves the real reporting need. |
+| Automatic emoji-tag mirror | Hold as a separate opt-in slice | It writes synchronized library metadata and needs explicit ownership rules. |
+| Persistent sidebar workspace | Hold pending real-Zotero prototype and feedback | It is a second work surface, not a column-density adjustment. |
+| CSV/PDF/detailed export | Hold after Slice L | First validate whether a concise private summary solves the real reporting need. |
 
 ## Architecture Boundaries
 
