@@ -27,6 +27,11 @@ export interface UnavailableActivityDayDetail {
 
 export type ActivityDayDetailResult = ActivityDayDetailSnapshot | UnavailableActivityDayDetail;
 
+declare const activityDayDetailCacheLifecycle: unique symbol;
+export type ActivityDayDetailCacheLifecycleToken = {
+  readonly [activityDayDetailCacheLifecycle]: true;
+};
+
 export interface DashboardBridge {
   getSnapshot(
     scope: StatisticsScope,
@@ -35,7 +40,8 @@ export interface DashboardBridge {
     dataset?: StatisticsDataset
   ): Promise<StatisticsSnapshot>;
   getActivityDayDetail?(snapshotId: string, day: string): Promise<ActivityDayDetailResult>;
-  discardActivityDayDetailCache?(): void;
+  beginActivityDayDetailCacheLifecycle?(): ActivityDayDetailCacheLifecycleToken;
+  discardActivityDayDetailCache?(token?: ActivityDayDetailCacheLifecycleToken): void;
   focusItem?(id: number | string): Promise<boolean>;
   resumeItem?(id: number | string): Promise<boolean>;
 }
@@ -406,8 +412,15 @@ export function startDashboard(
   const bridge = args?.[0] && typeof args[0].getSnapshot === 'function'
     ? args[0] as DashboardBridge
     : null;
+  const lifecycleToken = bridge?.beginActivityDayDetailCacheLifecycle?.();
   const app = new DashboardApp(doc, bridge);
-  win.addEventListener?.('unload', () => bridge?.discardActivityDayDetailCache?.(), { once: true });
+  win.addEventListener?.('unload', () => {
+    if (lifecycleToken) {
+      bridge?.discardActivityDayDetailCache?.(lifecycleToken);
+    } else {
+      bridge?.discardActivityDayDetailCache?.();
+    }
+  }, { once: true });
   (win as any).readingFlowDashboard = {
     refresh: () => app.refresh()
   };

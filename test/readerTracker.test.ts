@@ -2,6 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ReaderTracker } from '../src/readerTracker';
 import { ColumnManager } from '../src/columnManager';
+import { DataStore } from '../src/dataStore';
+
+function deferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+async function waitFor(condition: () => boolean) {
+  for (let attempt = 0; attempt < 20 && !condition(); attempt++) {
+    await Promise.resolve();
+  }
+  assert.equal(condition(), true);
+}
 
 test('ReaderTracker prefers live PDF page index over saved attachment page index', () => {
   const tracker = new ReaderTracker({} as any);
@@ -195,68 +213,17 @@ test('ReaderTracker does not emit synthetic page number when page count is unava
   assert.equal(savedCall, null);
 });
 
-test('ReaderTracker skips a pending save when the parent was reset after scheduling', async () => {
-  const originalSetTimeout = globalThis.setTimeout;
-  const originalDateNow = Date.now;
-  const callbacks: Array<() => Promise<void>> = [];
-  const updates: any[] = [];
-  const dataStore = {
-    getResetTimestamp(parentId: number) {
-      assert.equal(parentId, 20);
-      return 2000;
-    },
-    async recordProgress(...args: any[]) {
-      updates.push(args);
-    }
-  };
-  const tracker = new ReaderTracker(dataStore as any);
-
-  (globalThis as any).setTimeout = (callback: () => Promise<void>) => {
-    callbacks.push(callback);
-    return 1;
-  };
-  Date.now = () => 1000;
-  (globalThis as any).Zotero = {
-    Items: {
-      async getAsync(id: number) {
-        assert.equal(id, 20);
-        return { id: 20 };
-      }
-    },
-    ItemTreeManager: {
-      refreshColumns() {}
-    },
-    Notifier: {
-      trigger() {}
-    }
-  };
-  (tracker as any).active = true;
-  (tracker as any).generation = 1;
-
-  try {
-    (tracker as any).debounceSave(20, '10', 0.5, 2, 4);
-    assert.equal(callbacks.length, 1);
-
-    await callbacks[0]();
-
-    assert.deepEqual(updates, []);
-  } finally {
-    (globalThis as any).setTimeout = originalSetTimeout;
-    Date.now = originalDateNow;
-  }
-});
-
-test('ReaderTracker delegates the debounced capture to recordProgress', async () => {
+test('ReaderTracker delegates with one captured timestamp and refreshes after a persisted write', async () => {
   const originalSetTimeout = globalThis.setTimeout;
   const originalDateNow = Date.now;
   const callbacks: Array<() => Promise<void>> = [];
   const calls: any[] = [];
+  let refreshes = 0;
+  let notifications = 0;
   const dataStore = {
-    getResetTimestamp() {
-      return null;
-    },
-    async recordProgress(...args: any[]) {
+    async recordProgressUnlessResetAfter(...args: any[]) {
       calls.push(args);
+      return true;
     }
   };
   const tracker = new ReaderTracker(dataStore as any);
@@ -274,10 +241,14 @@ test('ReaderTracker delegates the debounced capture to recordProgress', async ()
       }
     },
     ItemTreeManager: {
-      refreshColumns() {}
+      refreshColumns() {
+        refreshes += 1;
+      }
     },
     Notifier: {
-      trigger() {}
+      trigger() {
+        notifications += 1;
+      }
     }
   };
   (tracker as any).active = true;
@@ -285,12 +256,173 @@ test('ReaderTracker delegates the debounced capture to recordProgress', async ()
 
   try {
     (tracker as any).debounceSave(20, '10', 0.5, 2, 4);
+    Date.now = () => 9000;
     await callbacks[0]();
 
     assert.deepEqual(calls, [[
       { id: 20 },
-      { attachmentId: '10', progress: 0.5, pageCount: 4, lastPage: 2, at: 3000 }
+      { attachmentId: '10', progress: 0.5, pageCount: 4, lastPage: 2, at: 3000 },
+      3000
     ]]);
+    assert.equal(refreshes, 1);
+    assert.equal(notifications, 1);
+  } finally {
+    (globalThis as any).setTimeout = originalSetTimeout;
+    Date.now = originalDateNow;
+  }
+});
+
+test('ReaderTracker does not refresh when conditional progress is rejected', async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const callbacks: Array<() => Promise<void>> = [];
+  let refreshes = 0;
+  let notifications = 0;
+  const tracker = new ReaderTracker({
+    async recordProgressUnlessResetAfter() {
+      return false;
+    }
+  } as any);
+  (globalThis as any).setTimeout = (callback: () => Promise<void>) => {
+    callbacks.push(callback);
+    return 1;
+  };
+  (globalThis as any).Zotero = {
+    Items: { async getAsync() { return { id: 20 }; } },
+    ItemTreeManager: { refreshColumns() { refreshes += 1; } },
+    Notifier: { trigger() { notifications += 1; } }
+  };
+  (tracker as any).active = true;
+  (tracker as any).generation = 1;
+
+  try {
+    (tracker as any).debounceSave(20, '10', 0.5, 2, 4);
+    await callbacks[0]();
+    assert.equal(refreshes, 0);
+    assert.equal(notifications, 0);
+  } finally {
+    (globalThis as any).setTimeout = originalSetTimeout;
+  }
+});
+
+test('ReaderTracker skips delegation when generation changes while getAsync is pending', async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const callbacks: Array<() => Promise<void>> = [];
+  const parent = deferred<any>();
+  let calls = 0;
+  const tracker = new ReaderTracker({
+    async recordProgressUnlessResetAfter() {
+      calls += 1;
+      return true;
+    }
+  } as any);
+  (globalThis as any).setTimeout = (callback: () => Promise<void>) => {
+    callbacks.push(callback);
+    return 1;
+  };
+  (globalThis as any).Zotero = {
+    Items: { getAsync() { return parent.promise; } },
+    ItemTreeManager: { refreshColumns() {} },
+    Notifier: { trigger() {} }
+  };
+  (tracker as any).active = true;
+  (tracker as any).generation = 1;
+
+  try {
+    (tracker as any).debounceSave(20, '10', 0.5, 2, 4);
+    const callback = callbacks[0]();
+    (tracker as any).generation = 2;
+    parent.resolve({ id: 20 });
+    await callback;
+    assert.equal(calls, 0);
+  } finally {
+    (globalThis as any).setTimeout = originalSetTimeout;
+  }
+});
+
+test('ReaderTracker skips refresh when generation changes while queued progress is pending', async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const callbacks: Array<() => Promise<void>> = [];
+  const queued = deferred<boolean>();
+  let calls = 0;
+  let refreshes = 0;
+  const tracker = new ReaderTracker({
+    recordProgressUnlessResetAfter() {
+      calls += 1;
+      return queued.promise;
+    }
+  } as any);
+  (globalThis as any).setTimeout = (callback: () => Promise<void>) => {
+    callbacks.push(callback);
+    return 1;
+  };
+  (globalThis as any).Zotero = {
+    Items: { async getAsync() { return { id: 20 }; } },
+    ItemTreeManager: { refreshColumns() { refreshes += 1; } },
+    Notifier: { trigger() { refreshes += 1; } }
+  };
+  (tracker as any).active = true;
+  (tracker as any).generation = 1;
+
+  try {
+    (tracker as any).debounceSave(20, '10', 0.5, 2, 4);
+    const callback = callbacks[0]();
+    await waitFor(() => calls === 1);
+    (tracker as any).generation = 2;
+    queued.resolve(true);
+    await callback;
+    assert.equal(refreshes, 0);
+  } finally {
+    (globalThis as any).setTimeout = originalSetTimeout;
+  }
+});
+
+test('pending failed reset followed by Reader callback eventually records progress', async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalDateNow = Date.now;
+  const callbacks: Array<() => Promise<void>> = [];
+  let extra = '';
+  const saves: Array<ReturnType<typeof deferred<void>>> = [];
+  const item = {
+    id: 20,
+    getField() { return extra; },
+    setField(_field: string, value: string) { extra = value; },
+    saveTx() {
+      const save = deferred<void>();
+      saves.push(save);
+      return save.promise;
+    }
+  };
+  const store = new DataStore();
+  const tracker = new ReaderTracker(store);
+  (globalThis as any).setTimeout = (callback: () => Promise<void>) => {
+    callbacks.push(callback);
+    return 1;
+  };
+  Date.now = () => 1000;
+  (globalThis as any).Zotero = {
+    Items: { async getAsync() { return item; } },
+    ItemTreeManager: { refreshColumns() {} },
+    Notifier: { trigger() {} }
+  };
+  (tracker as any).active = true;
+  (tracker as any).generation = 1;
+
+  try {
+    const reset = store.resetProgress(item, 2000);
+    const resetRejected = assert.rejects(reset, /reset failed/);
+    await waitFor(() => saves.length === 1);
+    (tracker as any).debounceSave(20, '10', 0.5, 2, 4);
+    const readerSave = callbacks[0]();
+
+    saves[0].reject(new Error('reset failed'));
+    await resetRejected;
+    await waitFor(() => saves.length === 2);
+    saves[1].resolve();
+    await readerSave;
+
+    const line = extra.split('\n').find((value) => value.startsWith('ReadingFlow: '));
+    assert.ok(line);
+    assert.equal(JSON.parse(line.slice('ReadingFlow: '.length)).p['10'], 0.5);
   } finally {
     (globalThis as any).setTimeout = originalSetTimeout;
     Date.now = originalDateNow;

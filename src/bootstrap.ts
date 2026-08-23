@@ -15,11 +15,15 @@ import {
   type StatisticsPaper
 } from './statistics';
 import type {
+  ActivityDayDetailCacheLifecycleToken,
   ActivityDayDetailResult,
   DashboardBridge,
   DashboardStatusFilter
 } from './dashboard';
-import { createStatisticsScopeAdapter } from './statisticsScope';
+import {
+  createStatisticsScopeAdapter,
+  type StatisticsScopeAdapter
+} from './statisticsScope';
 import { ResumeReader } from './resumeReader';
 
 const DASHBOARD_CHROME_URI = 'chrome://readingflow/content/';
@@ -88,83 +92,7 @@ class Bootstrap {
       const scopeAdapter = createStatisticsScopeAdapter();
       const dataStore = this.dataStore!;
       const resumeReader = new ResumeReader(dataStore);
-      let nextSnapshotID = 0;
-      let activityDayCache: {
-        snapshotId: string;
-        papers: StatisticsPaper[];
-        query: {
-          scope: 'current-view' | 'entire-library';
-          historyRange: HistoryRange;
-          statusFilter: DashboardStatusFilter;
-          dataset: StatisticsDataset;
-        };
-        activeDays: Set<string>;
-      } | null = null;
-      const dashboardBridge: DashboardBridge = {
-          async getSnapshot(
-            scope,
-            historyRange: HistoryRange = '7d',
-            statusFilter: DashboardStatusFilter = 'all',
-            dataset: StatisticsDataset = 'tracked'
-          ) {
-            const items = await scopeAdapter.getItems(scope);
-            const papers = items.map((item) => ({
-              id: item.id,
-              title: item.getField?.('title') ?? undefined,
-              tracked: dataStore.hasReadingFlowData(item),
-              flowData: dataStore.getData(item)
-            }));
-            const snapshot = calculateStatisticsSnapshot(papers, {
-              dataset,
-              historyRange,
-              statusFilter: statusFilter === 'all' ? undefined : statusFilter
-            });
-            const selectedPapers = selectStatisticsPapers(papers, {
-              dataset,
-              statusFilter: statusFilter === 'all' ? undefined : statusFilter
-            });
-            const snapshotId = `reading-flow-${Date.now().toString(36)}-${++nextSnapshotID}`;
-            activityDayCache = {
-              snapshotId,
-              papers: selectedPapers,
-              query: { scope, historyRange, statusFilter, dataset },
-              activeDays: new Set(
-                snapshot.history.days
-                  .filter((day) => day.activePapers > 0)
-                  .map((day) => day.day)
-              )
-            };
-            return { ...snapshot, snapshotId };
-          },
-          async getActivityDayDetail(snapshotId, day): Promise<ActivityDayDetailResult> {
-            const cache = activityDayCache;
-            if (!cache || cache.snapshotId !== snapshotId || !cache.activeDays.has(day)) {
-              return { snapshotId, day, state: 'unavailable' };
-            }
-            return {
-              snapshotId,
-              day,
-              state: 'available',
-              papers: calculateActivityDayDetail(cache.papers, day)
-            };
-          },
-          discardActivityDayDetailCache() {
-            activityDayCache = null;
-          },
-          async focusItem(id) {
-            const itemID = typeof id === 'number' ? id : Number(id);
-            if (!Number.isInteger(itemID) || itemID <= 0) return false;
-
-            const pane = Zotero.getActiveZoteroPane?.();
-            if (!pane?.selectItem) return false;
-            const selected = await pane.selectItem(itemID);
-            if (selected) Zotero.getMainWindow()?.focus?.();
-            return Boolean(selected);
-          },
-          async resumeItem(id) {
-            return resumeDashboardItem(id, resumeReader);
-          }
-      };
+      const dashboardBridge = createDashboardBridge({ scopeAdapter, dataStore, resumeReader });
       if (this.dashboardChromeHandle) {
         this.dashboardManager = new DashboardManager(
           Zotero.getMainWindow(),
@@ -257,6 +185,132 @@ class Bootstrap {
 }
 
 type DashboardResumeReader = Pick<ResumeReader, 'resume'>;
+
+interface DashboardBridgeDataStore {
+  hasReadingFlowData(item: unknown): boolean;
+  getData(item: unknown): StatisticsPaper['flowData'];
+}
+
+export interface DashboardBridgeDependencies {
+  scopeAdapter: Pick<StatisticsScopeAdapter, 'getItems'>;
+  dataStore: DashboardBridgeDataStore;
+  resumeReader: DashboardResumeReader;
+}
+
+export interface ActivityDayDashboardBridge extends DashboardBridge {
+  getActivityDayDetail(snapshotId: string, day: string): Promise<ActivityDayDetailResult>;
+  beginActivityDayDetailCacheLifecycle(): ActivityDayDetailCacheLifecycleToken;
+  discardActivityDayDetailCache(token?: ActivityDayDetailCacheLifecycleToken): void;
+}
+
+export function createDashboardBridge({
+  scopeAdapter,
+  dataStore,
+  resumeReader
+}: DashboardBridgeDependencies): ActivityDayDashboardBridge {
+  let nextSnapshotID = 0;
+  let latestRequestSequence = 0;
+  let currentLifecycle: ActivityDayDetailCacheLifecycleToken | null =
+    createActivityDayDetailCacheLifecycleToken();
+  let activityDayCache: {
+    snapshotId: string;
+    papers: StatisticsPaper[];
+    query: {
+      scope: 'current-view' | 'entire-library';
+      historyRange: HistoryRange;
+      statusFilter: DashboardStatusFilter;
+      dataset: StatisticsDataset;
+    };
+    activeDays: Set<string>;
+  } | null = null;
+
+  return {
+    async getSnapshot(
+      scope,
+      historyRange: HistoryRange = '7d',
+      statusFilter: DashboardStatusFilter = 'all',
+      dataset: StatisticsDataset = 'tracked'
+    ) {
+      const requestSequence = ++latestRequestSequence;
+      const requestLifecycle = currentLifecycle;
+      const items = await scopeAdapter.getItems(scope);
+      const papers = items.map((item) => ({
+        id: item.id,
+        title: item.getField?.('title') ?? undefined,
+        tracked: dataStore.hasReadingFlowData(item),
+        flowData: dataStore.getData(item)
+      }));
+      const snapshot = calculateStatisticsSnapshot(papers, {
+        dataset,
+        historyRange,
+        statusFilter: statusFilter === 'all' ? undefined : statusFilter
+      });
+      const selectedPapers = selectStatisticsPapers(papers, {
+        dataset,
+        statusFilter: statusFilter === 'all' ? undefined : statusFilter
+      });
+      const snapshotId = `reading-flow-${Date.now().toString(36)}-${++nextSnapshotID}`;
+      if (
+        requestSequence === latestRequestSequence
+        && requestLifecycle !== null
+        && requestLifecycle === currentLifecycle
+      ) {
+        activityDayCache = {
+          snapshotId,
+          papers: selectedPapers,
+          query: { scope, historyRange, statusFilter, dataset },
+          activeDays: new Set(
+            snapshot.history.days
+              .filter((day) => day.activePapers > 0)
+              .map((day) => day.day)
+          )
+        };
+      }
+      return { ...snapshot, snapshotId };
+    },
+    async getActivityDayDetail(snapshotId, day): Promise<ActivityDayDetailResult> {
+      const cache = activityDayCache;
+      if (!cache || cache.snapshotId !== snapshotId || !cache.activeDays.has(day)) {
+        return { snapshotId, day, state: 'unavailable' };
+      }
+      return {
+        snapshotId,
+        day,
+        state: 'available',
+        papers: calculateActivityDayDetail(cache.papers, day)
+      };
+    },
+    beginActivityDayDetailCacheLifecycle() {
+      latestRequestSequence += 1;
+      activityDayCache = null;
+      currentLifecycle = createActivityDayDetailCacheLifecycleToken();
+      return currentLifecycle;
+    },
+    discardActivityDayDetailCache(token) {
+      if (!token || token !== currentLifecycle) return;
+      latestRequestSequence += 1;
+      activityDayCache = null;
+      currentLifecycle = null;
+    },
+    async focusItem(id) {
+      const itemID = typeof id === 'number' ? id : Number(id);
+      if (!Number.isInteger(itemID) || itemID <= 0) return false;
+
+      const pane = Zotero.getActiveZoteroPane?.();
+      if (!pane?.selectItem) return false;
+      const selected = await pane.selectItem(itemID);
+      if (selected) Zotero.getMainWindow()?.focus?.();
+      return Boolean(selected);
+    },
+    async resumeItem(id) {
+      return resumeDashboardItem(id, resumeReader);
+    }
+  };
+}
+
+function createActivityDayDetailCacheLifecycleToken(): ActivityDayDetailCacheLifecycleToken {
+  return {} as ActivityDayDetailCacheLifecycleToken;
+}
 
 export async function resumeDashboardItem(
   id: number | string,

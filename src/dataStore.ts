@@ -28,6 +28,7 @@ export class DataStore {
   private static readonly DIRTY_RETRY_MS = 100;
   private cache = new LRUCache<number, FlowData>(2000);
   private resetTimestamps = new Map<number, number>();
+  private mutationQueues = new Map<number, Promise<void>>();
   private closed = false;
 
   public getData(item: any): FlowData {
@@ -35,18 +36,7 @@ export class DataStore {
     const cached = this.cache.get(id);
     if (cached) return cached;
 
-    const match = this.getReadingFlowLine(item);
-    
-    let data = { ...DEFAULT_FLOW_DATA };
-    if (match) {
-      try {
-        const parsed = JSON.parse(match.substring(FLOW_PREFIX.length));
-        data = normalizeFlowData(parsed);
-      } catch (e) {
-        Logger.error(`ReadingFlow: Failed to parse data for ${id}`, e);
-      }
-    }
-    
+    const data = this.parseData(id, item.getField('extra') || '');
     this.cache.set(id, data);
     return data;
   }
@@ -69,34 +59,49 @@ export class DataStore {
   }
 
   public async updateData(item: any, updates: Partial<FlowData>): Promise<boolean> {
-    if (this.isClosedOrShuttingDown()) {
-      Logger.log('ReadingFlow: write skipped during shutdown');
-      return false;
-    }
+    return this.enqueueMutation(item, async () => {
+      if (!await this.prepareMutation(item)) return false;
+      const originalExtra = item.getField('extra') || '';
+      const current = this.parseData(item.id, originalExtra);
 
-    if (!await this.waitUntilClean(item)) {
-      Logger.warn('ReadingFlow: Item remained dirty after retries, skipping write to prevent race condition');
-      return false;
-    }
+      // Last write wins check
+      if (updates.ts && updates.ts < current.ts) return false;
 
-    const current = this.getData(item);
-    
-    // Last write wins check
-    if (updates.ts && updates.ts < current.ts) return false;
+      const nextWithoutTimestamp = mergeFlowData(current, updates, current.ts);
+      if (isFlowDataSame(current, nextWithoutTimestamp)) return false;
 
-    const nextWithoutTimestamp = mergeFlowData(current, updates, current.ts);
-    if (isFlowDataSame(current, nextWithoutTimestamp)) return false;
-
-    const merged = mergeFlowData(current, updates);
-    return this.saveData(item, merged);
+      const merged = mergeFlowData(current, updates);
+      return this.saveData(item, merged, originalExtra);
+    });
   }
 
   public async recordProgress(item: any, input: ProgressInput): Promise<boolean> {
+    const build = this.buildProgressTransition(input);
+    if (!build) return false;
+    return this.transition(item, build);
+  }
+
+  public async recordProgressUnlessResetAfter(
+    item: any,
+    input: ProgressInput,
+    capturedAt: number
+  ): Promise<boolean> {
+    const build = this.buildProgressTransition(input);
+    if (!build) return false;
+
+    return this.enqueueMutation(item, async () => {
+      const resetAt = this.resetTimestamps.get(item.id);
+      if (typeof resetAt === 'number' && resetAt > capturedAt) return false;
+      return this.executeTransition(item, build);
+    });
+  }
+
+  private buildProgressTransition(input: ProgressInput): ((current: FlowData) => FlowData) | null {
     const at = this.normalizeTimestamp(input.at);
     const observed = normalizeFlowData({ p: { [input.attachmentId]: input.progress } }).p[input.attachmentId];
-    if (!observed) return false;
+    if (!observed) return null;
 
-    return this.transition(item, (current) => {
+    return (current) => {
       const currentProgress = current.p[input.attachmentId];
       const comparableCurrent = normalizeComparableProgress(
         currentProgress,
@@ -131,7 +136,7 @@ export class DataStore {
           at
         )
       });
-    });
+    };
   }
 
   public async setStatus(item: any, status: ReadingStatus | null, at = Date.now()): Promise<void> {
@@ -147,19 +152,24 @@ export class DataStore {
 
   public async resetProgress(item: any, at = Date.now()): Promise<void> {
     const timestamp = this.normalizeTimestamp(at);
-    this.resetTimestamps.set(item.id, timestamp);
-    await this.transition(item, (current) => {
-      const next = mergeFlowData(current, {
-        p: {},
-        s: 'to-read',
-        lastAttachmentId: null,
-        lastPage: null,
-        lastReadAt: null
-      }, timestamp);
-      return normalizeFlowData({
-        ...next,
-        history: this.recordResetHistory(current.history, timestamp)
+    await this.enqueueMutation(item, async () => {
+      const saved = await this.executeTransition(item, (current) => {
+        const next = mergeFlowData(current, {
+          p: {},
+          s: 'to-read',
+          lastAttachmentId: null,
+          lastPage: null,
+          lastReadAt: null
+        }, timestamp);
+        return normalizeFlowData({
+          ...next,
+          history: this.recordResetHistory(current.history, timestamp)
+        });
       });
+      if (saved && !this.isClosedOrShuttingDown()) {
+        this.resetTimestamps.set(item.id, timestamp);
+      }
+      return saved;
     });
   }
 
@@ -196,6 +206,22 @@ export class DataStore {
     item: any,
     build: (current: FlowData) => FlowData
   ): Promise<boolean> {
+    return this.enqueueMutation(item, () => this.executeTransition(item, build));
+  }
+
+  private async executeTransition(
+    item: any,
+    build: (current: FlowData) => FlowData
+  ): Promise<boolean> {
+    if (!await this.prepareMutation(item)) return false;
+    const originalExtra = item.getField('extra') || '';
+    const current = this.parseData(item.id, originalExtra);
+    const next = build(current);
+    if (isFlowDataSame(current, next)) return false;
+    return this.saveData(item, next, originalExtra);
+  }
+
+  private async prepareMutation(item: any): Promise<boolean> {
     if (this.isClosedOrShuttingDown()) {
       Logger.log('ReadingFlow: write skipped during shutdown');
       return false;
@@ -205,15 +231,10 @@ export class DataStore {
       Logger.warn('ReadingFlow: Item remained dirty after retries, skipping write to prevent race condition');
       return false;
     }
-
-    const current = this.getData(item);
-    const next = build(current);
-    if (isFlowDataSame(current, next)) return false;
-    return this.saveData(item, next);
+    return true;
   }
 
-  private async saveData(item: any, data: FlowData): Promise<boolean> {
-    const originalExtra = item.getField('extra') || '';
+  private async saveData(item: any, data: FlowData, originalExtra: string): Promise<boolean> {
     const lines = originalExtra.split('\n').filter((line: string) => !line.startsWith(FLOW_PREFIX));
     lines.push(`${FLOW_PREFIX}${JSON.stringify(data)}`);
 
@@ -222,19 +243,47 @@ export class DataStore {
       return false;
     }
 
-    item.setField('extra', lines.join('\n'));
+    const attemptedExtra = lines.join('\n');
+    item.setField('extra', attemptedExtra);
     try {
       await item.saveTx();
-      this.cache.set(item.id, data);
+      this.cache.delete(item.id);
       return true;
     } catch (error) {
       try {
-        item.setField('extra', originalExtra);
+        if ((item.getField('extra') || '') === attemptedExtra) {
+          item.setField('extra', originalExtra);
+        }
       } catch {
         // Best-effort rollback. The cache is still cleared below.
       }
       this.cache.delete(item.id);
       throw error;
+    }
+  }
+
+  private enqueueMutation(item: any, run: () => Promise<boolean>): Promise<boolean> {
+    const previous = this.mutationQueues.get(item.id) ?? Promise.resolve();
+    const operation = previous.then(run);
+    const tail = operation.then(() => undefined, () => undefined);
+    this.mutationQueues.set(item.id, tail);
+    void tail.then(() => {
+      if (this.mutationQueues.get(item.id) === tail) {
+        this.mutationQueues.delete(item.id);
+      }
+    });
+    return operation;
+  }
+
+  private parseData(itemId: number, extra: string): FlowData {
+    const match = extra.split('\n').find((line: string) => line.startsWith(FLOW_PREFIX));
+    if (!match) return { ...DEFAULT_FLOW_DATA };
+
+    try {
+      return normalizeFlowData(JSON.parse(match.substring(FLOW_PREFIX.length)));
+    } catch (error) {
+      Logger.error(`ReadingFlow: Failed to parse data for ${itemId}`, error);
+      return { ...DEFAULT_FLOW_DATA };
     }
   }
 
@@ -284,7 +333,6 @@ export class DataStore {
     const history = this.cloneOrCreateHistory(current, at);
     const dayKey = getLocalDayKey(at);
     const day = this.cloneOrCreateDay(history.days[dayKey]);
-    day.progress = {};
     day.status = 'to-read';
     day.reset = true;
     history.days[dayKey] = day;
