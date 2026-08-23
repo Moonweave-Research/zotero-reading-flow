@@ -65,7 +65,7 @@ ReadingFlow: {"v":1,"p":{"12345":0.72},"c":null,"s":"reading","ts":1776945900,"l
 
 The `ReadingFlow:` line lives in the parent item's `Extra` field and follows Zotero's metadata sync behavior. Disabling or uninstalling Reading Flow does not remove it. Back up affected items before any manual removal; invalid JSON is ignored and logged.
 
-Version 1.3.2 has no separate analytics or reading-data upload service. It declares a GitHub update URL for retrieving release metadata and the release package; Zotero's own sync and update behavior remains Zotero-controlled.
+Version 1.3.3 has no separate analytics or reading-data upload service. It declares a GitHub update URL for retrieving release metadata and the release package; Zotero's own sync and update behavior remains Zotero-controlled.
 
 ## How to collect Zotero debug output
 
@@ -119,4 +119,4 @@ Existing `ReadingFlow:` lines in item `Extra` fields are not automatically remov
 
 ## Zotero reports the add-on as incompatible
 
-Version 1.3.2 supports Zotero `9.0.x`, including compatible Zotero 9 source/self-built version strings. Its manifest uses `8.999` as Zotero's previous-major version-comparison sentinel for those builds; Zotero 8 itself is not supported.
+Version 1.3.3 supports Zotero `9.0.x`, including compatible Zotero 9 source/self-built version strings. Its manifest uses `8.999` as Zotero's previous-major version-comparison sentinel for those builds; Zotero 8 itself is not supported.

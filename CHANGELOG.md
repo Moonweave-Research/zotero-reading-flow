@@ -1,5 +1,20 @@
 # Changelog
 
+# 1.3.3 - 2026-08-23
+
+### Fixed
+
+- Serialized same-item progress, status, and reset transitions so concurrent updates compose from the latest parent-item metadata instead of overwriting one another.
+- Hardened failed-save rollback and cache invalidation so newer external `Extra` changes are preserved and stale cached state does not become the basis for a later write.
+- Prevented delayed Reader saves from restoring progress after a newer reset, and skipped queued writes or refreshes during add-on shutdown.
+- Scoped Reading Statistics day-detail cache ownership to the active dashboard lifecycle so closing an older window cannot discard a newer window's snapshot.
+
+### Documentation
+
+- Added a public comparison of Detailed columns, Compact Reading Flow, and Icons only using verified Zotero 9.0.6 captures.
+- Clarified that Zotero's native chooser owns column visibility and that Compact/Icons changes only the optional composite column's content.
+- This release does not change the stored Reading Flow schema or introduce private Zotero API dependencies.
+
 # 1.3.2 - 2026-08-23
 
 ### Added

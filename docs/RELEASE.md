@@ -33,10 +33,11 @@ The command verifies:
 For a new release:
 
 1. Update `package.json`.
-2. Update `addon/manifest.json`.
-3. Update `CHANGELOG.md`.
-4. Run `npm run verify`.
-5. Confirm `updates.json` points at the same version tag.
+2. Update the root and package entries in `package-lock.json` (normally with `npm version <version> --no-git-tag-version`).
+3. Update `addon/manifest.json`.
+4. Update `CHANGELOG.md` and release-facing README content.
+5. Run `npm ci` and `npm run verify`.
+6. Confirm the packed manifest and `updates.json` agree with the source version, URL, and XPI hash.
 
 The expected update link format is:
 
@@ -61,7 +62,7 @@ After publishing the release, verify these URLs in a browser or with `curl -I`:
 
 ```bash
 curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/updates.json
-curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v1.3.2/zotero-reading-flow.xpi
+curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v1.3.3/zotero-reading-flow.xpi
 ```
 
 Both should return a redirect or success response rather than `404`.
@@ -103,13 +104,29 @@ npm run check:release-profile -- \
 
 ## Current Release Notes
 
-For `v1.3.2`, the release should be described as tested with Zotero `9.0.6` and compatible with Zotero `9.0.*`.
+For `v1.3.3`, the release should be described as tested with Zotero `9.0.6` and compatible with Zotero `9.0.*`.
 
-### v1.3.2 summary
+### v1.3.3 summary
 
-- Adds an optional `Reading Flow` composite column that users enable through Zotero's native column chooser; it is never shown automatically.
-- Adds **Compact** (status icon plus progress/date) and **Icons** (icon only) modes under **Settings → Zotero Reading Flow → Reading Flow column density**.
-- Uses 📙 `To Read`, 📖 `Reading`, 📘 `Skimmed`, 📗 `Read`, and ⭐ `Important`, and shows `Not started` for never-read `To Read` items in Compact mode.
-- Preserves complete tooltip/accessibility meaning and recent-first sorting with never-read items last.
-- Leaves the existing `Progress`, `Status`, and `Last Read` visibility, order, width, and sorting unchanged; density changes only the optional composite column.
-- Retains the v1.3.1 Reading Statistics dashboard and activity-day drill-down behavior, and does not modify PDF or annotation content.
+- Serializes same-item Reading Flow transitions and composes them from current parent-item metadata, preserving concurrent progress/status/reset updates and unrelated `Extra` content.
+- Clears stale cache ownership after saves and failures, preserves newer external metadata during rollback, and prevents delayed Reader saves from overriding a newer reset.
+- Scopes day-detail cache cleanup to the dashboard lifecycle that owns it.
+- Adds a verified Zotero 9.0.6 README comparison of Detailed columns, Compact Reading Flow, and Icons only.
+- Leaves the existing `Progress`, `Status`, and `Last Read` visibility, order, width, and sorting unchanged; Zotero's native chooser owns visibility and Compact/Icons changes only the optional composite column's content.
+- Does not change the stored Reading Flow schema, add private Zotero API dependencies, or modify PDF or annotation content.
+
+### v1.3.3 local release checks
+
+```bash
+npm ci
+npm run verify
+git diff --check
+npm audit --omit=dev
+sha256sum zotero-reading-flow.xpi updates.json docs/assets/reading-flow-display-modes.png
+unzip -t zotero-reading-flow.xpi
+```
+
+Attach these generated release assets to GitHub release `v1.3.3`:
+
+- `zotero-reading-flow.xpi`
+- `updates.json`
