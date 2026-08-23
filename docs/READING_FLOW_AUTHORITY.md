@@ -263,62 +263,75 @@ or user data for this slice.
 
 The released `Progress`, `Status`, and `Last Read` columns are independently
 useful, but together consume too much horizontal space in narrow Zotero item
-trees. Users need to choose a denser scan surface without an update silently
-replacing their established library layout.
+trees. Users need a denser scan surface without an update silently replacing
+their established library layout.
 
 #### Decision
 
 Keep the released three-column layout as the detailed, default presentation and
-add two explicit, opt-in alternatives. These are user-facing display choices,
-not new reading semantics:
+register one new, user-managed `Reading Flow` composite column. The composite
+column is hidden/default-neutral and becomes visible only when the user chooses it in
+Zotero's native column chooser. The plugin preference controls only the
+composite column's internal presentation; it does not control column visibility,
+order, width, or sorting.
 
-| Display mode | Visible Reading Flow surface | Intended use |
+| Display density surface | User-controlled surface | Intended use |
 | --- | --- | --- |
 | Detailed columns | Existing `Progress`, `Status`, and `Last Read` columns | Full independent detail and sorting |
-| Compact Reading Flow | One `Reading Flow` column with a status icon, micro progress bar, and short last-read label | Preserve title width while retaining the main scan signals |
-| Icons only | One `Reading Flow` status icon | The narrowest library layouts; full state remains available through accessible text |
+| Compact Reading Flow | User-shown `Reading Flow` column rendered with a status icon, micro progress bar, and short last-read label | Preserve title width while retaining the main scan signals |
+| Icons only | User-shown `Reading Flow` column rendered as a status icon | The narrowest library layouts; full state remains available through accessible text |
 
-On an existing profile, an update must not change any Reading Flow column's
-visibility, width, or sort direction. A layout changes only after the user
-explicitly chooses it. New installs continue to start with detailed columns.
-Selecting a compact mode is permission to change only Reading Flow-owned
-columns; it must never change Zotero's other columns, selected items, active
-view, tags, saved searches, or item metadata.
+Upgrades never change any existing column layout, including visibility, width,
+order, or sort direction. New installs retain the released Detailed columns;
+the new composite column is hidden until the user explicitly chooses it in
+Zotero. Existing user layout state remains untouched. There is no plugin-driven
+show/hide, reorder, width, or sort mutation, no layout snapshot, and no private
+`_columnPrefs` transaction. The three density surfaces remain available through
+Zotero's existing columns, the user-shown Compact composite column, or the
+user-shown Icons-only composite column.
 
 #### Interaction and data contract
 
-- The compact and icon-only columns are display-only. Hover/focus text and the
-  accessible name must state the complete reading state: status, progress (or
-  unknown), and last-read value (or never read). Color alone is never the
-  signal.
+- Zotero's native column chooser owns `Reading Flow` visibility. The plugin
+  preference changes rendering inside that column only: Compact versus Icons.
+  Changing the preference must not show, hide, reorder, resize, or sort any
+  column.
+- The compact and icon-only presentations are display-only. Hover/focus text,
+  tooltip text, and the accessible name must state the full reading state:
+  status, progress (or unknown), and last-read value (or never read). Color
+  alone is never the signal.
 - `Important` remains the released `ReadingStatus` value. This slice must not
   reinterpret it as a separate priority system or introduce a schema migration.
-- Detailed columns retain their independent native sort behavior. Each compact
-  mode has one documented sort: most recently read first, with never-read
-  items last. It must not imply that it preserves separate status, progress,
-  and last-read sorts.
-- The choice must be reversible. Before applying a compact layout, retain the
-  user's Reading Flow column arrangement so returning to detailed restores that
-  arrangement. If it cannot be restored safely, leave the current arrangement
-  untouched and direct the user to Zotero's column chooser instead.
+- Detailed columns keep their independent native sorting. The composite
+  `Reading Flow` column has one documented sort: most recently read first, with
+  never-read items last. It must not imply that it preserves separate status,
+  progress, and last-read sorts.
+- Visibility is reversible through Zotero's native chooser. This slice makes no
+  promise of reconstructing a prior Detailed arrangement and must not alter the
+  user's current arrangement while changing density.
 - This slice does not create, remove, rename, or synchronize Zotero tags; it
   does not add a sidebar, dashboard control, new metadata field, or background
   action.
 
 #### Write region and proof
 
-Start with an implementation design that proves the Zotero item-tree API can
-apply and restore the three layouts without touching non-Reading-Flow columns.
-The expected write region is this authority, `src/columnManager.ts`, the
-preferences UI and locale strings, plus focused column/preference tests. Add
-other files only after updating this authority.
+The implementation design must prove that registering the hidden/default-neutral
+composite column and rendering its two presentations do not mutate existing
+user layout state. The expected write region is this authority,
+`src/columnManager.ts`, the preferences UI and locale strings, plus focused
+column/preference tests. Add other files only after updating this authority.
+The implementation must use Zotero's public/native column registration and
+chooser contract; it must not write private layout state.
 
-Required proof includes: no-op upgrade behavior for an existing customized
-layout; deliberate switch and reverse switch for each mode; independent
-detailed sorting; compact recency sort; full icon-only accessible text; unknown
-progress and never-read states; and direct disposable-profile verification at
-normal and 200% zoom. The result must be inspected in a real Zotero item tree,
-not only an HTML prototype.
+Required proof includes: an upgrade fixture whose existing Detailed column
+layout is byte-for-byte/layout-equivalent before and after the update; a new
+install retaining Detailed columns with `Reading Flow` hidden; native chooser
+show/hide of the composite column; Compact/Icons preference changes that alter
+rendering only; independent Detailed sorting; composite recent-first sorting
+with never-read last; full accessible text including unknown progress and
+never-read states; and disposable Zotero verification at normal and 200% zoom.
+Verification must exercise the real Zotero item tree, not only an HTML prototype,
+and must not retain profile changes after the run.
 
 ### Priority 2 — Slice L: User-Initiated Snapshot Copy
 

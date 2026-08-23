@@ -63,3 +63,4 @@ reading-flow-status-important =
     .label = Mark as Important
 reading-flow-reset-progress =
     .label = Reset Reading Progress
+reading-flow-density-help = This changes only the contents of the Reading Flow column. Use Zotero's native column chooser to show or hide it.
