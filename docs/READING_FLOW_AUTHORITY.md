@@ -298,8 +298,8 @@ user-shown Icons-only composite column.
   column.
 - The compact and icon-only presentations are display-only. Hover/focus text,
   tooltip text, and the accessible name must state the full reading state:
-  status, progress (or unknown), and last-read value (or never read). Color
-  alone is never the signal.
+  status, progress (or no progress recorded), and last-read value (or never read).
+  Color alone is never the signal.
 - `Important` remains the released `ReadingStatus` value. This slice must not
   reinterpret it as a separate priority system or introduce a schema migration.
 - Detailed columns keep their independent native sorting. The composite
@@ -328,8 +328,8 @@ layout is byte-for-byte/layout-equivalent before and after the update; a new
 install retaining Detailed columns with `Reading Flow` hidden; native chooser
 show/hide of the composite column; Compact/Icons preference changes that alter
 rendering only; independent Detailed sorting; composite recent-first sorting
-with never-read last; full accessible text including unknown progress and
-never-read states; and disposable Zotero verification at normal and 200% zoom.
+with never-read last; full accessible text including no progress recorded and
+not started states; and disposable Zotero verification at normal and 200% zoom.
 Verification must exercise the real Zotero item tree, not only an HTML prototype,
 and must not retain profile changes after the run.
 
