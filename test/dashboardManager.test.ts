@@ -16,18 +16,22 @@ function setup() {
     }
   };
   const openCalls: any[][] = [];
+  const scheduled: Array<{ callback: () => void; delay: number }> = [];
   const mainWindow = {
     openDialog(...args: any[]) {
       openCalls.push(args);
       dashboard.closed = false;
       return dashboard;
+    },
+    setTimeout(callback: () => void, delay: number) {
+      scheduled.push({ callback, delay });
     }
   };
-  return { calls, mainWindow, openCalls };
+  return { calls, mainWindow, openCalls, scheduled };
 }
 
-test('opens one packaged modeless resizable dashboard and focuses it on repeated open', () => {
-  const { calls, mainWindow, openCalls } = setup();
+test('opens one packaged modeless resizable dashboard and focuses it on first and repeated open', () => {
+  const { calls, mainWindow, openCalls, scheduled } = setup();
   const manager = new DashboardManager(
     mainWindow as any,
     'chrome://readingflow/content/'
@@ -42,7 +46,10 @@ test('opens one packaged modeless resizable dashboard and focuses it on repeated
     'reading-flow-dashboard',
     'chrome,dialog=no,resizable,centerscreen,width=900,height=650'
   ]]);
-  assert.deepEqual(calls, ['focus']);
+  assert.deepEqual(calls, ['focus', 'focus']);
+  assert.deepEqual(scheduled.map(({ delay }) => delay), [100, 100]);
+  for (const { callback } of scheduled) callback();
+  assert.deepEqual(calls, ['focus', 'focus', 'focus', 'focus']);
 });
 
 test('close is idempotent and a later open creates a new lifecycle', () => {
@@ -54,7 +61,7 @@ test('close is idempotent and a later open creates a new lifecycle', () => {
   manager.close();
   manager.open();
 
-  assert.deepEqual(calls, ['close']);
+  assert.deepEqual(calls, ['focus', 'close', 'focus']);
   assert.equal(openCalls.length, 2);
 });
 

@@ -9,6 +9,7 @@
 
 ### Fixed
 
+- Reading Statistics now comes to the front on first open instead of appearing behind the library window.
 - Never-read `To Read` items now show `Not started` in Compact mode instead of ambiguous missing-progress text.
 - The composite column sorts recently read items first with never-read items last, while tooltips and accessible names preserve the full status, progress, and last-read meaning in both density modes.
 - Registering, showing, hiding, or changing the density of the optional column preserves the existing `Progress`, `Status`, and `Last Read` layout and uses Zotero's safe native column behavior without automatic layout changes.

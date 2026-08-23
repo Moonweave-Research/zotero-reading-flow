@@ -32,13 +32,7 @@ export class DashboardManager {
   public open(): DashboardWindow {
     if (this.dashboardWindow && !this.dashboardWindow.closed) {
       const dashboardWindow = this.dashboardWindow;
-      dashboardWindow.focus();
-      const schedule = (this.mainWindow as any).setTimeout ?? (globalThis as any).setTimeout;
-      if (typeof schedule === 'function') {
-        schedule.call(this.mainWindow, () => {
-          if (!dashboardWindow.closed) dashboardWindow.focus();
-        }, 100);
-      }
+      this.focus(dashboardWindow);
       return dashboardWindow;
     }
 
@@ -63,7 +57,18 @@ export class DashboardManager {
         this.dashboardWindow = null;
       }
     }, { once: true });
+    this.focus(dashboardWindow);
     return dashboardWindow;
+  }
+
+  private focus(dashboardWindow: DashboardWindow) {
+    dashboardWindow.focus();
+    const schedule = (this.mainWindow as any).setTimeout ?? (globalThis as any).setTimeout;
+    if (typeof schedule === 'function') {
+      schedule.call(this.mainWindow, () => {
+        if (!dashboardWindow.closed) dashboardWindow.focus();
+      }, 100);
+    }
   }
 
   public close() {
