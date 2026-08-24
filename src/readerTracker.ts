@@ -46,13 +46,18 @@ export class ReaderTracker {
   private handlePageChange(attachmentId: number) {
     Logger.log('handlePageChange: attachmentId=' + attachmentId);
 
-    const readers = Zotero.Reader._readers as any[];
-    Logger.log('_readers count=' + (readers?.length ?? 'null'));
+    const zotero = (globalThis as any).Zotero;
+    const readers = zotero?.Reader?._readers;
+    if (!Array.isArray(readers)) {
+      Logger.warn('ReaderTracker: reader registry is unavailable; skipping page-change tracking');
+      return;
+    }
+    Logger.log('_readers count=' + readers.length);
 
-    const reader = readers?.find((r: any) => this.toPositiveInt(r?.itemID) === attachmentId);
+    const reader = readers.find((r: any) => this.toPositiveInt(r?.itemID) === attachmentId);
     Logger.log('reader found=' + !!reader + ' type=' + reader?._type);
 
-    const item = Zotero.Items.get(attachmentId) as any;
+    const item = zotero?.Items?.get?.(attachmentId) as any;
     if (!item) return;
     const parentId = item.parentID;
     if (!parentId) return;
@@ -69,12 +74,6 @@ export class ReaderTracker {
         Logger.log('pdf page count unavailable; skipping synthetic page number fallback');
         progress = 0;
       }
-    } else if (reader?._type === 'epub' || reader?._type === 'snapshot') {
-      const savedPosition = item.getAttachmentLastPageIndex?.();
-      progress =
-        typeof savedPosition === 'number'
-          ? savedPosition
-          : reader?._state?.scrollYPercent || 0;
     }
 
     progress = this.normalizeProgress(progress);

@@ -21,6 +21,73 @@ async function waitFor(condition: () => boolean) {
   assert.equal(condition(), true);
 }
 
+test('ReaderTracker ignores a page-change notification when the private reader registry is unavailable', () => {
+  const originalZotero = (globalThis as any).Zotero;
+  const tracker = new ReaderTracker({} as any);
+  let itemReads = 0;
+  (globalThis as any).Zotero = {
+    Items: {
+      get() {
+        itemReads += 1;
+        return null;
+      }
+    },
+    Notifier: {
+      registerObserver() { return 'reader-tracker'; },
+      unregisterObserver() {}
+    }
+  };
+
+  try {
+    tracker.register();
+    assert.doesNotThrow(() => tracker.notify('pageChange', 'file', 10));
+    assert.equal(itemReads, 0);
+  } finally {
+    tracker.unregister();
+    (globalThis as any).Zotero = originalZotero;
+  }
+});
+
+test('ReaderTracker ignores non-PDF reader locations instead of persisting them as page progress', () => {
+  const originalZotero = (globalThis as any).Zotero;
+  const originalSetTimeout = globalThis.setTimeout;
+  const tracker = new ReaderTracker({} as any);
+  let scheduled = 0;
+  (globalThis as any).setTimeout = () => {
+    scheduled += 1;
+    return 1;
+  };
+  (globalThis as any).Zotero = {
+    Reader: {
+      _readers: [{ itemID: 10, _type: 'snapshot', _state: { scrollYPercent: 0.6 } }]
+    },
+    Items: {
+      get(id: number) {
+        assert.equal(id, 10);
+        return {
+          parentID: 20,
+          isPDFAttachment() { return false; },
+          getAttachmentLastPageIndex() { return 24; }
+        };
+      }
+    },
+    Notifier: {
+      registerObserver() { return 'reader-tracker'; },
+      unregisterObserver() {}
+    }
+  };
+
+  try {
+    tracker.register();
+    tracker.notify('pageChange', 'file', 10);
+    assert.equal(scheduled, 0);
+  } finally {
+    tracker.unregister();
+    (globalThis as any).setTimeout = originalSetTimeout;
+    (globalThis as any).Zotero = originalZotero;
+  }
+});
+
 test('ReaderTracker prefers live PDF page index over saved attachment page index', () => {
   const tracker = new ReaderTracker({} as any);
   let savedCall: any[] | null = null;
