@@ -11,7 +11,7 @@
 
 [![Latest](https://img.shields.io/github/v/release/Moonweave-Research/zotero-reading-flow?label=Latest%20Release)](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Moonweave-Research/zotero-reading-flow/latest/zotero-reading-flow.xpi?label=Downloads%20%28latest%29)](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/zotero-reading-flow.xpi)
-[![Zotero](https://img.shields.io/badge/Zotero-9.0.x-blue)](https://www.zotero.org/download/)
+[![Zotero](https://img.shields.io/badge/Zotero-9.0.x%20%7C%2010.0.x-blue)](https://www.zotero.org/download/)
 [![License](https://img.shields.io/github/license/Moonweave-Research/zotero-reading-flow)](LICENSE)
 
 ![Reading Flow columns in the library](docs/assets/columns.png)
@@ -110,11 +110,11 @@ Zotero's native column chooser owns visibility in every mode. Switching between 
 
 ## Compatibility
 
-- Zotero `9.0.x`
-- Tested with Zotero `9.0.6` on macOS ARM64
+- Zotero `9.0.x` and `10.0.x`
+- Validated with Zotero `10.0` on macOS ARM64
 - Plugin ID: `readingflow@moon.com`
 
-The manifest's `8.999` minimum is Zotero's previous-major sentinel, used so compatible Zotero 9 source/self-built version strings are admitted by version comparison. It does **not** mean Zotero 8 is supported; the maximum remains `9.0.*`.
+The manifest's `8.999` minimum is Zotero's previous-major sentinel, used so compatible Zotero 9 source/self-built version strings are admitted by version comparison. It does **not** mean Zotero 8 is supported; the maximum is `10.0.*`.
 
 ## How it stores data
 
@@ -126,7 +126,7 @@ ReadingFlow: {"v":2, ...}
 
 Version 1 metadata remains readable. When historical tracking is available, version 2 adds at most 366 retained local-calendar daily rollups with progress, status, reset, and first-completion markers. Existing current progress remains separate from retrospective history: the dashboard never invents past activity from an old timestamp. Reading Flow preserves unrelated `Extra` metadata and only updates this plugin's own `ReadingFlow:` line. Because that line is parent-item metadata, it follows Zotero's metadata sync behavior. Disabling or uninstalling the add-on does not delete it; back up affected items before any manual removal. Your PDFs are never modified.
 
-Version 1.3.3 has no separate analytics or reading-data upload service. The add-on declares the GitHub update URL shown above for retrieving release metadata and the release package; this statement does not change or characterize Zotero's own sync or update behavior.
+Version 1.3.4 has no separate analytics or reading-data upload service. The add-on declares the GitHub update URL shown above for retrieving release metadata and the release package; this statement does not change or characterize Zotero's own sync or update behavior.
 
 ## FAQ
 
@@ -134,7 +134,7 @@ Version 1.3.3 has no separate analytics or reading-data upload service. The add-
 Read one PDF, return to the library, and confirm the row shows updated `Progress`, `Status`, or `Last Read` values.
 
 **Can I use it on Zotero 8?**
-No. The current update channel targets Zotero `9.0` through `9.0.*`.
+No. The current update channel targets Zotero `9.0.x` and `10.0.x`.
 
 **Does it modify my PDFs?**
 No. Reading metadata is stored only in Zotero item metadata.
