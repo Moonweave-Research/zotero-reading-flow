@@ -105,15 +105,16 @@ npm run check:release-profile -- \
 
 ## Current Release Notes
 
-For `v1.3.4`, the release should be described as validated with Zotero `10.0` on macOS ARM64 and compatible with Zotero `9.0.x` and `10.0.*`.
+For `v1.3.5`, the release should be described as compatible with Zotero `9.0.x` and `10.0.*`, with safer Reader API degradation and public release-asset verification.
 
-### v1.3.4 summary
+### v1.3.5 summary
 
-- Expands the manifest and update metadata compatibility range through Zotero `10.0.*`.
-- Confirms loading of the add-on and the required Reader and item-tree API entry points in a Zotero `10.0` macOS ARM64 test profile.
+- Safely skips progress tracking when a Reader registry is unavailable.
+- Limits automatic tracking to PDFs, avoiding ambiguous EPUB or snapshot page values.
+- Verifies published XPI and update metadata against the exact tagged build after release.
 - Does not change the stored Reading Flow schema or modify PDF or annotation content.
 
-### v1.3.4 local release checks
+### v1.3.5 local release checks
 
 ```bash
 npm ci
@@ -124,7 +125,7 @@ sha256sum zotero-reading-flow.xpi updates.json docs/assets/reading-flow-display-
 unzip -t zotero-reading-flow.xpi
 ```
 
-Attach these generated release assets to GitHub release `v1.3.4`:
+Attach these generated release assets to GitHub release `v1.3.5`:
 
 - `zotero-reading-flow.xpi`
 - `updates.json`

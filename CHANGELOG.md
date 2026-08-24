@@ -1,5 +1,16 @@
 # Changelog
 
+# 1.3.5 - 2026-08-24
+
+### Fixed
+
+- Skip page-change tracking safely when Zotero's private Reader registry is unavailable instead of allowing the add-on observer to throw.
+- Limit automatic progress tracking to PDF attachments so EPUB and snapshot positions are not stored as ambiguous page progress.
+
+### Changed
+
+- Added a public-release asset check that compares the tagged build with the published XPI and both tagged and `latest` update metadata.
+
 # 1.3.4 - 2026-08-24
 
 ### Changed
