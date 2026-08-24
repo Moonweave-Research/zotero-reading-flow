@@ -6,6 +6,11 @@ on:
     branches:
       - main
       - "codex/**"
+    tags:
+      - "v*"
+  release:
+    types:
+      - published
 
 jobs:
   verify:
@@ -14,6 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -26,3 +33,29 @@ jobs:
 
       - name: Verify package
         run: npm run verify
+
+  verify-public-release-assets:
+    if: github.event_name == 'release'
+    needs: verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout released source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build expected release assets
+        run: npm run verify
+
+      - name: Verify published release assets
+        run: npm run verify:release-assets -- --tag "${{ github.event.release.tag_name }}"

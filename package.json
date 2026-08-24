@@ -9,6 +9,7 @@
     "test:unit": "node scripts/run-unit-tests.js",
     "build": "node build.js",
     "verify": "npm run typecheck && npm run test:unit && npm run build && node scripts/verify-xpi.js",
+    "verify:release-assets": "node scripts/verify-release-assets.js",
     "check:release-profile": "node scripts/check-release-profile.js"
   },
   "devDependencies": {

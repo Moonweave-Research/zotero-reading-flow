@@ -47,7 +47,7 @@ https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v<ve
 
 ## GitHub Release
 
-After the PR is merged:
+Before creating a release, confirm that the exact merge commit's GitHub **Verify** check has passed. Create the release as a draft first, then:
 
 1. Create a GitHub release named `v<version>`.
 2. Upload `zotero-reading-flow.xpi`.
@@ -56,16 +56,17 @@ After the PR is merged:
 
 Both files must be release assets. Do not rely on source archives for plugin installation.
 
+Publishing triggers the `verify-public-release-assets` job. It rebuilds the tagged source and compares the public XPI and update metadata with that exact build. Treat the release as complete only after this job passes.
+
 ## Post-Release URL Checks
 
-After publishing the release, verify these URLs in a browser or with `curl -I`:
+After publishing the release, verify the exact public artifacts (not only their HTTP status):
 
 ```bash
-curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/updates.json
-curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v1.3.4/zotero-reading-flow.xpi
+npm run verify:release-assets -- --tag v<version>
 ```
 
-Both should return a redirect or success response rather than `404`.
+This checks the public XPI hash, the update metadata hash and link, the add-on version, and the Zotero compatibility range against the tagged source build.
 
 ## Manual Zotero Smoke Test
 
