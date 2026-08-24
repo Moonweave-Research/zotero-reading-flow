@@ -1,5 +1,16 @@
 # Changelog
 
+# 1.3.4 - 2026-08-24
+
+### Changed
+
+- Declared compatibility with Zotero `10.0.*` after a Zotero 10 activation and Reader API compatibility check on macOS ARM64.
+- Updated release verification so the packaged manifest and auto-update metadata must remain constrained to Zotero `10.0.*`.
+
+### Documentation
+
+- Updated installation and troubleshooting guidance for the Zotero 10 update channel.
+
 # 1.3.3 - 2026-08-23
 
 ### Fixed

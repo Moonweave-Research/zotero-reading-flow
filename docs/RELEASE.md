@@ -62,7 +62,7 @@ After publishing the release, verify these URLs in a browser or with `curl -I`:
 
 ```bash
 curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/updates.json
-curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v1.3.3/zotero-reading-flow.xpi
+curl -I https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v1.3.4/zotero-reading-flow.xpi
 ```
 
 Both should return a redirect or success response rather than `404`.
@@ -104,18 +104,15 @@ npm run check:release-profile -- \
 
 ## Current Release Notes
 
-For `v1.3.3`, the release should be described as tested with Zotero `9.0.6` and compatible with Zotero `9.0.*`.
+For `v1.3.4`, the release should be described as validated with Zotero `10.0` on macOS ARM64 and compatible with Zotero `9.0.x` and `10.0.*`.
 
-### v1.3.3 summary
+### v1.3.4 summary
 
-- Serializes same-item Reading Flow transitions and composes them from current parent-item metadata, preserving concurrent progress/status/reset updates and unrelated `Extra` content.
-- Clears stale cache ownership after saves and failures, preserves newer external metadata during rollback, and prevents delayed Reader saves from overriding a newer reset.
-- Scopes day-detail cache cleanup to the dashboard lifecycle that owns it.
-- Adds a verified Zotero 9.0.6 README comparison of Detailed columns, Compact Reading Flow, and Icons only.
-- Leaves the existing `Progress`, `Status`, and `Last Read` visibility, order, width, and sorting unchanged; Zotero's native chooser owns visibility and Compact/Icons changes only the optional composite column's content.
-- Does not change the stored Reading Flow schema, add private Zotero API dependencies, or modify PDF or annotation content.
+- Expands the manifest and update metadata compatibility range through Zotero `10.0.*`.
+- Confirms loading of the add-on and the required Reader and item-tree API entry points in a Zotero `10.0` macOS ARM64 test profile.
+- Does not change the stored Reading Flow schema or modify PDF or annotation content.
 
-### v1.3.3 local release checks
+### v1.3.4 local release checks
 
 ```bash
 npm ci
@@ -126,7 +123,7 @@ sha256sum zotero-reading-flow.xpi updates.json docs/assets/reading-flow-display-
 unzip -t zotero-reading-flow.xpi
 ```
 
-Attach these generated release assets to GitHub release `v1.3.3`:
+Attach these generated release assets to GitHub release `v1.3.4`:
 
 - `zotero-reading-flow.xpi`
 - `updates.json`
