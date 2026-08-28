@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createDashboardBridge } from '../src/bootstrap';
+import { Bootstrap, createDashboardBridge, runWhenUIReady } from '../src/bootstrap';
 import { DEFAULT_FLOW_DATA, type FlowData } from '../src/flowData';
 import type { ScopeItem } from '../src/statisticsScope';
 
@@ -64,6 +64,67 @@ function bridgeFixture() {
   });
   return { bridge, requests };
 }
+
+test('UI-bound registration waits for Zotero UI readiness without blocking plugin startup', async () => {
+  const ready = deferred<void>();
+  const calls: string[] = [];
+
+  const scheduled = runWhenUIReady({ uiReadyPromise: ready.promise }, async () => {
+    calls.push('registered');
+  });
+
+  assert.deepEqual(calls, []);
+  ready.resolve();
+  await scheduled;
+  assert.deepEqual(calls, ['registered']);
+});
+
+test('UI-bound registration runs immediately when the runtime has no readiness promise', async () => {
+  const calls: string[] = [];
+  await runWhenUIReady({}, () => { calls.push('registered'); });
+  assert.deepEqual(calls, ['registered']);
+});
+
+test('UI-bound registration waits for the mounted main item tree when its view exists', async () => {
+  const callbacks: Array<() => void> = [];
+  const itemsView: { tree: object | null } = { tree: null };
+  const runtime = {
+    uiReadyPromise: Promise.resolve(),
+    getActiveZoteroPane: () => ({ itemsView }),
+    getMainWindow: () => ({ setTimeout(callback: () => void) { callbacks.push(callback); } })
+  };
+  const calls: string[] = [];
+
+  const scheduled = runWhenUIReady(runtime, () => { calls.push('registered'); });
+  await Promise.resolve();
+  assert.deepEqual(calls, []);
+  assert.equal(callbacks.length, 1);
+
+  itemsView.tree = {};
+  callbacks.shift()?.();
+  await scheduled;
+  assert.deepEqual(calls, ['registered']);
+});
+
+test('shutdown flushes pending reader progress before unregistering and closing the store', async () => {
+  const events: string[] = [];
+  const originalZotero = (globalThis as any).Zotero;
+  const bootstrap = new Bootstrap();
+  bootstrap.dataStore = { close() { events.push('close'); } } as any;
+  (bootstrap as any).readerTracker = {
+    async flushPending() { events.push('flush'); },
+    unregister() { events.push('unregister'); }
+  };
+  (bootstrap as any).styleManager = { unregister() { events.push('style'); } };
+  (globalThis as any).Zotero = {};
+
+  try {
+    await bootstrap.shutdown();
+    assert.deepEqual(events.slice(0, 3), ['flush', 'unregister', 'close']);
+  } finally {
+    (globalThis as any).Zotero = originalZotero;
+  }
+});
 
 test('activity-day cache remains owned by the latest issued snapshot when an older request resolves last', async () => {
   const { bridge, requests } = bridgeFixture();

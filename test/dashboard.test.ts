@@ -133,6 +133,7 @@ function snapshot(overrides: Partial<StatisticsSnapshot> = {}): StatisticsSnapsh
     inProgress: 3,
     read: 2,
     statusCounts: {
+      unassigned: 0,
       'to-read': 3,
       reading: 3,
       skimmed: 1,
@@ -212,12 +213,12 @@ test('renderDashboard keeps current summary honest and uses semantic status colo
   assert.equal(doc.getElementById('dashboard-read')?.textContent, '2');
   assert.equal(doc.getElementById('dashboard-remaining-pages')?.textContent, '42');
   assert.equal(doc.getElementById('dashboard-remaining-coverage')?.textContent, 'Known for 7 of 10 papers; 3 unknown.');
-  assert.equal(doc.getElementById('dashboard-status-composition')?.children.length, 5);
+  assert.equal(doc.getElementById('dashboard-status-composition')?.children.length, 6);
   assert.match(findBar(doc, 'dashboard-status-composition', 'Reading')?.className ?? '', /status-reading/);
   assert.match(findBar(doc, 'dashboard-status-composition', 'Read')?.className ?? '', /status-read/);
   assert.equal(findBar(doc, 'dashboard-status-composition', 'Read')?.children[2]?.textContent, '2 (20%)');
   assert.equal(doc.getElementById('dashboard-progress-distribution')?.children.length, 7);
-  assert.equal(doc.getElementById('dashboard-filter-note')?.textContent, 'Reading set: papers with Reading Flow data · all statuses · selected Zotero scope.');
+  assert.equal(doc.getElementById('dashboard-filter-note')?.textContent, 'Reading Flow items: papers with Reading Flow data · all statuses · selected Zotero scope.');
 });
 
 test('no-history state shows one onboarding callout and hides every retained-history detail panel', () => {
@@ -231,7 +232,7 @@ test('no-history state shows one onboarding callout and hides every retained-his
   assert.equal(doc.getElementById('dashboard-completion-trend-panel')?.hidden, true);
   assert.equal(doc.getElementById('dashboard-history-footnote')?.hidden, true);
   assert.equal(doc.getElementById('dashboard-papers')?.textContent, '10');
-  assert.equal(doc.getElementById('dashboard-status-composition')?.children.length, 5);
+  assert.equal(doc.getElementById('dashboard-status-composition')?.children.length, 6);
   assert.equal(doc.getElementById('dashboard-history-calendar')?.children.length, 0);
   assert.equal(doc.getElementById('dashboard-recent-progress-body')?.children.length, 0);
 });
@@ -681,7 +682,7 @@ test('positive percentages below one percent render as less than one instead of 
   const doc = documentFixture();
   renderDashboard(doc as any, snapshot({
     totalPapers: 1000,
-    statusCounts: { 'to-read': 999, reading: 1, skimmed: 0, read: 0, important: 0 },
+    statusCounts: { unassigned: 0, 'to-read': 999, reading: 1, skimmed: 0, read: 0, important: 0 },
     progressDistribution: {
       'not-started': 999,
       '1-24': 1,
@@ -711,13 +712,13 @@ test('positive percentages below one percent render as less than one instead of 
   assert.equal(cells?.[2].textContent, '+<1%');
 });
 
-test('explicit Read statistics remain visible in both Read and Complete product surfaces', () => {
+test('status and measured progress surfaces render independently from the supplied snapshot', () => {
   const doc = documentFixture();
   renderDashboard(doc as any, snapshot({
     totalPapers: 1,
     inProgress: 0,
     read: 1,
-    statusCounts: { 'to-read': 0, reading: 0, skimmed: 0, read: 1, important: 0 },
+    statusCounts: { unassigned: 0, 'to-read': 0, reading: 0, skimmed: 0, read: 1, important: 0 },
     progressDistribution: {
       'not-started': 0,
       '1-24': 0,
@@ -741,7 +742,7 @@ test('empty, large, and unknown-page scopes remain readable without inventing va
     totalPapers: 0,
     inProgress: 0,
     read: 0,
-    statusCounts: { 'to-read': 0, reading: 0, skimmed: 0, read: 0, important: 0 },
+    statusCounts: { unassigned: 0, 'to-read': 0, reading: 0, skimmed: 0, read: 0, important: 0 },
     progressDistribution: {
       'not-started': 0,
       '1-24': 0,
@@ -907,7 +908,7 @@ test('a stale snapshot identifies the filters used by the last successful reques
   await app.refresh();
 
   assert.match(doc.getElementById('dashboard-state')?.textContent ?? '', /Current View/);
-  assert.match(doc.getElementById('dashboard-state')?.textContent ?? '', /Reading set \(tracked\)/);
+  assert.match(doc.getElementById('dashboard-state')?.textContent ?? '', /Reading Flow items/);
   assert.match(doc.getElementById('dashboard-state')?.textContent ?? '', /all statuses/);
   assert.match(doc.getElementById('dashboard-state')?.textContent ?? '', /7 days/);
   assert.match(doc.getElementById('dashboard-filter-note')?.textContent ?? '', /Last successful snapshot/);

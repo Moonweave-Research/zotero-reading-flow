@@ -16,7 +16,9 @@ const MENU_LABELS = {
   statusSkimmed: 'Mark as Skimmed',
   statusRead: 'Mark as Read',
   statusImportant: 'Mark as Important',
-  resetProgress: 'Reset Reading Progress',
+  statusAutomatic: 'Clear Manual Status (Use Automatic)',
+  resetProgress: 'Reset Progress (Keep Manual Status)',
+  restartToRead: 'Restart as To Read',
   viewStatistics: 'View Current View Statistics',
   readingStatistics: 'Reading Statistics'
 } as const;
@@ -88,11 +90,38 @@ export class ReadingFlowMenuManager {
             this.statusMenu('important', 'reading-flow-status-important', MENU_LABELS.statusImportant),
             {
               menuType: 'menuitem',
+              l10nID: 'reading-flow-status-automatic',
+              label: MENU_LABELS.statusAutomatic,
+              onCommand: (_event: Event, context: any) => this.updateSelectedItems(
+                (item) => this.dataStore.clearManualStatus(item),
+                context,
+                (item) => this.getCurrentData(item).s === null
+              )
+            },
+            {
+              menuType: 'separator'
+            },
+            {
+              menuType: 'menuitem',
               l10nID: 'reading-flow-reset-progress',
               label: MENU_LABELS.resetProgress,
               onCommand: (_event: Event, context: any) => this.updateSelectedItems(
                 (item) => this.dataStore.resetProgress(item),
-                context
+                context,
+                (item) => !this.hasResumeState(item)
+              )
+            },
+            {
+              menuType: 'menuitem',
+              l10nID: 'reading-flow-restart-to-read',
+              label: MENU_LABELS.restartToRead,
+              onCommand: (_event: Event, context: any) => this.updateSelectedItems(
+                (item) => this.dataStore.restartAsToRead(item),
+                context,
+                (item) => {
+                  const data = this.getCurrentData(item);
+                  return data.s === 'to-read' && !this.hasResumeState(item);
+                }
               )
             }
           ]
@@ -143,7 +172,8 @@ export class ReadingFlowMenuManager {
       label,
       onCommand: (_event: Event, context: any) => this.updateSelectedItems(
         (item) => this.dataStore.setStatus(item, status),
-        context
+        context,
+        (item) => this.getCurrentData(item).s === status
       )
     };
   }
@@ -182,7 +212,7 @@ export class ReadingFlowMenuManager {
   }
 
   private async canShowSubmenu(context?: any): Promise<boolean> {
-    if (this.getSelectedRegularItems(context).length > 0) return true;
+    if (this.getMutationSelection(context).items.length > 0) return true;
 
     const selected = this.getSelectedItems(context);
     return selected.length === 1 && await this.resumeReader.canResume(selected[0]);
@@ -202,8 +232,31 @@ export class ReadingFlowMenuManager {
     return pane?.getSelectedItems?.() ?? pane?.itemsView?.getSelectedItems?.() ?? [];
   }
 
-  private getSelectedRegularItems(context?: any): any[] {
-    return this.getSelectedItems(context).filter((item: any) => this.normalizeItem(item)?.isRegularItem?.());
+  private getMutationSelection(context?: any): { items: any[]; skipped: number } {
+    const byID = new Map<number, any>();
+    const skipped = new Set<string>();
+    for (const [index, selected] of this.getSelectedItems(context).entries()) {
+      const normalized = this.normalizeItem(selected);
+      const candidate = normalized?.isRegularItem?.()
+        ? normalized
+        : normalized?.isPDFAttachment?.() && typeof normalized.parentID === 'number'
+          ? this.normalizeItem({ id: normalized.parentID })
+          : null;
+      if (!candidate?.isRegularItem?.()) {
+        skipped.add(`unsupported:${normalized?.id ?? index}`);
+        continue;
+      }
+      if (candidate.isEditable?.() === false) {
+        skipped.add(`readonly:${candidate.id}`);
+        continue;
+      }
+      if (candidate.deleted === true || candidate.parentID) {
+        skipped.add(`ineligible:${candidate.id}`);
+        continue;
+      }
+      byID.set(candidate.id, candidate);
+    }
+    return { items: [...byID.values()], skipped: skipped.size };
   }
 
   private normalizeItem(item: any): any {
@@ -216,18 +269,89 @@ export class ReadingFlowMenuManager {
     return item;
   }
 
-  private async updateSelectedItems(update: (item: any) => Promise<void>, context?: any) {
-    const items = this.getSelectedRegularItems(context);
-    if (!items.length) return;
+  private async updateSelectedItems(
+    update: (item: any) => Promise<boolean>,
+    context?: any,
+    isNoOp?: (item: any) => boolean
+  ) {
+    const selection = this.getMutationSelection(context);
+    const items = selection.items;
+    if (!items.length) {
+      if (selection.skipped > 0) this.showBatchSummary(0, 0, selection.skipped, 0);
+      return;
+    }
+    if (items.length >= 100 && !this.confirmLargeBatch(items.length)) return;
 
+    const changedIDs: number[] = [];
+    let unchanged = 0;
+    let skipped = selection.skipped;
+    let failed = 0;
     for (const item of items) {
       try {
-        await update(item);
+        if (isNoOp?.(item)) {
+          unchanged += 1;
+          continue;
+        }
+        if (await update(item)) changedIDs.push(item.id);
+        else skipped += 1;
       } catch (e) {
+        failed += 1;
         Logger.error(`menu update failed for item ${item?.id}`, e);
       }
     }
-    Zotero.ItemTreeManager.refreshColumns?.();
-    Zotero.Notifier.trigger('refresh', 'item', items.map((item: any) => item.id));
+    if (changedIDs.length) {
+      Zotero.ItemTreeManager.refreshColumns?.();
+      Zotero.Notifier.trigger('refresh', 'item', changedIDs);
+    }
+    if (items.length + selection.skipped > 1 || skipped > 0 || failed > 0) {
+      this.showBatchSummary(changedIDs.length, unchanged, skipped, failed);
+    }
+  }
+
+  private hasResumeState(item: any): boolean {
+    const data = this.getCurrentData(item);
+    return Object.keys(data.p).length > 0
+      || data.lastAttachmentId !== null
+      || data.lastPage !== null
+      || data.lastReadAt !== null;
+  }
+
+  private getCurrentData(item: any) {
+    this.dataStore.invalidateCache(item.id);
+    return this.dataStore.getData(item);
+  }
+
+  private confirmLargeBatch(count: number): boolean {
+    const prompt = (globalThis as any).Services?.prompt;
+    if (typeof prompt?.confirm !== 'function') {
+      Logger.warn('ReadingFlow: large batch cancelled because confirmation is unavailable');
+      return false;
+    }
+    try {
+      return prompt.confirm(
+        Zotero.getMainWindow?.() ?? null,
+        'Reading Flow',
+        `Apply this change to ${count} papers? You can cancel now without changing anything.`
+      );
+    } catch (error) {
+      Logger.warn(`ReadingFlow: large batch cancelled because confirmation failed: ${String(error)}`);
+      return false;
+    }
+  }
+
+  private showBatchSummary(changed: number, unchanged: number, skipped: number, failed: number) {
+    try {
+      if (!Zotero.ProgressWindow) return;
+      const progressWindow = new Zotero.ProgressWindow({ closeOnClick: true });
+      progressWindow.changeHeadline('Reading Flow update complete');
+      progressWindow.addDescription(
+        `${changed} changed · ${unchanged} not changed · ${skipped} skipped · ${failed} failed`
+        + (skipped > 0 ? ' · Skipped items may be read-only, unsupported, incompatible, or concurrently changed.' : '')
+      );
+      progressWindow.show();
+      progressWindow.startCloseTimer(5000);
+    } catch (error) {
+      Logger.warn(`ReadingFlow: could not show the bulk update summary: ${String(error)}`);
+    }
   }
 }

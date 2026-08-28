@@ -1,5 +1,28 @@
 # Changelog
 
+# 1.3.6 - 2026-08-28
+
+### Added
+
+- Added an explicit `Unassigned` state, `Clear Manual Status (Use Automatic)`, and a separate `Restart as To Read` action.
+- Added an opt-in default status for newly added papers; the default remains `Unassigned` and performs no writes.
+- Added large-batch confirmation and visible changed/not-changed/skipped/failed summaries, including PDF-to-parent normalization and read-only skips.
+- Added a prominent, library-scoped control for creating and removing the native `Reading Flow — Tracked Papers` Saved Search, including current-library status and clear placement guidance.
+
+### Fixed
+
+- Renamed plugin-owned legacy `Reading Flow Metadata` Saved Searches to the clearer `Reading Flow — Tracked Papers` name when detected.
+- Untouched library items no longer appear as `To Read` or enter the tracked reading set solely because an empty metadata line exists.
+- Manual `Read` no longer fabricates measured completion, progress, or remaining-page coverage.
+- `Reset Progress (Keep Manual Status)` now states its exact behavior, preserves manual status, and is a no-op without progress/resume data, while concurrent unrelated `Extra` changes are merged and competing Reading Flow metadata is preserved.
+- Fixed Zotero 10 selected-library statistics and flushes pending PDF position updates before plugin/window shutdown.
+- Unified fractional and legacy page-based progress resolution across displayed status, statistics, and completion history.
+- Fixed all Reading Flow settings to use Zotero's global preference keys, including the previously ineffective new-item default.
+- Made the new-item default prospective, atomic, history-free, and `dateModified`-preserving; historical sync items and every occupied Reading Flow namespace are preserved.
+- Preserved duplicate, malformed, and future-version Reading Flow metadata instead of collapsing or overwriting it.
+- Aligned completion color with the 95% completion threshold and exposed manual versus automatic status in tooltip/accessibility text.
+- Deferred custom-column registration until Zotero's main item tree is mounted, preventing a clean-profile startup race.
+
 # 1.3.5 - 2026-08-24
 
 ### Fixed

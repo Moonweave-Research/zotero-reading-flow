@@ -329,13 +329,105 @@ test('ReaderTracker delegates with one captured timestamp and refreshes after a 
     assert.deepEqual(calls, [[
       { id: 20 },
       { attachmentId: '10', progress: 0.5, pageCount: 4, lastPage: 2, at: 3000 },
-      3000
+      3000,
+      { allowDuringShutdown: true }
     ]]);
     assert.equal(refreshes, 1);
     assert.equal(notifications, 1);
   } finally {
     (globalThis as any).setTimeout = originalSetTimeout;
     Date.now = originalDateNow;
+  }
+});
+
+test('ReaderTracker flushes the latest debounced PDF position before shutdown', async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const originalServices = (globalThis as any).Services;
+  const calls: any[] = [];
+  const cleared: unknown[] = [];
+  const tracker = new ReaderTracker({
+    async recordProgressUnlessResetAfter(...args: any[]) {
+      calls.push(args);
+      return true;
+    }
+  } as any);
+  (globalThis as any).setTimeout = () => 99;
+  (globalThis as any).clearTimeout = (id: unknown) => { cleared.push(id); };
+  (globalThis as any).Zotero = {
+    Items: { async getAsync() { return { id: 20 }; } },
+    ItemTreeManager: { refreshColumns() {} },
+    Notifier: { trigger() {} }
+  };
+  (globalThis as any).Services = { startup: { shuttingDown: true } };
+  (tracker as any).active = true;
+  (tracker as any).generation = 1;
+
+  try {
+    (tracker as any).debounceSave(20, '10', 0.75, 3, 4);
+    await tracker.flushPending();
+
+    assert.deepEqual(cleared, [99]);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0][1], {
+      attachmentId: '10', progress: 0.75, pageCount: 4, lastPage: 3, at: calls[0][2]
+    });
+    assert.deepEqual(calls[0][3], { allowDuringShutdown: true });
+  } finally {
+    (globalThis as any).setTimeout = originalSetTimeout;
+    (globalThis as any).clearTimeout = originalClearTimeout;
+    (globalThis as any).Services = originalServices;
+  }
+});
+
+test('a shutdown flush promotes and awaits a PDF save already in flight', async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalServices = (globalThis as any).Services;
+  const callbacks: Array<() => Promise<void>> = [];
+  const parent = deferred<any>();
+  const persisted = deferred<boolean>();
+  const calls: any[] = [];
+  const tracker = new ReaderTracker({
+    recordProgressUnlessResetAfter(...args: any[]) {
+      calls.push(args);
+      return persisted.promise;
+    }
+  } as any);
+  (globalThis as any).setTimeout = (callback: () => Promise<void>) => {
+    callbacks.push(callback);
+    return 1;
+  };
+  (globalThis as any).Zotero = {
+    Items: { getAsync() { return parent.promise; } },
+    ItemTreeManager: { refreshColumns() {} },
+    Notifier: { trigger() {} }
+  };
+  (globalThis as any).Services = { startup: { shuttingDown: false } };
+  (tracker as any).active = true;
+  (tracker as any).generation = 1;
+
+  try {
+    (tracker as any).debounceSave(20, '10', 0.5, 2, 4);
+    const timedSave = callbacks[0]();
+    await Promise.resolve();
+    (globalThis as any).Services.startup.shuttingDown = true;
+
+    let flushSettled = false;
+    const flush = tracker.flushPending().then(() => { flushSettled = true; });
+    await Promise.resolve();
+    assert.equal(flushSettled, false);
+
+    parent.resolve({ id: 20 });
+    await waitFor(() => calls.length === 1);
+    assert.deepEqual(calls[0][3], { allowDuringShutdown: true });
+    assert.equal(flushSettled, false);
+
+    persisted.resolve(true);
+    await Promise.all([timedSave, flush]);
+    assert.equal(flushSettled, true);
+  } finally {
+    (globalThis as any).setTimeout = originalSetTimeout;
+    (globalThis as any).Services = originalServices;
   }
 });
 
@@ -447,7 +539,7 @@ test('pending failed reset followed by Reader callback eventually records progre
   const originalSetTimeout = globalThis.setTimeout;
   const originalDateNow = Date.now;
   const callbacks: Array<() => Promise<void>> = [];
-  let extra = '';
+  let extra = 'ReadingFlow: {"v":1,"p":{"10":0.4},"s":null}';
   const saves: Array<ReturnType<typeof deferred<void>>> = [];
   const item = {
     id: 20,

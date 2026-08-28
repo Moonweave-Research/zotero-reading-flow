@@ -107,6 +107,24 @@ test('entire library requests top-level non-deleted items for the selected libra
   assert.deepEqual(items.map((item) => item.id), [10]);
 });
 
+test('entire library uses Zotero 10 selected-library IDs when the singular API is unavailable', async () => {
+  const calls: unknown[][] = [];
+  const adapter = createStatisticsScopeAdapter({
+    getActiveZoteroPane: () => ({
+      getSelectedLibraryIDs: () => [7]
+    }),
+    Items: {
+      async getAll(...args: unknown[]) {
+        calls.push(args);
+        return [];
+      }
+    }
+  });
+
+  assert.deepEqual(await adapter.getItems('entire-library'), []);
+  assert.deepEqual(calls, [[7, true, false, false]]);
+});
+
 test('entire library resolves item IDs and fails closed without a selected library', async () => {
   let getAllCalls = 0;
   const adapter = createStatisticsScopeAdapter({

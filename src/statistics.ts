@@ -1,9 +1,11 @@
 import {
   FlowData,
+  DisplayReadingStatus,
   ReadingHistory,
-  ReadingStatus,
-  getDisplayAttachmentId,
-  getLocalDayKey
+  getLocalDayKey,
+  normalizeProgressValue,
+  resolveDisplayProgress,
+  resolveReadingStatus
 } from './flowData';
 
 export const PROGRESS_BUCKETS = [
@@ -68,7 +70,7 @@ export interface HistoricalSnapshot {
 export interface RecentProgressSnapshot {
   id: number | string;
   title: string;
-  status: ReadingStatus;
+  status: DisplayReadingStatus;
   currentProgress: number | null;
   delta: number | null;
   lastProgressDay: string;
@@ -79,7 +81,7 @@ export interface ActivityDayDetailPaper {
   itemID: number | string;
   title: string;
   recordedProgress: number | null;
-  status: ReadingStatus;
+  status: DisplayReadingStatus;
   lastRecordedAt: number | null;
 }
 
@@ -87,16 +89,17 @@ export interface StatisticsOptions {
   dataset?: StatisticsDataset;
   historyRange?: HistoryRange;
   now?: number;
-  statusFilter?: ReadingStatus;
+  statusFilter?: DisplayReadingStatus;
 }
 
 export const READING_STATUSES = [
+  'unassigned',
   'to-read',
   'reading',
   'skimmed',
   'read',
   'important'
-] as const satisfies readonly ReadingStatus[];
+] as const satisfies readonly DisplayReadingStatus[];
 
 export interface StatisticsPaper {
   id: number | string;
@@ -111,7 +114,7 @@ export interface StatisticsSnapshot {
   totalPapers: number;
   inProgress: number;
   read: number;
-  statusCounts: Record<ReadingStatus, number>;
+  statusCounts: Record<DisplayReadingStatus, number>;
   progressDistribution: Record<ProgressBucket, number>;
   knownRemainingPages: number;
   remainingPagesCoverage: {
@@ -141,7 +144,7 @@ export function selectStatisticsPapers(
   return options.statusFilter
     ? datasetPapers.filter((paper) => {
       const display = getDisplayState(paper.flowData);
-      return resolveStatus(paper.flowData, display) === options.statusFilter;
+      return resolveReadingStatus(paper.flowData).status === options.statusFilter;
     })
     : [...datasetPapers];
 }
@@ -158,9 +161,9 @@ export function calculateStatisticsSnapshot(
 
   for (const paper of selectedPapers) {
     const display = getDisplayState(paper.flowData);
-    const status = resolveStatus(paper.flowData, display);
-    const bucket = resolveProgressBucket(status, display);
-    const remainingPages = resolveRemainingPages(status, display);
+    const status = resolveReadingStatus(paper.flowData).status;
+    const bucket = resolveProgressBucket(display);
+    const remainingPages = resolveRemainingPages(display);
 
     statusCounts[status] += 1;
     progressDistribution[bucket] += 1;
@@ -307,12 +310,11 @@ export function calculateActivityDayDetail(
       const rollup = paper.flowData.history?.days[day];
       if (!rollup || !rollup.activity || maxRollupProgress(rollup) === null) return null;
 
-      const display = getDisplayState(paper.flowData);
       return {
         itemID: paper.id,
         title: paper.title?.trim() || `Paper ${paper.id}`,
         recordedProgress: normalizeRecordedDayProgress(paper.flowData, rollup),
-        status: resolveStatus(paper.flowData, display),
+        status: resolveReadingStatus(paper.flowData).status,
         lastRecordedAt: rollup.lastReadAt
       };
     })
@@ -351,7 +353,7 @@ function buildRecentProgressSnapshot(
   return {
     id: paper.id,
     title: paper.title?.trim() || `Paper ${paper.id}`,
-    status: resolveStatus(paper.flowData, display),
+    status: resolveReadingStatus(paper.flowData).status,
     currentProgress: display.normalizedProgress,
     delta: previous ? latest.progress - previous.progress : null,
     lastProgressDay: latest.day,
@@ -421,7 +423,7 @@ function normalizeRecordedDayProgress(
   if (!highest) return null;
 
   const [attachmentID, rawProgress] = highest;
-  return normalizeProgress(rawProgress, validPageCount(data.pageCount?.[attachmentID]));
+  return normalizeProgressValue(rawProgress, validPageCount(data.pageCount?.[attachmentID]), null, true);
 }
 
 function emptyDayAggregate(): DayAggregate {
@@ -442,35 +444,16 @@ function isValidDayKey(value: string): boolean {
 }
 
 function getDisplayState(data: FlowData): DisplayState {
-  const attachmentId = getDisplayAttachmentId(data);
-  if (!attachmentId) {
-    return {
-      attachmentId: null,
-      rawProgress: null,
-      normalizedProgress: null,
-      pageCount: null
-    };
-  }
-
-  const rawProgress = data.p[attachmentId];
-  const pageCount = validPageCount(data.pageCount?.[attachmentId]);
-  const normalizedProgress = normalizeProgress(rawProgress, pageCount);
-  return { attachmentId, rawProgress, normalizedProgress, pageCount };
+  const resolved = resolveDisplayProgress(data);
+  return {
+    attachmentId: resolved.attachmentId,
+    rawProgress: resolved.rawProgress,
+    normalizedProgress: resolved.normalizedProgress,
+    pageCount: resolved.pageCount
+  };
 }
 
-function resolveStatus(data: FlowData, display: DisplayState): ReadingStatus {
-  if (data.s) return data.s;
-  if (display.normalizedProgress !== null && display.normalizedProgress >= READ_PROGRESS_THRESHOLD) {
-    return 'read';
-  }
-  if (display.rawProgress !== null && display.rawProgress > 0) {
-    return 'reading';
-  }
-  return 'to-read';
-}
-
-function resolveProgressBucket(status: ReadingStatus, display: DisplayState): ProgressBucket {
-  if (status === 'read') return 'complete';
+function resolveProgressBucket(display: DisplayState): ProgressBucket {
   if (display.rawProgress === null) return 'not-started';
   if (display.normalizedProgress === null) return 'unknown';
 
@@ -482,25 +465,15 @@ function resolveProgressBucket(status: ReadingStatus, display: DisplayState): Pr
   return '75-94';
 }
 
-function resolveRemainingPages(status: ReadingStatus, display: DisplayState): number | null {
-  if (status === 'read') return 0;
-  if (display.rawProgress === null || display.pageCount === null) return null;
+function resolveRemainingPages(display: DisplayState): number | null {
+  if (display.rawProgress === null || display.pageCount === null || display.normalizedProgress === null) return null;
 
   if (display.rawProgress > 1) {
     return Math.max(display.pageCount - display.rawProgress, 0);
   }
 
-  const remaining = display.pageCount * (1 - display.rawProgress);
+  const remaining = display.pageCount * (1 - display.normalizedProgress);
   return Math.ceil(Number(remaining.toFixed(9)));
-}
-
-function normalizeProgress(rawProgress: number | undefined, pageCount: number | null): number | null {
-  if (typeof rawProgress !== 'number' || !Number.isFinite(rawProgress) || rawProgress <= 0) {
-    return null;
-  }
-  if (rawProgress <= 1) return Math.min(1, rawProgress);
-  if (pageCount === null) return null;
-  return Math.min(1, rawProgress / pageCount);
 }
 
 function validPageCount(value: unknown): number | null {
@@ -509,8 +482,9 @@ function validPageCount(value: unknown): number | null {
     : null;
 }
 
-function emptyStatusCounts(): Record<ReadingStatus, number> {
+function emptyStatusCounts(): Record<DisplayReadingStatus, number> {
   return {
+    unassigned: 0,
     'to-read': 0,
     reading: 0,
     skimmed: 0,

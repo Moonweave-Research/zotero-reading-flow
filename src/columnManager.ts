@@ -1,23 +1,37 @@
 import { DataStore } from './dataStore';
-import { formatRelativeDate, getDisplayProgress, inferStatus, ReadingStatus } from './flowData';
+import {
+  DisplayReadingStatus,
+  ReadingStatus,
+  ReadingStatusSource,
+  formatRelativeDate,
+  resolveDisplayProgress,
+  resolveReadingStatus
+} from './flowData';
 import { Logger } from './Logger';
+import {
+  getGlobalPreference,
+  READING_FLOW_PREFS,
+  setGlobalPreference
+} from './preferences';
 
 const PLUGIN_ID = 'readingflow@moon.com';
 const PROGRESS_KEY = 'readingFlowProgress';
 const STATUS_KEY = 'readingFlowStatus';
 const LAST_READ_KEY = 'readingFlowLastRead';
 const COMPOSITE_KEY = 'readingFlowDisplay';
-export const READING_FLOW_DISPLAY_PREF = 'extensions.readingflow.displayDensity';
+export const READING_FLOW_DISPLAY_PREF = READING_FLOW_PREFS.displayDensity;
 export type ReadingFlowDisplayDensity = 'compact' | 'icons';
 
 type CompositeValue = {
-  status: ReadingStatus;
+  status: DisplayReadingStatus;
+  source: ReadingStatusSource;
   progress: number | null;
   lastReadAt: number | null;
   itemID?: number;
 };
 
-const STATUS_LABELS: Record<ReadingStatus, string> = {
+const STATUS_LABELS: Record<DisplayReadingStatus, string> = {
+  unassigned: 'Unassigned',
   'to-read': 'To Read',
   reading: 'Reading',
   skimmed: 'Skimmed',
@@ -50,7 +64,7 @@ function decodeComposite(value: unknown): CompositeValue {
   try {
     const encoded = String(value);
     return JSON.parse(encoded.includes('|') ? encoded.slice(encoded.indexOf('|') + 1) : encoded) as CompositeValue;
-  } catch { return { status: 'to-read', progress: null, lastReadAt: null }; }
+  } catch { return { status: 'unassigned', source: 'unassigned', progress: null, lastReadAt: null }; }
 }
 
 function nativeSortKey(value: CompositeValue): string {
@@ -69,13 +83,15 @@ function progressText(progress: number | null): string {
 }
 
 function accessibleText(value: CompositeValue): string {
+  if (value.status === 'unassigned') return 'No reading status assigned';
   if (value.status === 'to-read' && progressText(value.progress) === 'no progress recorded' && !value.lastReadAt) {
     return 'To Read, not started, never read';
   }
   const lastRead = value.lastReadAt && value.lastReadAt > 0
     ? `last read ${formatRelativeDate(value.lastReadAt)}`
     : 'never read';
-  return `${STATUS_LABELS[value.status] ?? STATUS_LABELS['to-read']}, ${progressText(value.progress)}, ${lastRead}`;
+  const source = value.source === 'manual' ? 'manual status' : 'automatic status';
+  return `${STATUS_LABELS[value.status] ?? STATUS_LABELS['to-read']}, ${source}, ${progressText(value.progress)}, ${lastRead}`;
 }
 
 export class ColumnManager {
@@ -94,7 +110,7 @@ export class ColumnManager {
       dataKey: PROGRESS_KEY, label: 'Progress', pluginID: PLUGIN_ID, enabledTreeIDs: ['main'], defaultIn: ['default'],
       zoteroPersist: ['width', 'hidden', 'sortDirection'],
       dataProvider: (item: any) => {
-        try { return item?.isRegularItem?.() ? String(getDisplayProgress(this.dataStore.getData(item)) || '') : ''; }
+        try { return item?.isRegularItem?.() ? String(resolveDisplayProgress(this.dataStore.getData(item)).presentationProgress || '') : ''; }
         catch (e) { Logger.error('column dataProvider failed', e); return ''; }
       },
       renderCell: (_index: number, data: string, column: any, _first: boolean, doc: Document) => this.renderDetailedProgress(data, column, doc)
@@ -102,7 +118,13 @@ export class ColumnManager {
     const statusKey = await manager.registerColumn({
       dataKey: STATUS_KEY, label: 'Status', pluginID: PLUGIN_ID, enabledTreeIDs: ['main'], defaultIn: ['default'],
       zoteroPersist: ['width', 'hidden', 'sortDirection'],
-      dataProvider: (item: any) => { try { return item?.isRegularItem?.() ? inferStatus(this.dataStore.getData(item)) : ''; } catch (e) { Logger.error('status dataProvider failed', e); return ''; } },
+      dataProvider: (item: any) => {
+        try {
+          if (!item?.isRegularItem?.()) return '';
+          const resolved = resolveReadingStatus(this.dataStore.getData(item));
+          return resolved.status === 'unassigned' ? resolved.status : `${resolved.status}|${resolved.source}`;
+        } catch (e) { Logger.error('status dataProvider failed', e); return ''; }
+      },
       renderCell: (_index: number, data: string, column: any, _first: boolean, doc: Document) => this.renderStatus(data, column, doc)
     });
     const lastReadKey = await manager.registerColumn({
@@ -115,13 +137,19 @@ export class ColumnManager {
       dataKey: COMPOSITE_KEY, label: 'Reading Flow', pluginID: PLUGIN_ID, enabledTreeIDs: ['main'],
       zoteroPersist: ['width', 'hidden', 'sortDirection'],
       dataProvider: (item: any) => {
+        const itemID = item?.id || 0;
+        if (!item?.isRegularItem?.()) {
+          const value = { status: 'unassigned' as const, source: 'unassigned' as const, progress: null, lastReadAt: null, itemID };
+          return `${nativeSortKey(value)}|${JSON.stringify(value)}`;
+        }
         try {
-          const data: any = item?.isRegularItem?.() ? this.dataStore.getData(item) : {};
-          const value = { status: inferStatus(data), progress: getDisplayProgress(data) || null, lastReadAt: data.lastReadAt || null, itemID: item?.id || 0 };
+          const data: any = this.dataStore.getData(item);
+          const resolved = resolveReadingStatus(data);
+          const value = { status: resolved.status, source: resolved.source, progress: resolveDisplayProgress(data).presentationProgress, lastReadAt: data.lastReadAt || null, itemID };
           return `${nativeSortKey(value)}|${JSON.stringify(value)}`;
         } catch (e) {
           Logger.error('composite dataProvider failed', e);
-          const fallback = { status: 'to-read' as ReadingStatus, progress: null, lastReadAt: null, itemID: 0 };
+          const fallback = { status: 'unassigned' as const, source: 'unassigned' as const, progress: null, lastReadAt: null, itemID };
           return `${nativeSortKey(fallback)}|${JSON.stringify(fallback)}`;
         }
       },
@@ -134,13 +162,13 @@ export class ColumnManager {
   }
 
   public getDisplayDensity(): ReadingFlowDisplayDensity {
-    const value = (globalThis as any).Zotero?.Prefs?.get?.(READING_FLOW_DISPLAY_PREF);
+    const value = getGlobalPreference(READING_FLOW_DISPLAY_PREF);
     return value === 'icons' ? 'icons' : 'compact';
   }
 
   public setDisplayDensity(value: ReadingFlowDisplayDensity): string | undefined {
     if (value !== 'compact' && value !== 'icons') return undefined;
-    (globalThis as any).Zotero.Prefs.set(READING_FLOW_DISPLAY_PREF, value);
+    setGlobalPreference(READING_FLOW_DISPLAY_PREF, value);
     const manager = (globalThis as any).Zotero.ItemTreeManager;
     if (typeof manager?.refreshColumns === 'function') {
       try {
@@ -169,9 +197,8 @@ export class ColumnManager {
   public unregister() { /* Columns live for Zotero's public manager lifecycle; never unregister user layout. */ }
 
   private initializeDisplayDensity() {
-    const prefs = (globalThis as any).Zotero?.Prefs;
-    if (!prefs || prefs.get(READING_FLOW_DISPLAY_PREF) !== undefined) return;
-    prefs.set(READING_FLOW_DISPLAY_PREF, 'compact');
+    if (getGlobalPreference(READING_FLOW_DISPLAY_PREF) !== undefined) return;
+    setGlobalPreference(READING_FLOW_DISPLAY_PREF, 'compact');
   }
 
   private renderComposite(data: string, column: any, doc: Document): HTMLElement {
@@ -182,8 +209,9 @@ export class ColumnManager {
     const fullText = accessibleText(value);
     cell.setAttribute('aria-label', fullText);
     cell.title = fullText;
+    if (value.status === 'unassigned') return cell;
     const icon = doc.createElement('span');
-    icon.textContent = STATUS_SYMBOLS[value.status] ?? STATUS_SYMBOLS['to-read'];
+    icon.textContent = STATUS_SYMBOLS[value.status];
     icon.setAttribute('aria-hidden', 'true');
     cell.appendChild(icon);
     if (this.getDisplayDensity() === 'compact') {
@@ -216,12 +244,20 @@ export class ColumnManager {
     const cell = doc.createElement('span');
     cell.className = `cell ${column.className || ''}`.trim();
     cell.style.cssText = `${BASE_CELL_STYLE};justify-content:center;`;
-    if (!data || !(data in STATUS_LABELS)) return cell;
+    const [statusValue, source] = data.split('|');
+    if (!statusValue || !(statusValue in STATUS_LABELS)) return cell;
+    if (statusValue === 'unassigned') {
+      cell.setAttribute('aria-label', 'No reading status assigned');
+      cell.title = 'No reading status assigned';
+      return cell;
+    }
 
-    const status = data as ReadingStatus;
+    const status = statusValue as ReadingStatus;
     const badge = doc.createElement('span');
     badge.textContent = STATUS_LABELS[status];
-    badge.title = STATUS_LABELS[status];
+    const sourceLabel = source === 'manual' ? 'manual status' : source === 'automatic' ? 'automatic status' : '';
+    badge.title = sourceLabel ? `${STATUS_LABELS[status]} — ${sourceLabel}` : STATUS_LABELS[status];
+    cell.setAttribute('aria-label', badge.title);
     badge.style.cssText = [
       'display:inline-flex', 'align-items:center', 'justify-content:center', 'max-width:100%',
       'height:18px', 'padding:0 6px', 'border-radius:9px', 'box-sizing:border-box',
@@ -267,9 +303,9 @@ export class ColumnManager {
     const track = doc.createElement('div');
     track.style.cssText = 'flex:1;min-width:0;width:100%;height:6px;background:rgba(0,0,0,0.1);border-radius:3px;overflow:hidden;';
     const bar = doc.createElement('div');
-    const completedColor = ((globalThis as any).Zotero?.Prefs?.get?.('extensions.readingflow.color-completed') as string) || '#4caf50';
-    const readingColor = ((globalThis as any).Zotero?.Prefs?.get?.('extensions.readingflow.color-reading') as string) || '#2196f3';
-    bar.style.cssText = `width:${percent}%;height:100%;background:${value >= 0.99 ? completedColor : readingColor};`;
+    const completedColor = getGlobalPreference<string>(READING_FLOW_PREFS.completedColor) || '#4caf50';
+    const readingColor = getGlobalPreference<string>(READING_FLOW_PREFS.readingColor) || '#2196f3';
+    bar.style.cssText = `width:${percent}%;height:100%;background:${value >= 0.95 ? completedColor : readingColor};`;
     track.appendChild(bar); trackRow.appendChild(track); trackRow.appendChild(label); cell.appendChild(trackRow);
     return cell;
   }

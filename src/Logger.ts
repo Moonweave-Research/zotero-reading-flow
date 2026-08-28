@@ -1,6 +1,7 @@
+import { getGlobalPreference, READING_FLOW_PREFS } from './preferences';
+
 export class Logger {
   private static prefix = "[Reading Flow] ";
-  private static debugPref = 'extensions.readingflow.debug';
 
   static log(message: string, level: number = 3) {
     if (!this.isDebugEnabled()) return;
@@ -36,7 +37,7 @@ export class Logger {
 
   private static isDebugEnabled(): boolean {
     try {
-      return Boolean(typeof Zotero !== "undefined" && Zotero.Prefs?.get(this.debugPref));
+      return Boolean(typeof Zotero !== "undefined" && getGlobalPreference(READING_FLOW_PREFS.debug));
     } catch {
       return false;
     }
