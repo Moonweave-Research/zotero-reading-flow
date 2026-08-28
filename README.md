@@ -61,6 +61,8 @@ If you want a default for papers you add from now on, choose one in **Settings �
 
 In **Settings → Zotero Reading Flow**, choose **Add to Left Sidebar**. Reading Flow creates one native **Reading Flow — Tracked Papers** Saved Search in the selected library under **Saved Searches**. It is a convenient list of papers with Reading Flow data, not a second sidebar or a status-specific folder. Add it again to the same library and it reuses the existing list; remove affects only the selected library.
 
+<img src="docs/assets/sidebar-tracked-papers.png" alt="Zotero left sidebar showing the Reading Flow — Tracked Papers Saved Search" width="720">
+
 ### Change many papers with a clear result
 
 Large status changes ask for confirmation first. Afterward, Reading Flow reports how many papers changed, were already unchanged, were skipped, or failed, so read-only items and PDF-parent normalization never look like silent failures.

@@ -9,6 +9,7 @@ These files support the README and forum announcement. The README should lead wi
 | `reading-statistics-recent-progress.jpeg` | Recent Progress section with the user-selected `Show in Zotero` and `Resume` actions visible; the two `Resume` controls have subtle blue outlines for README scanning. Use disposable sample data only. | 900 px wide, JPEG |
 | `reading-flow-display-modes.png` | Public three-panel comparison of the native detailed columns, Compact Reading Flow, and Icons only. Use identical table-area crops from verified disposable-profile captures; labels may sit outside the UI panels, but do not alter or synthesize UI pixels. | 1800 px source width (about 900 px at GitHub display width), PNG |
 | `new-item-status-setting.png` | Zotero Reading Flow settings with the prospective **Status for newly added papers** selector open. Show the full status set and only disposable/non-sensitive UI context. | 1200 px source width, PNG |
+| `sidebar-tracked-papers.png` | A tightly cropped left sidebar showing the selected **Reading Flow — Tracked Papers** Saved Search. Exclude the item list so paper titles, authors, and dates are never published. | 780 px wide, PNG |
 
 ## Capture tips
 
