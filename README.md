@@ -23,6 +23,7 @@ Best for **literature researchers, thesis students, and anyone who manages many 
 ## Table of Contents
 
 - [Why Reading Flow](#why-reading-flow)
+- [New in 1.3.6](#new-in-136)
 - [Quick demo](#quick-demo)
 - [Install (30 seconds)](#install-30-seconds)
 - [Features](#features)
@@ -45,6 +46,24 @@ Best for **literature researchers, thesis students, and anyone who manages many 
 - **Review your reading history.** Open **Tools → Reading Statistics** to see current-scope status, progress, remaining pages, activity days, first completions, and retained per-paper changes.
 - **Inspect an active day.** Select a highlighted calendar date to see every paper with a recorded progress update that day; each action remains your choice.
 - **Return from the dashboard.** Choose a paper in `Recent Progress` and click `Resume` to use the same saved-page Reader path; the dashboard shows the eight most recent rows first and can expand to all matching papers.
+
+## New in 1.3.6
+
+### Keep untouched papers truly unassigned
+
+New and existing papers stay **Unassigned** unless you deliberately assign a status or Reading Flow records PDF progress. This prevents a large library from suddenly looking like one giant `To Read` list.
+
+If you want a default for papers you add from now on, choose one in **Settings → Zotero Reading Flow → Status for newly added papers**. It is prospective: existing papers, historical sync items, attachments, read-only items, and papers that already have Reading Flow data are not rewritten.
+
+<img src="docs/assets/new-item-status-setting.png" alt="Zotero Reading Flow settings with the Status for newly added papers menu open, showing Unassigned, To Read, Reading, Skimmed, Read, and Important" width="720">
+
+### Put your tracked papers in Zotero's left sidebar
+
+In **Settings → Zotero Reading Flow**, choose **Add to Left Sidebar**. Reading Flow creates one native **Reading Flow — Tracked Papers** Saved Search in the selected library under **Saved Searches**. It is a convenient list of papers with Reading Flow data, not a second sidebar or a status-specific folder. Add it again to the same library and it reuses the existing list; remove affects only the selected library.
+
+### Change many papers with a clear result
+
+Large status changes ask for confirmation first. Afterward, Reading Flow reports how many papers changed, were already unchanged, were skipped, or failed, so read-only items and PDF-parent normalization never look like silent failures.
 
 ## Quick demo
 
@@ -78,6 +97,8 @@ https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/downlo
 - In **Settings → Zotero Reading Flow → Reading Flow column density**, choose **Compact** (status icon plus progress/date) or **Icons** (status icon only). This setting changes only the optional `Reading Flow` column.
 - **Reading Flow → Resume Reading** to reopen the tracked PDF from its saved page.
 - **Reading Flow → Reset Reading Progress** to restart tracking for an item.
+- Leave **Status for newly added papers** at `Unassigned` to write nothing, or opt into one status for eligible papers added after that choice. This never bulk-edits your existing library.
+- In **Settings → Zotero Reading Flow**, choose **Add to Left Sidebar** to create the native `Reading Flow — Tracked Papers` Saved Search for the selected library.
 - Open **Tools → Reading Statistics** from anywhere in Zotero. A newly opened dashboard uses `Current View`; choose `Entire Library` when you want the whole active library.
 - Keep `Reading set (tracked)` for the intentional Reading Flow set, or choose `All papers (inventory)` for a broader inventory. Status and history-range filters refine that same paper set.
 - You can also right-click a paper and choose **Reading Flow → View Current View Statistics**. On a newly opened dashboard, this context action selects `Current View`. If the same modeless dashboard window is already open, either entry only focuses it and preserves its current Scope, Papers, Status, and History range, so check Scope before interpreting the results.
@@ -104,7 +125,9 @@ Zotero's native column chooser owns visibility in every mode. Switching between 
 | **Status** | Reading state (`To Read`, `Reading`, `Skimmed`, `Read`, `Important`), kept in sync with library changes. |
 | **Last Read** | Human-friendly timestamp (`now`, `5m`, `3h`, `2d`, or a date). |
 | **Reading Flow** *(optional)* | User-enabled composite column with 📙 `To Read`, 📖 `Reading`, 📘 `Skimmed`, 📗 `Read`, and ⭐ `Important`. **Compact** shows the icon with progress/date; **Icons** shows only the icon. Never-read `To Read` items show `Not started` in Compact mode. Full status, progress, and last-read meaning remains available in the tooltip and accessible name. The first sort on this header is recent-first with never-read items last; each subsequent header click reverses the order through Zotero's native sorting. |
-| **Reading Flow menu** | Fast status updates, **Resume Reading**, and **Reset Reading Progress**. |
+| **Reading Flow menu** | Fast status updates, **Clear Manual Status (Use Automatic)**, **Restart as To Read**, **Resume Reading**, and **Reset Reading Progress**. Large multi-item changes confirm scope and report the outcome. |
+| **New-paper default** | Defaults to **Unassigned** and writes nothing. You may opt into one prospective status for eligible papers added later; existing, synced, read-only, attached, and already-tracked items are preserved. |
+| **Left-sidebar reading list** | Creates one native `Reading Flow — Tracked Papers` Saved Search per selected editable library. It lists top-level papers with Reading Flow data; it is not a status-filtered folder or a separate plugin sidebar. |
 | **Reading Statistics** | Modeless, read-only dashboard for the tracked reading set or all papers, with scope metrics, status/progress distribution, remaining-page coverage, bounded history, active-day drill-down, and user-selected paper actions. |
 | **Auto behavior** | The detailed `Progress`, `Status`, and `Last Read` columns are enabled when first registered in Zotero's clean default item-tree layout. Saved and custom layouts remain Zotero-controlled, and the optional `Reading Flow` column is always user-enabled through the native chooser. Reader page totals are preferred when available, and menu labels are robust across Zotero UI paths. |
 
