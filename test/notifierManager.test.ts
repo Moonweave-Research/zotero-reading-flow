@@ -183,6 +183,47 @@ test('an async item lookup failure does not prevent later new items', async () =
   assert.deepEqual(initialized, [91]);
 });
 
+test('a large add notification loads all items in one Zotero lookup and initializes them sequentially', async () => {
+  const ids = Array.from({ length: 1000 }, (_, index) => index + 1000);
+  const lookups: unknown[] = [];
+  let activeWrites = 0;
+  let maxActiveWrites = 0;
+  let writes = 0;
+  (globalThis as any).Zotero = {
+    Prefs: { get: (name: string) => name.endsWith('ActivatedAt') ? '1000' : 'to-read' },
+    Items: {
+      async getAsync(requestedIDs: number[]) {
+        lookups.push(requestedIDs);
+        return requestedIDs.map((id) => ({
+          id,
+          dateAdded: 2000,
+          isRegularItem: () => true,
+          isEditable: () => true
+        }));
+      }
+    }
+  };
+  const store = {
+    hasReadingFlowNamespace: () => false,
+    async initializeStatusIfUnowned() {
+      activeWrites += 1;
+      maxActiveWrites = Math.max(maxActiveWrites, activeWrites);
+      await Promise.resolve();
+      writes += 1;
+      activeWrites -= 1;
+      return true;
+    },
+    invalidateCache() {},
+    clearCache() {}
+  };
+
+  await new NotifierManager(store as any).notify('add', 'item', ids);
+
+  assert.deepEqual(lookups, [ids]);
+  assert.equal(writes, 1000);
+  assert.equal(maxActiveWrites, 1);
+});
+
 test('registration replaces a Zotero-truncated numeric activation time with a string timestamp', () => {
   const writes: unknown[][] = [];
   const clears: unknown[][] = [];

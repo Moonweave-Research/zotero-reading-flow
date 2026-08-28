@@ -1,13 +1,17 @@
 import { DataStore } from './dataStore';
 import { Logger } from './Logger';
 
+interface PendingReaderSave {
+  timeout: ReturnType<typeof setTimeout>;
+  run: (allowDuringShutdown?: boolean) => Promise<void>;
+}
+
 export class ReaderTracker {
   private dataStore: DataStore;
   private notifierId: string | null = null;
-  private pendingSaves = new Map<string, {
-    timeout: ReturnType<typeof setTimeout>;
-    run: (allowDuringShutdown?: boolean) => Promise<void>;
-  }>();
+  private pendingSaves = new Map<string, PendingReaderSave>();
+  private inFlightSaves = new Set<PendingReaderSave>();
+  private flushPromise: Promise<void> | null = null;
   private active = false;
   private generation = 0;
   private static readonly MAX_REASONABLE_PAGE_COUNT = 100000;
@@ -37,9 +41,22 @@ export class ReaderTracker {
   }
 
   public async flushPending(): Promise<void> {
-    const pending = [...this.pendingSaves.values()];
-    for (const save of pending) clearTimeout(save.timeout);
-    await Promise.all(pending.map((save) => save.run(true)));
+    if (this.flushPromise) return this.flushPromise;
+    this.flushPromise = (async () => {
+      while (this.pendingSaves.size > 0 || this.inFlightSaves.size > 0) {
+        const saves = new Set([
+          ...this.pendingSaves.values(),
+          ...this.inFlightSaves.values()
+        ]);
+        for (const save of saves) clearTimeout(save.timeout);
+        await Promise.all([...saves].map((save) => save.run(true)));
+      }
+    })();
+    try {
+      await this.flushPromise;
+    } finally {
+      this.flushPromise = null;
+    }
   }
 
   public notify(action: string, type: string, ids: number[] | number) {
@@ -111,53 +128,60 @@ export class ReaderTracker {
     if (existing) clearTimeout(existing.timeout);
     const generation = this.generation;
     const scheduledAt = Date.now();
-    let started = false;
+    let allowShutdown = false;
+    let operation: Promise<void> | null = null;
+    let save: PendingReaderSave;
     const run = async (allowDuringShutdown = false) => {
-      if (started) return;
-      started = true;
-      this.pendingSaves.delete(key);
-      if (this.shouldSkipSave(generation, allowDuringShutdown)) {
-        Logger.log('save skipped: tracker inactive or Zotero shutting down');
-        return;
-      }
-      try {
-        Logger.log('saving progress=' + progress + ' for parent=' + parentId);
-        const parentItem = await Zotero.Items.getAsync(parentId);
-        if (this.shouldSkipSave(generation, allowDuringShutdown)) {
-          Logger.log('save skipped after getAsync: tracker inactive or Zotero shutting down');
+      if (allowDuringShutdown) allowShutdown = true;
+      if (operation) return operation;
+      operation = (async () => {
+        if (this.pendingSaves.get(key) === save) this.pendingSaves.delete(key);
+        this.inFlightSaves.add(save);
+        if (this.shouldSkipSave(generation, allowShutdown)) {
+          Logger.log('save skipped: tracker inactive or Zotero shutting down');
           return;
         }
-        if (parentItem) {
-          const input = {
-            attachmentId,
-            progress,
-            pageCount,
-            lastPage,
-            at: scheduledAt
-          };
-          const saved = allowDuringShutdown
-            ? await this.dataStore.recordProgressUnlessResetAfter(
+        try {
+          Logger.log('saving progress=' + progress + ' for parent=' + parentId);
+          const parentItem = await Zotero.Items.getAsync(parentId);
+          if (this.shouldSkipSave(generation, allowShutdown)) {
+            Logger.log('save skipped after getAsync: tracker inactive or Zotero shutting down');
+            return;
+          }
+          if (parentItem) {
+            const input = {
+              attachmentId,
+              progress,
+              pageCount,
+              lastPage,
+              at: scheduledAt
+            };
+            const saved = await this.dataStore.recordProgressUnlessResetAfter(
               parentItem, input, scheduledAt, { allowDuringShutdown: true }
-            )
-            : await this.dataStore.recordProgressUnlessResetAfter(parentItem, input, scheduledAt);
-          if (this.shouldSkipSave(generation, allowDuringShutdown)) {
-            Logger.log('post-save refresh skipped: tracker inactive or Zotero shutting down');
-            return;
+            );
+            if (this.shouldSkipSave(generation, allowShutdown)) {
+              Logger.log('post-save refresh skipped: tracker inactive or Zotero shutting down');
+              return;
+            }
+            if (!saved) {
+              Logger.log(`save skipped: parent=${parentId} progress was not persisted`);
+              return;
+            }
+            Zotero.ItemTreeManager.refreshColumns?.();
+            Zotero.Notifier.trigger('refresh', 'item', [parentId]);
+            Logger.log('save complete');
           }
-          if (!saved) {
-            Logger.log(`save skipped: parent=${parentId} progress was not persisted`);
-            return;
-          }
-          Zotero.ItemTreeManager.refreshColumns?.();
-          Zotero.Notifier.trigger('refresh', 'item', [parentId]);
-          Logger.log('save complete');
+        } catch (e) {
+          Logger.error('save failed', e);
+        } finally {
+          this.inFlightSaves.delete(save);
         }
-      } catch (e) {
-        Logger.error('save failed', e);
-      }
+      })();
+      return operation;
     };
     const timeout = setTimeout(run, 5000);
-    this.pendingSaves.set(key, { timeout, run });
+    save = { timeout, run };
+    this.pendingSaves.set(key, save);
   }
 
   private isZoteroShuttingDown(): boolean {

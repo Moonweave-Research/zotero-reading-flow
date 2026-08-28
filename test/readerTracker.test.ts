@@ -329,7 +329,8 @@ test('ReaderTracker delegates with one captured timestamp and refreshes after a 
     assert.deepEqual(calls, [[
       { id: 20 },
       { attachmentId: '10', progress: 0.5, pageCount: 4, lastPage: 2, at: 3000 },
-      3000
+      3000,
+      { allowDuringShutdown: true }
     ]]);
     assert.equal(refreshes, 1);
     assert.equal(notifications, 1);
@@ -375,6 +376,57 @@ test('ReaderTracker flushes the latest debounced PDF position before shutdown', 
   } finally {
     (globalThis as any).setTimeout = originalSetTimeout;
     (globalThis as any).clearTimeout = originalClearTimeout;
+    (globalThis as any).Services = originalServices;
+  }
+});
+
+test('a shutdown flush promotes and awaits a PDF save already in flight', async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalServices = (globalThis as any).Services;
+  const callbacks: Array<() => Promise<void>> = [];
+  const parent = deferred<any>();
+  const persisted = deferred<boolean>();
+  const calls: any[] = [];
+  const tracker = new ReaderTracker({
+    recordProgressUnlessResetAfter(...args: any[]) {
+      calls.push(args);
+      return persisted.promise;
+    }
+  } as any);
+  (globalThis as any).setTimeout = (callback: () => Promise<void>) => {
+    callbacks.push(callback);
+    return 1;
+  };
+  (globalThis as any).Zotero = {
+    Items: { getAsync() { return parent.promise; } },
+    ItemTreeManager: { refreshColumns() {} },
+    Notifier: { trigger() {} }
+  };
+  (globalThis as any).Services = { startup: { shuttingDown: false } };
+  (tracker as any).active = true;
+  (tracker as any).generation = 1;
+
+  try {
+    (tracker as any).debounceSave(20, '10', 0.5, 2, 4);
+    const timedSave = callbacks[0]();
+    await Promise.resolve();
+    (globalThis as any).Services.startup.shuttingDown = true;
+
+    let flushSettled = false;
+    const flush = tracker.flushPending().then(() => { flushSettled = true; });
+    await Promise.resolve();
+    assert.equal(flushSettled, false);
+
+    parent.resolve({ id: 20 });
+    await waitFor(() => calls.length === 1);
+    assert.deepEqual(calls[0][3], { allowDuringShutdown: true });
+    assert.equal(flushSettled, false);
+
+    persisted.resolve(true);
+    await Promise.all([timedSave, flush]);
+    assert.equal(flushSettled, true);
+  } finally {
+    (globalThis as any).setTimeout = originalSetTimeout;
     (globalThis as any).Services = originalServices;
   }
 });

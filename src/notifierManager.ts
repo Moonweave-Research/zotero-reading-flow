@@ -60,10 +60,10 @@ export class NotifierManager {
     const activationTimestamp = getNewItemStatusActivationTimestamp();
     if (activationTimestamp === null) return;
     const status = configured as ReadingStatus;
+    const items = await this.loadAddedItems(ids);
 
-    for (const id of ids) {
+    for (const item of items) {
       try {
-        const item = await Zotero.Items?.getAsync?.(id);
         if (!item?.isRegularItem?.() || item.isEditable?.() === false) continue;
         if (item.deleted === true || item.parentID) continue;
         const dateAdded = this.getDateAddedTimestamp(item);
@@ -71,8 +71,31 @@ export class NotifierManager {
         if (this.dataStore.hasReadingFlowNamespace(item)) continue;
         await this.dataStore.initializeStatusIfUnowned(item, status);
       } catch (error) {
-        Logger.error(`ReadingFlow: failed to apply the new-item status default to item ${id}`, error);
+        Logger.error(`ReadingFlow: failed to apply the new-item status default to item ${item?.id}`, error);
       }
+    }
+  }
+
+  private async loadAddedItems(ids: number[]): Promise<any[]> {
+    const uniqueIDs = [...new Set(ids)];
+    const getAsync = Zotero.Items?.getAsync;
+    if (typeof getAsync !== 'function' || uniqueIDs.length === 0) return [];
+    try {
+      const items = await getAsync.call(Zotero.Items, uniqueIDs);
+      if (!Array.isArray(items)) throw new Error('bulk item lookup returned a non-array result');
+      return items;
+    } catch (error) {
+      Logger.warn(`ReadingFlow: bulk new-item lookup failed; retrying individually: ${String(error)}`);
+      const items: any[] = [];
+      for (const id of uniqueIDs) {
+        try {
+          const item = await getAsync.call(Zotero.Items, id);
+          if (item) items.push(item);
+        } catch (itemError) {
+          Logger.error(`ReadingFlow: failed to load new item ${id}`, itemError);
+        }
+      }
+      return items;
     }
   }
 
