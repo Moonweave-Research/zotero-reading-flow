@@ -339,6 +339,46 @@ test('ReaderTracker delegates with one captured timestamp and refreshes after a 
   }
 });
 
+test('ReaderTracker flushes the latest debounced PDF position before shutdown', async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const originalServices = (globalThis as any).Services;
+  const calls: any[] = [];
+  const cleared: unknown[] = [];
+  const tracker = new ReaderTracker({
+    async recordProgressUnlessResetAfter(...args: any[]) {
+      calls.push(args);
+      return true;
+    }
+  } as any);
+  (globalThis as any).setTimeout = () => 99;
+  (globalThis as any).clearTimeout = (id: unknown) => { cleared.push(id); };
+  (globalThis as any).Zotero = {
+    Items: { async getAsync() { return { id: 20 }; } },
+    ItemTreeManager: { refreshColumns() {} },
+    Notifier: { trigger() {} }
+  };
+  (globalThis as any).Services = { startup: { shuttingDown: true } };
+  (tracker as any).active = true;
+  (tracker as any).generation = 1;
+
+  try {
+    (tracker as any).debounceSave(20, '10', 0.75, 3, 4);
+    await tracker.flushPending();
+
+    assert.deepEqual(cleared, [99]);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0][1], {
+      attachmentId: '10', progress: 0.75, pageCount: 4, lastPage: 3, at: calls[0][2]
+    });
+    assert.deepEqual(calls[0][3], { allowDuringShutdown: true });
+  } finally {
+    (globalThis as any).setTimeout = originalSetTimeout;
+    (globalThis as any).clearTimeout = originalClearTimeout;
+    (globalThis as any).Services = originalServices;
+  }
+});
+
 test('ReaderTracker does not refresh when conditional progress is rejected', async () => {
   const originalSetTimeout = globalThis.setTimeout;
   const callbacks: Array<() => Promise<void>> = [];
@@ -447,7 +487,7 @@ test('pending failed reset followed by Reader callback eventually records progre
   const originalSetTimeout = globalThis.setTimeout;
   const originalDateNow = Date.now;
   const callbacks: Array<() => Promise<void>> = [];
-  let extra = '';
+  let extra = 'ReadingFlow: {"v":1,"p":{"10":0.4},"s":null}';
   const saves: Array<ReturnType<typeof deferred<void>>> = [];
   const item = {
     id: 20,

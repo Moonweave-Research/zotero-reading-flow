@@ -1,3 +1,5 @@
+import { getSelectedLibraryID } from './selectedLibrary';
+
 export type StatisticsScope = 'current-view' | 'entire-library';
 
 export interface ScopeItem {
@@ -12,6 +14,7 @@ export interface ScopeItem {
 
 export interface StatisticsScopeRuntime {
   getActiveZoteroPane?: () => {
+    getSelectedLibraryIDs?: () => number[];
     getSelectedLibraryID?: () => number;
     getSortedItems?: () => Array<ScopeItem | number | string>;
     itemsView?: {
@@ -47,7 +50,7 @@ export function createStatisticsScopeAdapter(
       }
 
       if (scope === 'entire-library') {
-        const libraryID = pane.getSelectedLibraryID?.();
+        const libraryID = getSelectedLibraryID(pane);
         if (!isPositiveInteger(libraryID) || typeof runtime.Items?.getAll !== 'function') {
           return [];
         }

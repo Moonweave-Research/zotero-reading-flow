@@ -5,13 +5,16 @@ import {
   DEFAULT_FLOW_DATA,
   FLOW_PREFIX,
   FlowData,
+  getNormalizedDisplayProgress,
   getLocalDayKey,
   inferStatus,
   isFlowDataSame,
   mergeFlowData,
+  normalizeProgressValue,
   normalizeFlowData,
   pruneReadingHistory,
   ReadingHistory,
+  READ_PROGRESS_THRESHOLD,
   ReadingStatus
 } from './flowData';
 
@@ -26,6 +29,7 @@ export interface ProgressInput {
 export class DataStore {
   private static readonly DIRTY_RETRY_COUNT = 3;
   private static readonly DIRTY_RETRY_MS = 100;
+  private static readonly EXTRA_MERGE_RETRY_COUNT = 3;
   private cache = new LRUCache<number, FlowData>(2000);
   private resetTimestamps = new Map<number, number>();
   private mutationQueues = new Map<number, Promise<void>>();
@@ -42,27 +46,25 @@ export class DataStore {
   }
 
   public hasReadingFlowData(item: any): boolean {
-    const match = this.getReadingFlowLine(item);
-    if (!match) return false;
+    const stored = this.getStoredReadingFlowData(item);
+    return stored ? this.hasMeaningfulData(stored) : false;
+  }
 
-    try {
-      const parsed = JSON.parse(match.substring(FLOW_PREFIX.length));
-      return Boolean(
-        parsed
-        && typeof parsed === 'object'
-        && !Array.isArray(parsed)
-        && (parsed.v === 1 || parsed.v === 2)
-      );
-    } catch {
-      return false;
-    }
+  public hasStoredReadingFlowData(item: any): boolean {
+    return this.getStoredReadingFlowData(item) !== null;
+  }
+
+  private getStoredReadingFlowData(item: any): FlowData | null {
+    const extra = item.getField('extra') || '';
+    return this.getLatestSupportedData(extra);
   }
 
   public async updateData(item: any, updates: Partial<FlowData>): Promise<boolean> {
     return this.enqueueMutation(item, async () => {
       if (!await this.prepareMutation(item)) return false;
       const originalExtra = item.getField('extra') || '';
-      const current = this.parseData(item.id, originalExtra);
+      const current = this.getMutationBaseline(item.id, originalExtra);
+      if (!current) return false;
 
       // Last write wins check
       if (updates.ts && updates.ts < current.ts) return false;
@@ -84,15 +86,16 @@ export class DataStore {
   public async recordProgressUnlessResetAfter(
     item: any,
     input: ProgressInput,
-    capturedAt: number
+    capturedAt: number,
+    options: { allowDuringShutdown?: boolean } = {}
   ): Promise<boolean> {
     const build = this.buildProgressTransition(input);
     if (!build) return false;
 
     return this.enqueueMutation(item, async () => {
       const resetAt = this.resetTimestamps.get(item.id);
-      if (typeof resetAt === 'number' && resetAt > capturedAt) return false;
-      return this.executeTransition(item, build);
+      if (typeof resetAt === 'number' && resetAt >= capturedAt) return false;
+      return this.executeTransition(item, build, options.allowDuringShutdown === true);
     });
   }
 
@@ -139,9 +142,10 @@ export class DataStore {
     };
   }
 
-  public async setStatus(item: any, status: ReadingStatus | null, at = Date.now()): Promise<void> {
+  public async setStatus(item: any, status: ReadingStatus, at = Date.now()): Promise<boolean> {
     const timestamp = this.normalizeTimestamp(at);
-    await this.transition(item, (current) => {
+    return this.transition(item, (current) => {
+      if (current.s === status) return current;
       const next = mergeFlowData(current, { s: status }, timestamp);
       return normalizeFlowData({
         ...next,
@@ -150,20 +154,69 @@ export class DataStore {
     });
   }
 
-  public async resetProgress(item: any, at = Date.now()): Promise<void> {
+  public async initializeStatusIfUnowned(
+    item: any,
+    status: ReadingStatus,
+    at = Date.now()
+  ): Promise<boolean> {
     const timestamp = this.normalizeTimestamp(at);
-    await this.enqueueMutation(item, async () => {
+    return this.enqueueMutation(item, async () => {
+      if (!await this.prepareMutation(item)) return false;
+      const originalExtra = item.getField('extra') || '';
+      if (this.getFlowLinesFromExtra(originalExtra).length > 0) return false;
+      const initial = normalizeFlowData({ ...DEFAULT_FLOW_DATA, s: status, ts: timestamp });
+      return this.persistDataChange(
+        item,
+        initial,
+        originalExtra,
+        { skipDateModifiedUpdate: true }
+      );
+    });
+  }
+
+  public async clearManualStatus(item: any): Promise<boolean> {
+    return this.enqueueMutation(item, async () => {
+      if (!await this.prepareMutation(item)) return false;
+      const originalExtra = item.getField('extra') || '';
+      const current = this.getMutationBaseline(item.id, originalExtra);
+      if (!current) return false;
+      if (current.s === null) return false;
+
+      const next = normalizeFlowData({ ...current, s: null });
+      if (!this.hasMeaningfulData(next)) {
+        return this.removeData(item, originalExtra);
+      }
+      return this.saveData(item, { ...next, ts: Date.now() }, originalExtra);
+    });
+  }
+
+  public async resetProgress(item: any, at = Date.now()): Promise<boolean> {
+    return this.reset(item, false, at);
+  }
+
+  public async restartAsToRead(item: any, at = Date.now()): Promise<boolean> {
+    return this.reset(item, true, at);
+  }
+
+  private async reset(item: any, markToRead: boolean, at: number): Promise<boolean> {
+    const timestamp = this.normalizeTimestamp(at);
+    return this.enqueueMutation(item, async () => {
       const saved = await this.executeTransition(item, (current) => {
+        const hasResumeState = Object.keys(current.p).length > 0
+          || current.lastAttachmentId !== null
+          || current.lastPage !== null
+          || current.lastReadAt !== null;
+        if (!hasResumeState && (!markToRead || current.s === 'to-read')) return current;
         const next = mergeFlowData(current, {
           p: {},
-          s: 'to-read',
+          s: markToRead ? 'to-read' : current.s,
           lastAttachmentId: null,
           lastPage: null,
           lastReadAt: null
         }, timestamp);
         return normalizeFlowData({
           ...next,
-          history: this.recordResetHistory(current.history, timestamp)
+          history: this.recordResetHistory(current.history, inferStatus(next), timestamp)
         });
       });
       if (saved && !this.isClosedOrShuttingDown()) {
@@ -192,14 +245,9 @@ export class DataStore {
     this.resetTimestamps.clear();
   }
 
-  private isClosedOrShuttingDown(): boolean {
+  private isClosedOrShuttingDown(allowDuringShutdown = false): boolean {
     const startup = (globalThis as any).Services?.startup;
-    return this.closed || Boolean(startup?.shuttingDown);
-  }
-
-  private getReadingFlowLine(item: any): string | undefined {
-    const extra = item.getField('extra') || '';
-    return extra.split('\n').find((line: string) => line.startsWith(FLOW_PREFIX));
+    return this.closed || (!allowDuringShutdown && Boolean(startup?.shuttingDown));
   }
 
   private async transition(
@@ -211,55 +259,115 @@ export class DataStore {
 
   private async executeTransition(
     item: any,
-    build: (current: FlowData) => FlowData
+    build: (current: FlowData) => FlowData,
+    allowDuringShutdown = false
   ): Promise<boolean> {
-    if (!await this.prepareMutation(item)) return false;
+    if (!await this.prepareMutation(item, allowDuringShutdown)) return false;
     const originalExtra = item.getField('extra') || '';
-    const current = this.parseData(item.id, originalExtra);
+    const current = this.getMutationBaseline(item.id, originalExtra);
+    if (!current) return false;
     const next = build(current);
     if (isFlowDataSame(current, next)) return false;
-    return this.saveData(item, next, originalExtra);
+    return this.saveData(item, next, originalExtra, allowDuringShutdown);
   }
 
-  private async prepareMutation(item: any): Promise<boolean> {
-    if (this.isClosedOrShuttingDown()) {
+  private async prepareMutation(item: any, allowDuringShutdown = false): Promise<boolean> {
+    if (this.isClosedOrShuttingDown(allowDuringShutdown)) {
       Logger.log('ReadingFlow: write skipped during shutdown');
       return false;
     }
 
-    if (!await this.waitUntilClean(item)) {
+    if (!this.isEligibleForMutation(item)) {
+      Logger.log(`ReadingFlow: write skipped for ineligible item ${item?.id ?? 'unknown'}`);
+      return false;
+    }
+
+    if (!await this.waitUntilClean(item, allowDuringShutdown)) {
       Logger.warn('ReadingFlow: Item remained dirty after retries, skipping write to prevent race condition');
       return false;
     }
     return true;
   }
 
-  private async saveData(item: any, data: FlowData, originalExtra: string): Promise<boolean> {
-    const lines = originalExtra.split('\n').filter((line: string) => !line.startsWith(FLOW_PREFIX));
-    lines.push(`${FLOW_PREFIX}${JSON.stringify(data)}`);
+  private async saveData(
+    item: any,
+    data: FlowData,
+    originalExtra: string,
+    allowDuringShutdown = false
+  ): Promise<boolean> {
+    return this.persistDataChange(item, data, originalExtra, undefined, allowDuringShutdown);
+  }
 
-    if (this.isClosedOrShuttingDown()) {
-      Logger.log('ReadingFlow: write skipped before saveTx during shutdown');
-      return false;
-    }
+  private async removeData(item: any, originalExtra: string): Promise<boolean> {
+    return this.persistDataChange(item, null, originalExtra);
+  }
 
-    const attemptedExtra = lines.join('\n');
-    item.setField('extra', attemptedExtra);
-    try {
-      await item.saveTx();
-      this.cache.delete(item.id);
-      return true;
-    } catch (error) {
-      try {
-        if ((item.getField('extra') || '') === attemptedExtra) {
-          item.setField('extra', originalExtra);
-        }
-      } catch {
-        // Best-effort rollback. The cache is still cleared below.
+  private async persistDataChange(
+    item: any,
+    data: FlowData | null,
+    originalExtra: string,
+    saveOptions?: { skipDateModifiedUpdate?: boolean },
+    allowDuringShutdown = false
+  ): Promise<boolean> {
+    let baselineExtra = originalExtra;
+    for (let attempt = 0; attempt < DataStore.EXTRA_MERGE_RETRY_COUNT; attempt++) {
+      if (this.isClosedOrShuttingDown(allowDuringShutdown)) {
+        Logger.log('ReadingFlow: write skipped before saveTx during shutdown');
+        return false;
       }
-      this.cache.delete(item.id);
-      throw error;
+
+      const attemptedExtra = this.composeExtra(baselineExtra, data);
+      item.setField('extra', attemptedExtra);
+      try {
+        await item.saveTx(saveOptions);
+      } catch (error) {
+        try {
+          if ((item.getField('extra') || '') === attemptedExtra) item.setField('extra', baselineExtra);
+        } catch {
+          // Best-effort rollback. The cache is still cleared below.
+        }
+        this.cache.delete(item.id);
+        throw error;
+      }
+
+      const persistedExtra = item.getField('extra') || '';
+      if (persistedExtra === attemptedExtra) {
+        this.cache.delete(item.id);
+        return true;
+      }
+
+      if (!this.areStringArraysEqual(
+        this.getFlowLinesFromExtra(persistedExtra),
+        this.getFlowLinesFromExtra(baselineExtra)
+      )) {
+        Logger.warn('ReadingFlow: concurrent Reading Flow metadata change detected; preserving newer data');
+        this.cache.delete(item.id);
+        return false;
+      }
+      baselineExtra = persistedExtra;
     }
+
+    Logger.warn('ReadingFlow: Extra kept changing during save; update was skipped');
+    this.cache.delete(item.id);
+    return false;
+  }
+
+  private composeExtra(extra: string, data: FlowData | null): string {
+    const lines = extra.split('\n').filter((line: string) => !line.startsWith(FLOW_PREFIX));
+    if (data) lines.push(`${FLOW_PREFIX}${JSON.stringify(data)}`);
+    return lines.join('\n');
+  }
+
+  public hasReadingFlowNamespace(item: any): boolean {
+    return this.getFlowLinesFromExtra(item.getField('extra') || '').length > 0;
+  }
+
+  private getFlowLinesFromExtra(extra: string): string[] {
+    return extra.split('\n').filter((line: string) => line.startsWith(FLOW_PREFIX));
+  }
+
+  private areStringArraysEqual(left: string[], right: string[]): boolean {
+    return left.length === right.length && left.every((value, index) => value === right[index]);
   }
 
   private enqueueMutation(item: any, run: () => Promise<boolean>): Promise<boolean> {
@@ -276,15 +384,60 @@ export class DataStore {
   }
 
   private parseData(itemId: number, extra: string): FlowData {
-    const match = extra.split('\n').find((line: string) => line.startsWith(FLOW_PREFIX));
-    if (!match) return { ...DEFAULT_FLOW_DATA };
-
-    try {
-      return normalizeFlowData(JSON.parse(match.substring(FLOW_PREFIX.length)));
-    } catch (error) {
-      Logger.error(`ReadingFlow: Failed to parse data for ${itemId}`, error);
-      return { ...DEFAULT_FLOW_DATA };
+    const data = this.getLatestSupportedData(extra);
+    if (data) return data;
+    if (this.getFlowLinesFromExtra(extra).length > 0) {
+      Logger.warn(`ReadingFlow: No supported metadata could be read for ${itemId}`);
     }
+    return { ...DEFAULT_FLOW_DATA };
+  }
+
+  private getMutationBaseline(itemId: number, extra: string): FlowData | null {
+    const lines = this.getFlowLinesFromExtra(extra);
+    if (lines.length === 0) return { ...DEFAULT_FLOW_DATA };
+    if (lines.length !== 1) {
+      Logger.warn(`ReadingFlow: ${lines.length} metadata lines found for ${itemId}; preserving them unchanged`);
+      return null;
+    }
+
+    const parsed = this.parseSupportedLine(lines[0]);
+    if (!parsed) {
+      Logger.warn(`ReadingFlow: unsupported or malformed metadata found for ${itemId}; preserving it unchanged`);
+      return null;
+    }
+    return parsed;
+  }
+
+  private getLatestSupportedData(extra: string): FlowData | null {
+    let latest: FlowData | null = null;
+    for (const line of this.getFlowLinesFromExtra(extra)) {
+      const parsed = this.parseSupportedLine(line);
+      if (parsed && (!latest || parsed.ts >= latest.ts)) latest = parsed;
+    }
+    return latest;
+  }
+
+  private parseSupportedLine(line: string): FlowData | null {
+    try {
+      const parsed = JSON.parse(line.substring(FLOW_PREFIX.length));
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+      if (parsed.v !== 1 && parsed.v !== 2) return null;
+      return normalizeFlowData(parsed);
+    } catch {
+      return null;
+    }
+  }
+
+  private isEligibleForMutation(item: any): boolean {
+    if (!item || typeof item.id !== 'number') return false;
+    if (typeof item.isEditable === 'function' && item.isEditable() === false) return false;
+    if (typeof item.isEditable === 'boolean' && item.isEditable === false) return false;
+    if (item.deleted === true || item._deleted === true) return false;
+    if (typeof item.isDeleted === 'function' && item.isDeleted()) return false;
+    if (typeof item.isInTrash === 'function' && item.isInTrash()) return false;
+    if (typeof item.parentID === 'number' && item.parentID > 0) return false;
+    if (typeof item.isRegularItem === 'function' && item.isRegularItem() === false) return false;
+    return true;
   }
 
   private recordProgressHistory(
@@ -303,7 +456,10 @@ export class DataStore {
     day.lastReadAt = at;
     day.progress[attachmentId] = Math.max(day.progress[attachmentId] ?? 0, progress);
     day.status = inferStatus(next);
-    if (day.status === 'read' && history.completedAt === null) {
+    const measuredProgress = getNormalizedDisplayProgress(next);
+    if (measuredProgress !== null
+      && measuredProgress >= READ_PROGRESS_THRESHOLD
+      && history.completedAt === null) {
       history.completedAt = at;
       day.completed = true;
     }
@@ -321,22 +477,32 @@ export class DataStore {
     const dayKey = getLocalDayKey(at);
     const day = this.cloneOrCreateDay(history.days[dayKey]);
     day.status = inferStatus(next);
-    if (day.status === 'read' && history.completedAt === null) {
-      history.completedAt = at;
-      day.completed = true;
-    }
     history.days[dayKey] = day;
     return pruneReadingHistory(history, at);
   }
 
-  private recordResetHistory(current: ReadingHistory | undefined, at: number): ReadingHistory {
+  private recordResetHistory(
+    current: ReadingHistory | undefined,
+    status: ReadingStatus | null,
+    at: number
+  ): ReadingHistory {
     const history = this.cloneOrCreateHistory(current, at);
     const dayKey = getLocalDayKey(at);
     const day = this.cloneOrCreateDay(history.days[dayKey]);
-    day.status = 'to-read';
+    day.status = status;
     day.reset = true;
     history.days[dayKey] = day;
     return pruneReadingHistory(history, at);
+  }
+
+  private hasMeaningfulData(data: FlowData): boolean {
+    if (data.s !== null || data.c !== null || Object.keys(data.p).length > 0) return true;
+    if (data.lastAttachmentId !== null || data.lastPage !== null || data.lastReadAt !== null) return true;
+    if (!data.history) return false;
+    if (data.history.completedAt !== null || data.history.activeDaysTotal > 0) return true;
+    return Object.values(data.history.days).some((day) =>
+      day.activity || day.completed || Object.keys(day.progress).length > 0
+    );
   }
 
   private cloneOrCreateHistory(current: ReadingHistory | undefined, at: number): ReadingHistory {
@@ -364,12 +530,12 @@ export class DataStore {
     return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : Date.now();
   }
 
-  private async waitUntilClean(item: any): Promise<boolean> {
+  private async waitUntilClean(item: any, allowDuringShutdown = false): Promise<boolean> {
     if (typeof item.isDirty !== 'function') return true;
 
     for (let attempt = 0; attempt < DataStore.DIRTY_RETRY_COUNT; attempt++) {
       if (!item.isDirty()) return true;
-      if (this.isClosedOrShuttingDown()) return false;
+      if (this.isClosedOrShuttingDown(allowDuringShutdown)) return false;
       if (attempt < DataStore.DIRTY_RETRY_COUNT - 1) {
         await this.delay(DataStore.DIRTY_RETRY_MS);
       }
@@ -392,8 +558,8 @@ export class DataStore {
 }
 
 function normalizeComparableProgress(value: number | undefined, pageCount: number | null | undefined): number | null {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null;
-  if (value <= 1) return Math.min(1, value);
-  if (typeof pageCount !== 'number' || !Number.isFinite(pageCount) || pageCount <= 0) return null;
-  return Math.min(1, value / pageCount);
+  const normalizedPageCount = typeof pageCount === 'number' && Number.isFinite(pageCount) && pageCount > 0
+    ? pageCount
+    : null;
+  return normalizeProgressValue(value, normalizedPageCount);
 }

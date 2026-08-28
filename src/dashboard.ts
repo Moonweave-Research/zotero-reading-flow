@@ -1,4 +1,4 @@
-import type { ReadingStatus } from './flowData';
+import type { DisplayReadingStatus, ReadingStatus } from './flowData';
 import {
   HISTORY_RANGES,
   STATISTICS_DATASETS,
@@ -10,7 +10,7 @@ import {
 } from './statistics';
 import type { StatisticsScope } from './statisticsScope';
 
-export type DashboardStatusFilter = 'all' | ReadingStatus;
+export type DashboardStatusFilter = 'all' | DisplayReadingStatus;
 
 export interface ActivityDayDetailSnapshot {
   snapshotId: string;
@@ -46,7 +46,8 @@ export interface DashboardBridge {
   resumeItem?(id: number | string): Promise<boolean>;
 }
 
-const STATUS_LABELS: Record<ReadingStatus, string> = {
+const STATUS_LABELS: Record<DisplayReadingStatus, string> = {
+  unassigned: 'Unassigned',
   'to-read': 'To Read',
   reading: 'Reading',
   skimmed: 'Skimmed',
@@ -55,7 +56,7 @@ const STATUS_LABELS: Record<ReadingStatus, string> = {
 };
 
 const DATASET_LABELS: Record<StatisticsDataset, string> = {
-  tracked: 'Reading set (tracked)',
+  tracked: 'Reading Flow items',
   all: 'All papers (inventory)'
 };
 
@@ -77,7 +78,7 @@ const HISTORY_RANGE_LABELS: Record<HistoryRange, string> = {
   'all-time': 'All time'
 };
 
-const STATUSES: ReadingStatus[] = ['to-read', 'reading', 'skimmed', 'read', 'important'];
+const STATUSES: DisplayReadingStatus[] = ['unassigned', 'to-read', 'reading', 'skimmed', 'read', 'important'];
 const PROGRESS_BUCKETS: ProgressBucket[] = [
   'not-started',
   '1-24',
@@ -833,13 +834,13 @@ function formatDashboardState(
 
 function formatFilterNote(dataset: StatisticsDataset, statusLabel: string): string {
   if (dataset === 'tracked') {
-    return `Reading set: papers with Reading Flow data · ${statusLabel} · selected Zotero scope.`;
+    return `Reading Flow items: papers with Reading Flow data · ${statusLabel} · selected Zotero scope.`;
   }
   return `All papers (inventory): includes untracked papers · ${statusLabel} · selected Zotero scope.`;
 }
 
 function formatQueryLabel(query: DashboardQuery): string {
-  const scope = query.scope === 'entire-library' ? 'Entire Library' : 'Current View';
+  const scope = query.scope === 'entire-library' ? 'Selected Library' : 'Current View';
   const dataset = DATASET_LABELS[query.dataset];
   const status = query.statusFilter === 'all' ? 'all statuses' : STATUS_LABELS[query.statusFilter];
   return `${scope} · ${dataset} · ${status} · ${HISTORY_RANGE_LABELS[query.historyRange]}`;
@@ -864,7 +865,7 @@ function clearChildren(doc: Document, id: string) {
 }
 
 function isStatusFilter(value: string): value is DashboardStatusFilter {
-  return value === 'all' || STATUSES.includes(value as ReadingStatus);
+  return value === 'all' || STATUSES.includes(value as DisplayReadingStatus);
 }
 
 function isHistoryRange(value: string): value is HistoryRange {

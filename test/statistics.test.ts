@@ -31,6 +31,7 @@ test('empty statistics snapshot is serializable and exposes every metric bucket'
     inProgress: 0,
     read: 0,
     statusCounts: {
+      unassigned: 0,
       'to-read': 0,
       reading: 0,
       skimmed: 0,
@@ -87,7 +88,8 @@ test('status precedence and every progress bucket are calculated from current st
   assert.equal(snapshot.inProgress, 5);
   assert.equal(snapshot.read, 1);
   assert.deepEqual(snapshot.statusCounts, {
-    'to-read': 2,
+    unassigned: 1,
+    'to-read': 1,
     reading: 5,
     skimmed: 1,
     read: 1,
@@ -104,7 +106,7 @@ test('status precedence and every progress bucket are calculated from current st
   });
 });
 
-test('explicit Read is Complete with absent or partial progress', () => {
+test('manual Read does not fabricate measured progress or completion', () => {
   const snapshot = calculateStatisticsSnapshot([
     paper(1, { s: 'read' }),
     paper(2, { s: 'read', p: { '2': 0.4 } }),
@@ -112,7 +114,9 @@ test('explicit Read is Complete with absent or partial progress', () => {
   ]);
 
   assert.equal(snapshot.read, 2);
-  assert.equal(snapshot.progressDistribution.complete, 2);
+  assert.equal(snapshot.progressDistribution.complete, 0);
+  assert.equal(snapshot.progressDistribution['not-started'], 1);
+  assert.equal(snapshot.progressDistribution['25-49'], 1);
   assert.equal(snapshot.progressDistribution['75-94'], 1);
 });
 
@@ -143,12 +147,15 @@ test('remaining pages follow fractional, legacy, read, and unknown-page rules', 
     paper(2, { p: { '2': 4 }, pageCount: { '2': 10 } }),
     paper(3, { p: { '3': 4 } }),
     paper(4, { s: 'read', p: { '4': 0.3 } }),
-    paper(5, { p: { '5': 0.3 }, pageCount: { '5': 0 } })
+    paper(5, { p: { '5': 0.3 }, pageCount: { '5': 0 } }),
+    paper(6, { p: { '6': 1 }, pageCount: { '6': 100 }, lastAttachmentId: '6', lastPage: 1 }),
+    paper(7, { p: { '7': 1 }, pageCount: { '7': 100 } }),
+    paper(8, { p: { '8': 1 }, pageCount: { '8': 100 }, lastAttachmentId: '8', lastPage: 100 })
   ]);
 
-  assert.equal(snapshot.knownRemainingPages, 5 + 6 + 0);
-  assert.deepEqual(snapshot.remainingPagesCoverage, { knownPapers: 3, totalPapers: 5 });
-  assert.equal(snapshot.progressDistribution.unknown, 1);
+  assert.equal(snapshot.knownRemainingPages, 5 + 6 + 99);
+  assert.deepEqual(snapshot.remainingPagesCoverage, { knownPapers: 4, totalPapers: 8 });
+  assert.equal(snapshot.progressDistribution.unknown, 2);
 });
 
 test('history ranges use local-day boundaries and exclude status-only or reset-only activity', () => {
@@ -508,6 +515,7 @@ test('status filters narrow current metrics and retained history together', () =
 
   assert.equal(snapshot.totalPapers, 1);
   assert.deepEqual(snapshot.statusCounts, {
+    unassigned: 0,
     'to-read': 0,
     reading: 1,
     skimmed: 0,

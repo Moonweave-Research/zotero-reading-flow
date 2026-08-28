@@ -2,9 +2,9 @@
 
 > **Status: AUTHORITATIVE**
 >
-> **Last updated:** 2026-08-23
-> **Released baseline:** Zotero Reading Flow v1.3.1
-> **Active planning target:** Slice K — Opt-In Reading Display Density
+> **Last updated:** 2026-08-27
+> **Released baseline:** Zotero Reading Flow v1.3.5
+> **Active planning target:** Slice M — Explicit Status and Safe Library Triage
 > **Execution surface:** ORRO (`scout -> flowplan -> proofrun -> proofcheck -> handoff`)
 
 ## Authority and Document Routing
@@ -41,17 +41,17 @@ product.
 ## Released Baseline
 
 GitHub issue #6, *Reading statistics dashboard and progress history*, is
-completed and closed in v1.3.0. The v1.3.1 baseline provides:
+completed and closed in v1.3.0. The v1.3.5 baseline provides:
 
 - `Progress`, `Status`, and `Last Read` columns plus the existing Reading Flow
   item menu.
 - A modeless `Reading Statistics` window from the global Tools menu and the
   Reading Flow item context menu. Repeated entry reuses the same window;
   close/reopen is supported.
-- `Current View` and `Entire Library` scopes. `Current View` follows the
+- `Current View` and `Selected Library` scopes. `Current View` follows the
   Zotero collection, saved search, or tag-filtered view already selected by
   the user.
-- `Reading set (tracked)` as the intentional reading set and `All papers
+- `Reading Flow items` as the intentional reading set and `All papers
   (inventory)` as the explicit audit view.
 - Current status/progress/known-remaining-page summaries, bounded daily
   reading history, an activity calendar, first completions, and Recent
@@ -115,15 +115,16 @@ and annotations are never counted separately.
 The dashboard resolves one scope, then one dataset, then status and history
 filters in this order:
 
-1. `Current View` or `Entire Library`.
-2. `Reading set (tracked)` or `All papers (inventory)`.
+1. `Current View` or `Selected Library`.
+2. `Reading Flow items` or `All papers (inventory)`.
 3. Current status filter.
 4. History range.
 
-`Reading set (tracked)` contains papers with a valid `ReadingFlow:` metadata
-line. `All papers (inventory)` also includes untracked regular items, which
-are represented as `To Read` only for inventory reporting. The inventory view
-must never be framed as a user's active commitment.
+`Reading Flow items` contains papers with meaningful Reading Flow state:
+an explicit status, observed progress/resume state, or observed history. A
+syntactically valid but empty `ReadingFlow:` line does not enroll a paper.
+`All papers (inventory)` also includes untracked regular items, which are
+represented as `Unassigned`, never as an implied reading commitment.
 
 ### Stored state and history
 
@@ -168,6 +169,66 @@ history. Unknown page counts are not zero; pruned days are not available
 history.
 
 ## Prioritized Next Work
+
+### Priority 1 — Slice M: Explicit Status and Safe Library Triage
+
+#### User problem and decision
+
+Large existing libraries must not become an automatic `To Read` queue merely
+because the add-on is installed. Status is either an explicit user choice or
+an automatic interpretation of observed PDF progress. Untouched papers remain
+`Unassigned` and render as an empty item-tree status surface with an accessible
+description.
+
+#### Interaction and data contract
+
+- The stored `s` value is a manual override. `Clear Manual Status (Use Automatic)` clears
+  only that override. On a status-only item it removes the namespaced line; on
+  a progressed item it preserves progress, resume data, and history.
+- Clearing an already-unassigned untouched item is a strict no-op: no save,
+  timestamp, history record, or reading-set enrollment.
+- `Reset Progress (Keep Manual Status)` clears current progress/resume position while
+  preserving the manual status. `Restart as To Read` is the separate explicit
+  command that clears progress and sets `To Read`.
+- A manual `Read` label does not fabricate measured progress, remaining-page
+  coverage, reading activity, or first completion. First completion is created
+  only by persisted normalized progress at the completion threshold.
+- Context-menu status operations accept top-level papers and normalize selected
+  PDF attachments to their deduplicated parent papers. Read-only and unsupported
+  items are skipped. Batches of 100 or more require confirmation; mixed or
+  multi-item operations show changed, unchanged, skipped, and failed counts.
+- The new-item default is `Unassigned` and therefore writes nothing. A user may
+  opt into a manual default status. Activation is prospective: it applies only
+  to editable top-level regular items whose `dateAdded` is at or after the
+  preference activation time. Historical sync items are skipped. Any existing
+  `ReadingFlow:` namespace wins, including malformed, duplicate, reset-only, or
+  future-version data. Initialization creates no reading history and preserves
+  Zotero's `dateModified`.
+- Writes serialize per parent item. If unrelated `Extra` changes during a save,
+  the write recomposes against that content with a bounded retry. If the
+  `ReadingFlow:` line itself changes concurrently, preserve it and report the
+  requested mutation as not changed rather than overwriting it.
+- Page-based legacy progress and fractional progress use one normalized resolver
+  across columns, automatic status, statistics, remaining pages, and completion history.
+
+#### Deliberate boundary
+
+Slice M does not register a private collection-tree node, create tags, or mirror
+automatic status into Zotero metadata. Settings may create or remove one
+user-invoked native Saved Search named `Reading Flow — Tracked Papers` per selected
+library. It matches top-level bibliographic items whose `Extra` field contains
+the Reading Flow namespace, including preserved unsupported metadata; it is not
+identical to the dashboard's valid tracked-item set. Exact automatic-status folders remain out
+of scope because Zotero Saved Search conditions cannot derive status from the
+plugin's JSON progress state.
+
+#### Required proof
+
+Focused tests must cover untouched display, manual/automatic precedence,
+status-only and progressed clearing, reset/restart separation, completion
+provenance, attachment-parent deduplication, read-only and large-batch behavior,
+new-item defaults, and competing `Extra` writers. Closeout still requires the
+full release gate and direct disposable-profile inspection before release.
 
 ### Completed — Slice J: Activity Calendar Drill-down (v1.3.1)
 
@@ -257,7 +318,7 @@ or user data for this slice.
   shows a selected calendar date, the exact matching rows, `Show in Zotero`,
   `Resume`, and close/reopen behavior without writes to the user profile.
 
-### Priority 1 — Slice K: Opt-In Reading Display Density
+### Completed — Slice K: Opt-In Reading Display Density (v1.3.2)
 
 #### User problem
 

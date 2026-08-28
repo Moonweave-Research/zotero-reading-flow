@@ -1,4 +1,19 @@
 export type ReadingStatus = 'to-read' | 'reading' | 'skimmed' | 'read' | 'important';
+export type DisplayReadingStatus = ReadingStatus | 'unassigned';
+export type ReadingStatusSource = 'manual' | 'automatic' | 'unassigned';
+
+export interface ResolvedReadingStatus {
+  status: DisplayReadingStatus;
+  source: ReadingStatusSource;
+}
+
+export interface ResolvedDisplayProgress {
+  attachmentId: string | null;
+  rawProgress: number | null;
+  normalizedProgress: number | null;
+  presentationProgress: number | null;
+  pageCount: number | null;
+}
 
 export const HISTORY_RETENTION_DAYS = 366;
 
@@ -116,12 +131,65 @@ export function getDisplayProgress(data: FlowData): number {
   return attachmentId ? data.p[attachmentId] ?? 0 : 0;
 }
 
-export function inferStatus(data: FlowData): ReadingStatus {
-  if (data.s) return data.s;
-  const progress = getDisplayProgress(data);
-  if (progress >= READ_PROGRESS_THRESHOLD && progress <= 1) return 'read';
-  if (progress > 0) return 'reading';
-  return 'to-read';
+export function resolveReadingStatus(data: FlowData): ResolvedReadingStatus {
+  if (data.s) return { status: data.s, source: 'manual' };
+  const progress = getNormalizedDisplayProgress(data);
+  if (progress !== null && progress >= READ_PROGRESS_THRESHOLD) {
+    return { status: 'read', source: 'automatic' };
+  }
+  if (getDisplayProgress(data) > 0) {
+    return { status: 'reading', source: 'automatic' };
+  }
+  return { status: 'unassigned', source: 'unassigned' };
+}
+
+export function inferStatus(data: FlowData): ReadingStatus | null {
+  const resolved = resolveReadingStatus(data).status;
+  return resolved === 'unassigned' ? null : resolved;
+}
+
+export function getNormalizedDisplayProgress(data: FlowData): number | null {
+  const attachmentId = getDisplayAttachmentId(data);
+  if (!attachmentId) return null;
+  const rawProgress = data.p[attachmentId];
+  const pageCount = normalizePageCount(data.pageCount?.[attachmentId]);
+  const lastPage = data.lastAttachmentId === attachmentId ? data.lastPage : null;
+  return normalizeProgressValue(rawProgress, pageCount, lastPage);
+}
+
+export function resolveDisplayProgress(data: FlowData): ResolvedDisplayProgress {
+  const attachmentId = getDisplayAttachmentId(data);
+  if (!attachmentId) {
+    return { attachmentId: null, rawProgress: null, normalizedProgress: null, presentationProgress: null, pageCount: null };
+  }
+  const rawProgress = data.p[attachmentId];
+  const pageCount = normalizePageCount(data.pageCount?.[attachmentId]);
+  const lastPage = data.lastAttachmentId === attachmentId ? data.lastPage : null;
+  const normalizedProgress = normalizeProgressValue(rawProgress, pageCount, lastPage);
+  return {
+    attachmentId,
+    rawProgress,
+    normalizedProgress,
+    presentationProgress: rawProgress > 1 ? rawProgress : normalizedProgress,
+    pageCount
+  };
+}
+
+export function normalizeProgressValue(
+  rawProgress: unknown,
+  pageCount: number | null,
+  lastPage: number | null = null,
+  exactOneIsKnownFraction = false
+): number | null {
+  if (typeof rawProgress !== 'number' || !Number.isFinite(rawProgress) || rawProgress <= 0) return null;
+  if (rawProgress < 1) return rawProgress;
+  if (rawProgress === 1) {
+    if (exactOneIsKnownFraction || pageCount === 1 || (pageCount !== null && lastPage !== null && lastPage >= pageCount)) return 1;
+    if (pageCount !== null && lastPage === 1) return 1 / pageCount;
+    return null;
+  }
+  if (pageCount === null) return null;
+  return Math.min(1, rawProgress / pageCount);
 }
 
 export function formatRelativeDate(timestamp: number | null, now = Date.now()): string {
@@ -189,9 +257,6 @@ function normalizeReadingHistory(input: unknown): ReadingHistory | undefined {
   const candidate = input as any;
   if (!candidate.days || typeof candidate.days !== 'object') return undefined;
 
-  const dayKeys = Object.keys(candidate.days);
-  if (dayKeys.length > HISTORY_RETENTION_DAYS) return undefined;
-
   const startedAt = finiteTimestampOrNull(candidate.startedAt);
   if (startedAt === null) return undefined;
 
@@ -209,6 +274,10 @@ function normalizeReadingHistory(input: unknown): ReadingHistory | undefined {
     };
   }
 
+  const retainedDayKeys = Object.keys(days).sort().slice(-HISTORY_RETENTION_DAYS);
+  const retainedDays: { [day: string]: DailyReadingRollup } = {};
+  for (const day of retainedDayKeys) retainedDays[day] = days[day];
+
   const completedAt = rollupTimestampOrNull(candidate.completedAt);
   const activeDaysTotal = typeof candidate.activeDaysTotal === 'number'
     && Number.isFinite(candidate.activeDaysTotal)
@@ -216,7 +285,7 @@ function normalizeReadingHistory(input: unknown): ReadingHistory | undefined {
     ? Math.floor(candidate.activeDaysTotal)
     : 0;
 
-  return { startedAt, completedAt, activeDaysTotal, days };
+  return { startedAt, completedAt, activeDaysTotal, days: retainedDays };
 }
 
 function finiteTimestampOrNull(value: unknown): number | null {
@@ -248,4 +317,9 @@ function normalizePageCountMap(input: unknown): { [attId: string]: number } {
   }
 
   return normalized;
+}
+
+function normalizePageCount(value: unknown): number | null {
+  const pageCount = finitePositiveIntegerOrNull(value);
+  return pageCount && pageCount <= MAX_REASONABLE_PAGE_COUNT ? pageCount : null;
 }

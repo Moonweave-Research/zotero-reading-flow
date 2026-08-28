@@ -8,9 +8,12 @@ function flowData(updates: Partial<FlowData> = {}): FlowData {
   return { ...DEFAULT_FLOW_DATA, ...updates };
 }
 
-function makeRegularItem(id: number) {
+function makeRegularItem(id: number, editable = true) {
   return {
     id,
+    isEditable() {
+      return editable;
+    },
     isRegularItem() {
       return true;
     },
@@ -141,6 +144,7 @@ function setupMenu(
   };
 
   const dataStore = {
+    invalidateCache() {},
     getData(item: any) {
       const data = dataById[item.id];
       if (data instanceof Error) {
@@ -150,9 +154,19 @@ function setupMenu(
     },
     async setStatus() {
       mutationCalls.push('setStatus');
+      return true;
+    },
+    async clearManualStatus() {
+      mutationCalls.push('clearManualStatus');
+      return true;
     },
     async resetProgress() {
       mutationCalls.push('resetProgress');
+      return true;
+    },
+    async restartAsToRead() {
+      mutationCalls.push('restartAsToRead');
+      return true;
     },
     async updateData() {
       mutationCalls.push('updateData');
@@ -215,7 +229,9 @@ test('menus include direct labels as a fallback for nested native menu rendering
   assert.equal(menuByL10nID('reading-flow-status-skimmed').label, 'Mark as Skimmed');
   assert.equal(menuByL10nID('reading-flow-status-read').label, 'Mark as Read');
   assert.equal(menuByL10nID('reading-flow-status-important').label, 'Mark as Important');
-  assert.equal(menuByL10nID('reading-flow-reset-progress').label, 'Reset Reading Progress');
+  assert.equal(menuByL10nID('reading-flow-status-automatic').label, 'Clear Manual Status (Use Automatic)');
+  assert.equal(menuByL10nID('reading-flow-reset-progress').label, 'Reset Progress (Keep Manual Status)');
+  assert.equal(menuByL10nID('reading-flow-restart-to-read').label, 'Restart as To Read');
 });
 
 test('dashboard menu keeps the submenu available without an item selection and opens modeless UI', async () => {
@@ -424,23 +440,100 @@ test('resume menu command uses command context when current selection is unavail
   assert.deepEqual(openCalls, [[10, { pageIndex: 4 }]]);
 });
 
-test('status and reset commands use command context when current selection is unavailable', async () => {
+test('status, automatic, reset, and restart commands use command context', async () => {
   const item = makeRegularItem(20);
   const { menuByL10nID, mutationCalls } = setupMenu([], {
-    20: flowData()
+    20: flowData({ p: { '10': 0.5 }, s: 'important' })
   }, [item]);
   const commandContext = { items: [item] };
 
   await menuByL10nID('reading-flow-status-reading').onCommand(new Event('command'), commandContext);
+  await menuByL10nID('reading-flow-status-automatic').onCommand(new Event('command'), commandContext);
   await menuByL10nID('reading-flow-reset-progress').onCommand(new Event('command'), commandContext);
+  await menuByL10nID('reading-flow-restart-to-read').onCommand(new Event('command'), commandContext);
 
   assert.deepEqual(mutationCalls, [
     'setStatus',
     'refreshColumns',
     'notifier',
+    'clearManualStatus',
+    'refreshColumns',
+    'notifier',
     'resetProgress',
     'refreshColumns',
+    'notifier',
+    'restartAsToRead',
+    'refreshColumns',
     'notifier'
+  ]);
+});
+
+test('status commands normalize PDF attachments to one editable parent and skip read-only parents', async () => {
+  const editableParent = makeRegularItem(20);
+  const readOnlyParent = makeRegularItem(21, false);
+  const firstPdf = makePdfAttachment(10, 20);
+  const duplicatePdf = makePdfAttachment(11, 20);
+  const readOnlyPdf = makePdfAttachment(12, 21);
+  const { menuByL10nID, mutationCalls } = setupMenu(
+    [firstPdf, duplicatePdf, readOnlyPdf],
+    { 20: flowData(), 21: flowData() },
+    [editableParent, readOnlyParent, firstPdf, duplicatePdf, readOnlyPdf]
+  );
+
+  await menuByL10nID('reading-flow-status-reading').onCommand();
+
+  assert.deepEqual(mutationCalls, ['setStatus', 'refreshColumns', 'notifier']);
+});
+
+test('a large batch requires confirmation and cancellation performs no writes', async () => {
+  const items = Array.from({ length: 100 }, (_, index) => makeRegularItem(index + 100));
+  const { menuByL10nID, mutationCalls } = setupMenu(items, {});
+  let confirmations = 0;
+  (globalThis as any).Services = {
+    prompt: {
+      confirm() {
+        confirmations += 1;
+        return false;
+      }
+    }
+  };
+
+  await menuByL10nID('reading-flow-status-reading').onCommand();
+
+  assert.equal(confirmations, 1);
+  assert.deepEqual(mutationCalls, []);
+  delete (globalThis as any).Services;
+});
+
+test('a large batch fails closed when the confirmation service is unavailable', async () => {
+  const items = Array.from({ length: 100 }, (_, index) => makeRegularItem(index + 300));
+  const { menuByL10nID, mutationCalls } = setupMenu(items, {});
+  delete (globalThis as any).Services;
+
+  await menuByL10nID('reading-flow-status-reading').onCommand();
+
+  assert.deepEqual(mutationCalls, []);
+});
+
+test('mixed bulk results disclose changed, read-only, and unsupported counts', async () => {
+  const editable = makeRegularItem(200);
+  const readOnly = makeRegularItem(201, false);
+  const unsupported = makeUnsupportedItem(202);
+  const { menuByL10nID, mutationCalls } = setupMenu([editable, readOnly, unsupported], {});
+  const notifications: string[] = [];
+  (globalThis as any).Zotero.ProgressWindow = class {
+    changeHeadline(value: string) { notifications.push(value); }
+    addDescription(value: string) { notifications.push(value); }
+    show() {}
+    startCloseTimer() {}
+  };
+
+  await menuByL10nID('reading-flow-status-reading').onCommand();
+
+  assert.deepEqual(mutationCalls, ['setStatus', 'refreshColumns', 'notifier']);
+  assert.deepEqual(notifications, [
+    'Reading Flow update complete',
+    '1 changed · 0 not changed · 2 skipped · 0 failed · Skipped items may be read-only, unsupported, incompatible, or concurrently changed.'
   ]);
 });
 

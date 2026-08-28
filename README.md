@@ -126,7 +126,7 @@ ReadingFlow: {"v":2, ...}
 
 Version 1 metadata remains readable. When historical tracking is available, version 2 adds at most 366 retained local-calendar daily rollups with progress, status, reset, and first-completion markers. Existing current progress remains separate from retrospective history: the dashboard never invents past activity from an old timestamp. Reading Flow preserves unrelated `Extra` metadata and only updates this plugin's own `ReadingFlow:` line. Because that line is parent-item metadata, it follows Zotero's metadata sync behavior. Disabling or uninstalling the add-on does not delete it; back up affected items before any manual removal. Your PDFs are never modified.
 
-Version 1.3.5 has no separate analytics or reading-data upload service. The add-on declares the GitHub update URL shown above for retrieving release metadata and the release package; this statement does not change or characterize Zotero's own sync or update behavior.
+Version 1.3.6 has no separate analytics or reading-data upload service. The add-on declares the GitHub update URL shown above for retrieving release metadata and the release package; this statement does not change or characterize Zotero's own sync or update behavior.
 
 ## FAQ
 

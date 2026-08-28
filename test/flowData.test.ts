@@ -6,9 +6,11 @@ import {
   formatRelativeDate,
   getDisplayAttachmentId,
   getDisplayProgress,
+  getNormalizedDisplayProgress,
   inferStatus,
   mergeFlowData,
-  normalizeFlowData
+  normalizeFlowData,
+  resolveReadingStatus
 } from '../src/flowData';
 
 test('normalizeFlowData preserves valid v1 fields and drops invalid values', () => {
@@ -150,11 +152,65 @@ test('mergeFlowData can intentionally clear progress for reset actions', () => {
   assert.equal(merged.lastReadAt, null);
 });
 
-test('inferStatus uses explicit status or derives from progress', () => {
-  assert.equal(inferStatus({ ...DEFAULT_FLOW_DATA }), 'to-read');
+test('reading status distinguishes untouched, automatic, and manual states consistently', () => {
+  assert.deepEqual(resolveReadingStatus({ ...DEFAULT_FLOW_DATA }), {
+    status: 'unassigned',
+    source: 'unassigned'
+  });
+  assert.equal(inferStatus({ ...DEFAULT_FLOW_DATA }), null);
   assert.equal(inferStatus(normalizeFlowData({ p: { '10': 0.2 } })), 'reading');
   assert.equal(inferStatus(normalizeFlowData({ p: { '10': 0.98 } })), 'read');
+  assert.equal(inferStatus(normalizeFlowData({ p: { '10': 95 }, pageCount: { '10': 100 } })), 'read');
+  assert.deepEqual(resolveReadingStatus(normalizeFlowData({ p: { '10': 0.2 } })), {
+    status: 'reading',
+    source: 'automatic'
+  });
   assert.equal(inferStatus(normalizeFlowData({ s: 'skimmed', p: { '10': 0.98 } })), 'skimmed');
+  assert.deepEqual(resolveReadingStatus(normalizeFlowData({ s: 'skimmed', p: { '10': 0.98 } })), {
+    status: 'skimmed',
+    source: 'manual'
+  });
+});
+
+test('ambiguous legacy progress value 1 is not inferred as complete', () => {
+  const ambiguous = normalizeFlowData({ p: { '10': 1 } });
+  assert.equal(getNormalizedDisplayProgress(ambiguous), null);
+  assert.equal(resolveReadingStatus(ambiguous).status, 'reading');
+
+  const firstPage = normalizeFlowData({
+    p: { '10': 1 },
+    pageCount: { '10': 100 },
+    lastAttachmentId: '10',
+    lastPage: 1
+  });
+  assert.equal(getNormalizedDisplayProgress(firstPage), 0.01);
+  assert.equal(resolveReadingStatus(firstPage).status, 'reading');
+
+  const completed = normalizeFlowData({
+    p: { '10': 1 },
+    pageCount: { '10': 100 },
+    lastAttachmentId: '10',
+    lastPage: 100
+  });
+  assert.equal(getNormalizedDisplayProgress(completed), 1);
+  assert.equal(resolveReadingStatus(completed).status, 'read');
+});
+
+test('oversized valid history is capped deterministically instead of discarded', () => {
+  const days = Object.fromEntries(Array.from({ length: HISTORY_RETENTION_DAYS + 4 }, (_, index) => {
+    const date = new Date(2025, 0, 1 + index);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return [key, { activity: true, progress: { '10': 0.2 } }];
+  }));
+  const data = normalizeFlowData({
+    v: 2,
+    p: { '10': 0.2 },
+    history: { startedAt: 1, activeDaysTotal: HISTORY_RETENTION_DAYS + 4, days }
+  });
+
+  assert.equal(data.v, 2);
+  assert.equal(Object.keys(data.history!.days).length, HISTORY_RETENTION_DAYS);
+  assert.equal(Object.keys(data.history!.days)[0], '2025-01-05');
 });
 
 test('formatRelativeDate gives compact stable labels', () => {

@@ -1,7 +1,18 @@
 <vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-      xmlns:html="http://www.w3.org/1999/xhtml">
+      xmlns:html="http://www.w3.org/1999/xhtml"
+      onload="void Zotero.ReadingFlowPreferences?.refreshSidebarSearchStatus()">
   <groupbox>
     <label><html:h2>Reading Flow</html:h2></label>
+    <html:section style="border: 1px solid color-mix(in srgb, currentColor 22%, transparent); border-radius: 6px; padding: 12px; margin: 0 0 14px; max-width: 520px;">
+      <html:h3 style="margin: 0 0 6px;">Reading list in the left sidebar</html:h3>
+      <html:p style="margin: 0 0 10px;">Add <html:strong>Reading Flow — Tracked Papers</html:strong> to the selected library. It appears under <html:strong>Saved Searches</html:strong> and contains top-level papers with Reading Flow data.</html:p>
+      <html:div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <html:button type="button" onclick="void Zotero.ReadingFlowPreferences?.createSidebarSearch()">Add to Left Sidebar</html:button>
+        <html:button type="button" onclick="void Zotero.ReadingFlowPreferences?.removeSidebarSearch()">Remove from Selected Library</html:button>
+      </html:div>
+      <html:p id="readingflow-pref-sidebar-message" role="status" aria-live="polite" style="margin: 8px 0 0;"></html:p>
+      <html:p style="margin: 8px 0 0; opacity: .8;">This is a tracked-papers list, not an exact status-filtered folder. Automatic Reading and Read states are calculated from PDF progress and cannot be reproduced exactly by Zotero Saved Searches.</html:p>
+    </html:section>
     <html:div style="display: grid; grid-template-columns: 160px 1fr; gap: 12px; align-items: center; max-width: 420px;">
       <html:label for="readingflow-pref-color-completed">Completed color</html:label>
       <html:input id="readingflow-pref-color-completed" type="color" preference="extensions.readingflow.color-completed"/>
@@ -14,7 +25,17 @@
         <html:option value="compact">Compact</html:option>
         <html:option value="icons">Icons</html:option>
       </html:select>
+      <html:label for="readingflow-pref-new-item-status">Status for newly added papers</html:label>
+      <html:select id="readingflow-pref-new-item-status" preference="extensions.readingflow.newItemStatus" onchange="Zotero.ReadingFlowPreferences?.setNewItemStatus(this.value)">
+        <html:option value="unassigned">Unassigned</html:option>
+        <html:option value="to-read">To Read</html:option>
+        <html:option value="reading">Reading</html:option>
+        <html:option value="skimmed">Skimmed</html:option>
+        <html:option value="read">Read</html:option>
+        <html:option value="important">Important</html:option>
+      </html:select>
     </html:div>
     <description><html:span id="readingflow-pref-density-message" data-l10n-id="reading-flow-density-help">This changes only the contents of the Reading Flow column. Use Zotero's native column chooser to show or hide it.</html:span></description>
+    <description>Unassigned writes nothing. Another choice applies only to eligible papers added after you enable it. Existing papers, historical sync items, attachments, and any item already containing Reading Flow metadata are left unchanged.</description>
   </groupbox>
 </vbox>

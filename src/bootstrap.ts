@@ -25,10 +25,54 @@ import {
   type StatisticsScopeAdapter
 } from './statisticsScope';
 import { ResumeReader } from './resumeReader';
+import { SidebarSearchManager } from './sidebarSearchManager';
+import {
+  clearLegacyReadingFlowPreferenceAliases,
+  setNewItemStatusPreference
+} from './preferences';
 
 const DASHBOARD_CHROME_URI = 'chrome://readingflow/content/';
 
-class Bootstrap {
+export function runWhenUIReady(
+  runtime: any,
+  task: () => void | Promise<void>
+): Promise<void> {
+  const ready = runtime?.uiReadyPromise;
+  const gate = ready && typeof ready.then === 'function' ? Promise.resolve(ready) : Promise.resolve();
+  return gate
+    .then(() => waitForMountedMainItemTree(runtime))
+    .then(() => task());
+}
+
+function waitForMountedMainItemTree(runtime: any): Promise<void> {
+  const currentView = () => runtime?.getActiveZoteroPane?.()?.itemsView;
+  const view = currentView();
+  // Zotero can resolve uiReadyPromise before the item tree's VirtualizedTable ref mounts.
+  if (!view || view.tree) return Promise.resolve();
+
+  const schedule = runtime?.getMainWindow?.()?.setTimeout;
+  if (typeof schedule !== 'function') return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    const check = () => {
+      const candidate = currentView();
+      if (!candidate || candidate.tree) {
+        resolve();
+        return;
+      }
+      attempts += 1;
+      if (attempts >= 100) {
+        reject(new Error('Zotero main item tree did not finish mounting'));
+        return;
+      }
+      schedule.call(runtime.getMainWindow(), check, 50);
+    };
+    schedule.call(runtime.getMainWindow(), check, 50);
+  });
+}
+
+export class Bootstrap {
   public dataStore?: DataStore;
   private readerTracker?: ReaderTracker;
   private columnManager?: ColumnManager;
@@ -51,6 +95,14 @@ class Bootstrap {
     await Zotero.initializationPromise;
     this.rootURI = rootURI;
     this.started = true;
+    clearLegacyReadingFlowPreferenceAliases();
+    const sidebarSearchManager = new SidebarSearchManager();
+    (Zotero as any).ReadingFlowPreferences = {
+      setNewItemStatus: (value: string) => setNewItemStatusPreference(value),
+      createSidebarSearch: () => sidebarSearchManager.create(),
+      removeSidebarSearch: () => sidebarSearchManager.remove(),
+      refreshSidebarSearchStatus: () => sidebarSearchManager.status()
+    };
     Logger.log('startup begin');
 
     try {
@@ -76,11 +128,17 @@ class Bootstrap {
       Logger.log('readerTracker OK');
     } catch (e) { Logger.error('readerTracker FAIL', e); }
 
-    try {
-      this.columnManager = new ColumnManager(this.dataStore!);
+    void runWhenUIReady(Zotero, async () => {
+      if (!this.started || !this.dataStore) return;
+      try {
+        await sidebarSearchManager.migrateTrackedSearches();
+      } catch (error) {
+        Logger.warn(`ReadingFlow: sidebar search migration skipped: ${String(error)}`);
+      }
+      this.columnManager = new ColumnManager(this.dataStore);
       await this.columnManager.register();
       Logger.log('columnManager OK');
-    } catch (e) { Logger.error('columnManager FAIL', e); }
+    }).catch((e) => Logger.error('columnManager FAIL', e));
 
     try {
       this.notifierManager = new NotifierManager(this.dataStore!);
@@ -108,13 +166,14 @@ class Bootstrap {
     Logger.log('startup complete');
   }
 
-  shutdown(reason?: number) {
+  async shutdown(reason?: number) {
     this.started = false;
     this.dashboardManager?.close();
     this.dashboardManager = undefined;
     this.rootURI = null;
-    this.dataStore?.close();
+    await this.readerTracker?.flushPending();
     this.readerTracker?.unregister();
+    this.dataStore?.close();
     this.notifierManager?.unregister();
     if (!this.isAppShutdown(reason)) {
       this.columnManager?.unregister();
@@ -122,6 +181,7 @@ class Bootstrap {
       this.unregisterPreferencePane();
     }
     this.styleManager.unregister();
+    delete (Zotero as any).ReadingFlowPreferences;
     this.dashboardChromeHandle?.destruct?.();
     this.dashboardChromeHandle = null;
   }
@@ -141,7 +201,9 @@ class Bootstrap {
     }
   }
 
-  onMainWindowUnload() {}
+  async onMainWindowUnload() {
+    await this.readerTracker?.flushPending();
+  }
 
   private registerPreferencePane(pluginID: string, rootURI: string) {
     if (!Zotero.PreferencePanes?.register) return;
@@ -328,7 +390,7 @@ const BOOTSTRAP = new Bootstrap();
 
 export function install() { BOOTSTRAP.install(); }
 export async function startup(data: any, reason: any) { await BOOTSTRAP.startup(data); }
-export function shutdown(data: any, reason: any) { BOOTSTRAP.shutdown(reason); }
+export async function shutdown(data: any, reason: any) { await BOOTSTRAP.shutdown(reason); }
 export function uninstall() { BOOTSTRAP.uninstall(); }
 export function onMainWindowLoad(data: any) { BOOTSTRAP.onMainWindowLoad(data); }
-export function onMainWindowUnload(data: any) { BOOTSTRAP.onMainWindowUnload(); }
+export async function onMainWindowUnload(data: any) { await BOOTSTRAP.onMainWindowUnload(); }
