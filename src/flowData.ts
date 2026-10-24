@@ -1,6 +1,6 @@
 export type ReadingStatus = 'to-read' | 'reading' | 'skimmed' | 'read' | 'important';
-export type DisplayReadingStatus = ReadingStatus | 'unassigned';
-export type ReadingStatusSource = 'manual' | 'automatic' | 'unassigned';
+export type DisplayReadingStatus = ReadingStatus | 'unassigned' | 'unavailable';
+export type ReadingStatusSource = 'manual' | 'automatic' | 'unassigned' | 'unavailable';
 
 export interface ResolvedReadingStatus {
   status: DisplayReadingStatus;
@@ -34,6 +34,8 @@ export interface ReadingHistory {
 }
 
 export interface FlowData {
+  /** Read-only interpretation; never persisted by a supported writer. */
+  availability?: 'unavailable';
   v: number;
   p: { [attId: string]: number };
   pageCount?: { [attId: string]: number };
@@ -47,7 +49,6 @@ export interface FlowData {
 }
 
 export const FLOW_PREFIX = 'ReadingFlow: ';
-export const READ_PROGRESS_THRESHOLD = 0.95;
 
 export const DEFAULT_FLOW_DATA: FlowData = {
   v: 1,
@@ -111,7 +112,7 @@ export function isFlowDataSame(a: FlowData, b: FlowData): boolean {
 }
 
 export function getDisplayAttachmentId(data: FlowData): string | null {
-  if (data.lastAttachmentId && typeof data.p[data.lastAttachmentId] === 'number') {
+  if (data.lastAttachmentId && (typeof data.p[data.lastAttachmentId] === 'number' || data.lastPage != null)) {
     return data.lastAttachmentId;
   }
 
@@ -131,13 +132,19 @@ export function getDisplayProgress(data: FlowData): number {
   return attachmentId ? data.p[attachmentId] ?? 0 : 0;
 }
 
+export type ReadingAvailability = 'no-record' | 'available' | 'unavailable';
+
+export function resolveReadingAvailability(data: FlowData): ReadingAvailability {
+  if (data.availability) return 'unavailable';
+  return data.s || data.c || Object.keys(data.p).length || data.lastAttachmentId
+    || data.lastPage || data.lastReadAt || data.history ? 'available' : 'no-record';
+}
+
 export function resolveReadingStatus(data: FlowData): ResolvedReadingStatus {
+  if (data.availability === 'unavailable') return { status: 'unavailable', source: 'unavailable' };
   if (data.s) return { status: data.s, source: 'manual' };
-  const progress = getNormalizedDisplayProgress(data);
-  if (progress !== null && progress >= READ_PROGRESS_THRESHOLD) {
-    return { status: 'read', source: 'automatic' };
-  }
-  if (getDisplayProgress(data) > 0) {
+  if (Object.keys(data.p).length > 0 || data.lastPage != null || getLastActivityAt(data) !== null
+    || Object.values(data.history?.days ?? {}).some(day => day.activity)) {
     return { status: 'reading', source: 'automatic' };
   }
   return { status: 'unassigned', source: 'unassigned' };
@@ -145,34 +152,50 @@ export function resolveReadingStatus(data: FlowData): ResolvedReadingStatus {
 
 export function inferStatus(data: FlowData): ReadingStatus | null {
   const resolved = resolveReadingStatus(data).status;
-  return resolved === 'unassigned' ? null : resolved;
+  return resolved === 'unassigned' || resolved === 'unavailable' ? null : resolved;
 }
 
 export function getNormalizedDisplayProgress(data: FlowData): number | null {
   const attachmentId = getDisplayAttachmentId(data);
   if (!attachmentId) return null;
-  const rawProgress = data.p[attachmentId];
+  const rawProgress = data.p[attachmentId] ?? null;
   const pageCount = normalizePageCount(data.pageCount?.[attachmentId]);
-  const lastPage = data.lastAttachmentId === attachmentId ? data.lastPage : null;
+  const lastPage = data.lastAttachmentId === attachmentId ? data.lastPage ?? null : null;
   return normalizeProgressValue(rawProgress, pageCount, lastPage);
 }
 
 export function resolveDisplayProgress(data: FlowData): ResolvedDisplayProgress {
-  const attachmentId = getDisplayAttachmentId(data);
+  const attachmentId = data.availability ? null : getDisplayAttachmentId(data);
   if (!attachmentId) {
     return { attachmentId: null, rawProgress: null, normalizedProgress: null, presentationProgress: null, pageCount: null };
   }
-  const rawProgress = data.p[attachmentId];
+  const rawProgress = data.p[attachmentId] ?? null;
   const pageCount = normalizePageCount(data.pageCount?.[attachmentId]);
-  const lastPage = data.lastAttachmentId === attachmentId ? data.lastPage : null;
+  const lastPage = data.lastAttachmentId === attachmentId ? data.lastPage ?? null : null;
   const normalizedProgress = normalizeProgressValue(rawProgress, pageCount, lastPage);
   return {
     attachmentId,
     rawProgress,
     normalizedProgress,
-    presentationProgress: rawProgress > 1 ? rawProgress : normalizedProgress,
+    // Current location belongs only to the saved attachment. A maximum is not a current position.
+    presentationProgress: lastPage !== null
+      ? (pageCount !== null ? Math.min(1, lastPage / pageCount) : lastPage)
+      : null,
     pageCount
   };
+}
+
+export function formatPDFPosition(data: FlowData): string {
+  if (data.availability) return 'Reading Flow record unavailable';
+  const display = resolveDisplayProgress(data);
+  const page = data.lastAttachmentId === display.attachmentId ? data.lastPage ?? null : null;
+  if (page === null) return Object.keys(data.p).length ? 'Saved PDF position unknown' : 'No saved PDF position';
+  return display.pageCount !== null ? `${page} / ${display.pageCount} PDF pages` : `PDF page ${page} (page count unknown)`;
+}
+
+export function formatMaximumPosition(data: FlowData): string {
+  const maximum = getNormalizedDisplayProgress(data);
+  return maximum === null ? 'Maximum PDF position unknown' : `Maximum PDF position ${Math.round(maximum * 100)}%`;
 }
 
 export function normalizeProgressValue(
@@ -185,7 +208,6 @@ export function normalizeProgressValue(
   if (rawProgress < 1) return rawProgress;
   if (rawProgress === 1) {
     if (exactOneIsKnownFraction || pageCount === 1 || (pageCount !== null && lastPage !== null && lastPage >= pageCount)) return 1;
-    if (pageCount !== null && lastPage === 1) return 1 / pageCount;
     return null;
   }
   if (pageCount === null) return null;
@@ -202,7 +224,16 @@ export function formatRelativeDate(timestamp: number | null, now = Date.now()): 
   if (diffMs < hour) return `${Math.floor(diffMs / minute)}m`;
   if (diffMs < day) return `${Math.floor(diffMs / hour)}h`;
   if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}d`;
-  return new Date(timestamp).toISOString().slice(0, 10);
+  return getLocalDayKey(timestamp);
+}
+
+/** Only persisted PDF observations count; ts and startedAt also record status/reset writes. */
+export function getLastActivityAt(data: FlowData): number | null {
+  if (data.availability) return null;
+  const times = [data.lastReadAt, ...Object.values(data.history?.days ?? {})
+    .filter(day => day.activity).map(day => day.lastReadAt)]
+    .filter((at): at is number => typeof at === 'number' && Number.isFinite(at) && at > 0);
+  return times.length ? Math.max(...times) : null;
 }
 
 export function getLocalDayKey(timestamp: number): string {

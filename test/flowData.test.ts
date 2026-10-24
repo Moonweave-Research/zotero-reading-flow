@@ -159,8 +159,8 @@ test('reading status distinguishes untouched, automatic, and manual states consi
   });
   assert.equal(inferStatus({ ...DEFAULT_FLOW_DATA }), null);
   assert.equal(inferStatus(normalizeFlowData({ p: { '10': 0.2 } })), 'reading');
-  assert.equal(inferStatus(normalizeFlowData({ p: { '10': 0.98 } })), 'read');
-  assert.equal(inferStatus(normalizeFlowData({ p: { '10': 95 }, pageCount: { '10': 100 } })), 'read');
+  assert.equal(inferStatus(normalizeFlowData({ p: { '10': 0.98 } })), 'reading');
+  assert.equal(inferStatus(normalizeFlowData({ p: { '10': 95 }, pageCount: { '10': 100 } })), 'reading');
   assert.deepEqual(resolveReadingStatus(normalizeFlowData({ p: { '10': 0.2 } })), {
     status: 'reading',
     source: 'automatic'
@@ -183,7 +183,7 @@ test('ambiguous legacy progress value 1 is not inferred as complete', () => {
     lastAttachmentId: '10',
     lastPage: 1
   });
-  assert.equal(getNormalizedDisplayProgress(firstPage), 0.01);
+  assert.equal(getNormalizedDisplayProgress(firstPage), null);
   assert.equal(resolveReadingStatus(firstPage).status, 'reading');
 
   const completed = normalizeFlowData({
@@ -193,7 +193,7 @@ test('ambiguous legacy progress value 1 is not inferred as complete', () => {
     lastPage: 100
   });
   assert.equal(getNormalizedDisplayProgress(completed), 1);
-  assert.equal(resolveReadingStatus(completed).status, 'read');
+  assert.equal(resolveReadingStatus(completed).status, 'reading');
 });
 
 test('oversized valid history is capped deterministically instead of discarded', () => {

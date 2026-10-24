@@ -145,8 +145,8 @@ function snapshot(overrides: Partial<StatisticsSnapshot> = {}): StatisticsSnapsh
       '1-24': 1,
       '25-49': 2,
       '50-74': 1,
-      '75-94': 1,
-      complete: 2,
+      '75-99': 1,
+      '100': 2,
       unknown: 0
     },
     knownRemainingPages: 42,
@@ -211,14 +211,14 @@ test('renderDashboard keeps current summary honest and uses semantic status colo
   assert.equal(doc.getElementById('dashboard-papers')?.textContent, '10');
   assert.equal(doc.getElementById('dashboard-in-progress')?.textContent, '3');
   assert.equal(doc.getElementById('dashboard-read')?.textContent, '2');
-  assert.equal(doc.getElementById('dashboard-remaining-pages')?.textContent, '42');
-  assert.equal(doc.getElementById('dashboard-remaining-coverage')?.textContent, 'Known for 7 of 10 papers; 3 unknown.');
+  assert.equal(doc.getElementById('dashboard-remaining-pages')?.textContent, '');
+  assert.equal(doc.getElementById('dashboard-remaining-coverage')?.textContent, '');
   assert.equal(doc.getElementById('dashboard-status-composition')?.children.length, 6);
   assert.match(findBar(doc, 'dashboard-status-composition', 'Reading')?.className ?? '', /status-reading/);
   assert.match(findBar(doc, 'dashboard-status-composition', 'Read')?.className ?? '', /status-read/);
   assert.equal(findBar(doc, 'dashboard-status-composition', 'Read')?.children[2]?.textContent, '2 (20%)');
   assert.equal(doc.getElementById('dashboard-progress-distribution')?.children.length, 7);
-  assert.equal(doc.getElementById('dashboard-filter-note')?.textContent, 'Reading Flow items: papers with Reading Flow data · all statuses · selected Zotero scope.');
+  assert.equal(doc.getElementById('dashboard-filter-note')?.textContent, 'Reading Flow items: items with Reading Flow data · all statuses · selected Zotero scope. Showing 10 of 10 items; scope total = 10 classifiable + 0 unavailable. Status percentages use 10 classifiable items in scope. Position percentages use classifiable matching items.');
 });
 
 test('no-history state shows one onboarding callout and hides every retained-history detail panel', () => {
@@ -262,18 +262,19 @@ test('populated history renders the reading pulse and one semantic Recent Progre
   assert.equal(doc.getElementById('dashboard-reading-pulse')?.hidden, false);
   assert.equal(doc.getElementById('dashboard-range-active-days')?.textContent, '3');
   assert.equal(doc.getElementById('dashboard-range-progress-activity')?.textContent, '2');
-  assert.equal(doc.getElementById('dashboard-range-completions')?.textContent, '1');
+  assert.equal(doc.getElementById('dashboard-range-completions')?.textContent, '');
   assert.equal(doc.getElementById('dashboard-history-calendar')?.children[0]?.children.length, 2);
-  assert.equal(doc.getElementById('dashboard-completion-trend')?.children[0]?.children.length, 3);
+  assert.equal(doc.getElementById('dashboard-completion-trend-panel')?.hidden, true);
+  assert.equal(doc.getElementById('dashboard-completion-trend')?.children.length, 0);
   const table = doc.getElementById('dashboard-recent-progress');
   const row = doc.getElementById('dashboard-recent-progress-body')?.children[0];
   assert.equal(table?.tagName, 'table');
   assert.equal(table?.hidden, false);
   assert.equal(row?.tagName, 'tr');
   assert.deepEqual(row?.children.map((cell) => cell.tagName), ['td', 'td', 'td', 'td', 'td', 'td']);
-  assert.deepEqual(row?.children.map((cell) => cell.attributes['data-label']), ['Paper', 'Current progress', 'Change in range', 'Last update', 'Status', 'Reset']);
+  assert.deepEqual(row?.children.map((cell) => cell.attributes['data-label']), ['Paper', 'Saved PDF position', 'Change in range', 'Last update', 'Status', 'Reset']);
   assert.match(row?.children[4]?.className ?? '', /status-reading/);
-  assert.equal(doc.getElementById('dashboard-recent-progress-summary')?.textContent, 'Showing 1 of 1 papers with a progress update in this range.');
+  assert.equal(doc.getElementById('dashboard-recent-progress-summary')?.textContent, 'Showing 1 of 1 items with a progress update in this range.');
 });
 
 test('Recent Progress makes its displayed subset explicit, can expand, and returns only a user-chosen paper to Zotero', () => {
@@ -298,7 +299,7 @@ test('Recent Progress makes its displayed subset explicit, can expand, and retur
 
   render(false);
   assert.equal(doc.getElementById('dashboard-recent-progress-body')?.children.length, 8);
-  assert.equal(doc.getElementById('dashboard-recent-progress-summary')?.textContent, 'Showing 8 of 9 papers with a progress update in this range.');
+  assert.equal(doc.getElementById('dashboard-recent-progress-summary')?.textContent, 'Showing 8 of 9 items with a progress update in this range.');
   assert.equal(doc.getElementById('dashboard-recent-progress-toggle')?.textContent, 'Show all 9');
   doc.getElementById('dashboard-recent-progress-toggle')!.listeners.click[0]();
   assert.equal(doc.getElementById('dashboard-recent-progress-body')?.children.length, 9);
@@ -400,7 +401,7 @@ test('calendar selection projects only its cached day, can clear, and does not r
   assert.deepEqual(resumes, []);
   assert.equal(doc.getElementById('dashboard-activity-day-detail')?.hidden, false);
   assert.equal(doc.getElementById('dashboard-activity-day-detail-heading')?.textContent, 'Progress updates on 2026-07-27');
-  assert.equal(doc.getElementById('dashboard-activity-day-detail-summary')?.textContent, 'Showing 2 of 2 papers with a progress update on this date.');
+  assert.equal(doc.getElementById('dashboard-activity-day-detail-summary')?.textContent, 'Showing 2 of 2 items with a progress update on this date.');
   assert.equal(doc.getElementById('dashboard-activity-day-detail-body')?.children.length, 2);
   assert.equal(doc.getElementById('dashboard-activity-day-detail-body')?.children[0].children[1].textContent, 'Unknown');
 
@@ -466,7 +467,7 @@ test('the packaged dashboard bundle loads an activity detail, clears it, and rel
 
   assert.deepEqual(detailRequests, [['packaged-snapshot', '2026-07-27']]);
   assert.equal(first.doc.getElementById('dashboard-activity-day-detail-heading')?.textContent, 'Progress updates on 2026-07-27');
-  assert.equal(first.doc.getElementById('dashboard-activity-day-detail-summary')?.textContent, 'Showing 2 of 2 papers with a progress update on this date.');
+  assert.equal(first.doc.getElementById('dashboard-activity-day-detail-summary')?.textContent, 'Showing 2 of 2 items with a progress update on this date.');
   const rows = first.doc.getElementById('dashboard-activity-day-detail-body')!.children;
   assert.equal(rows.length, 2);
   assert.equal(rows[0].children[0].children[0].textContent, 'Selected paper');
@@ -688,8 +689,8 @@ test('positive percentages below one percent render as less than one instead of 
       '1-24': 1,
       '25-49': 0,
       '50-74': 0,
-      '75-94': 0,
-      complete: 0,
+      '75-99': 0,
+      '100': 0,
       unknown: 0
     },
     history: history({
@@ -724,16 +725,16 @@ test('status and measured progress surfaces render independently from the suppli
       '1-24': 0,
       '25-49': 0,
       '50-74': 0,
-      '75-94': 0,
-      complete: 1,
+      '75-99': 0,
+      '100': 1,
       unknown: 0
     }
   }), 'read', 0, 'tracked');
 
   assert.equal(doc.getElementById('dashboard-read')?.textContent, '1');
   assert.equal(findBar(doc, 'dashboard-status-composition', 'Read')?.children[2]?.textContent, '1 (100%)');
-  assert.equal(findBar(doc, 'dashboard-progress-distribution', 'Complete')?.children[2]?.textContent, '1 (100%)');
-  assert.match(findBar(doc, 'dashboard-progress-distribution', 'Complete')?.className ?? '', /status-read/);
+  assert.equal(findBar(doc, 'dashboard-progress-distribution', '100% PDF position')?.children[2]?.textContent, '1 (100%)');
+  assert.match(findBar(doc, 'dashboard-progress-distribution', '100% PDF position')?.className ?? '', /progress-neutral/);
 });
 
 test('empty, large, and unknown-page scopes remain readable without inventing values', () => {
@@ -748,16 +749,16 @@ test('empty, large, and unknown-page scopes remain readable without inventing va
       '1-24': 0,
       '25-49': 0,
       '50-74': 0,
-      '75-94': 0,
-      complete: 0,
+      '75-99': 0,
+      '100': 0,
       unknown: 0
     },
     knownRemainingPages: 0,
     remainingPagesCoverage: { knownPapers: 0, totalPapers: 0 },
     history: emptyHistory(0)
   }), 'all', 0, 'tracked');
-  assert.equal(emptyDoc.getElementById('dashboard-state')?.textContent, 'No papers in this reading set yet. Record progress or set a Reading Flow status from a paper context menu to add one.');
-  assert.equal(emptyDoc.getElementById('dashboard-progress-distribution')?.children[0]?.textContent, 'No papers in this scope.');
+  assert.equal(emptyDoc.getElementById('dashboard-state')?.textContent, 'No items in this reading set yet. Record progress or set a Reading Flow status from an item context menu to add one.');
+  assert.equal(emptyDoc.getElementById('dashboard-progress-distribution')?.children[0]?.textContent, 'No classifiable items match this filter.');
 
   const unknownDoc = documentFixture();
   renderDashboard(unknownDoc as any, snapshot({
@@ -765,8 +766,8 @@ test('empty, large, and unknown-page scopes remain readable without inventing va
     remainingPagesCoverage: { knownPapers: 0, totalPapers: 2 },
     knownRemainingPages: 0
   }), 'all', 0, 'tracked');
-  assert.equal(unknownDoc.getElementById('dashboard-remaining-pages')?.textContent, 'Unknown');
-  assert.equal(unknownDoc.getElementById('dashboard-remaining-coverage')?.textContent, 'Unknown for all 2 papers.');
+  assert.equal(unknownDoc.getElementById('dashboard-remaining-pages')?.textContent, '');
+  assert.equal(unknownDoc.getElementById('dashboard-remaining-coverage')?.textContent, '');
 
   const largeDoc = documentFixture();
   renderDashboard(largeDoc as any, snapshot({
@@ -775,8 +776,8 @@ test('empty, large, and unknown-page scopes remain readable without inventing va
     remainingPagesCoverage: { knownPapers: 100000, totalPapers: 125000 }
   }), 'all', 0, 'all');
   assert.equal(largeDoc.getElementById('dashboard-papers')?.textContent, '125000');
-  assert.equal(largeDoc.getElementById('dashboard-remaining-pages')?.textContent, '987654');
-  assert.equal(largeDoc.getElementById('dashboard-filter-note')?.textContent, 'All papers (inventory): includes untracked papers · all statuses · selected Zotero scope.');
+  assert.equal(largeDoc.getElementById('dashboard-remaining-pages')?.textContent, '');
+  assert.equal(largeDoc.getElementById('dashboard-filter-note')?.textContent, 'All items (inventory): includes untracked items · all statuses · selected Zotero scope. Showing 125000 of 125000 items; scope total = 125000 classifiable + 0 unavailable. Status percentages use 125000 classifiable items in scope. Position percentages use classifiable matching items.');
 });
 
 test('DashboardApp installs one deterministic listener set and passes scope, range, status, and dataset', async () => {
@@ -925,7 +926,7 @@ test('XHTML and CSS preserve native control order, table semantics, visible focu
 
   assert.ok(scopeIndex < datasetIndex && datasetIndex < statusIndex && statusIndex < rangeIndex && rangeIndex < refreshIndex);
   assert.match(xhtml, /<label for="dashboard-dataset"/);
-  assert.match(xhtml, /<table id="dashboard-recent-progress">[\s\S]*<thead>[\s\S]*<th scope="col">Paper<\/th>[\s\S]*<th scope="col">Current progress<\/th>[\s\S]*<tbody id="dashboard-recent-progress-body">/);
+  assert.match(xhtml, /<table id="dashboard-recent-progress">[\s\S]*<thead>[\s\S]*<th scope="col">Item<\/th>[\s\S]*<th scope="col">Saved PDF position<\/th>[\s\S]*<tbody id="dashboard-recent-progress-body">/);
   assert.match(xhtml, /<section id="dashboard-activity-day-detail"[\s\S]*aria-labelledby="dashboard-activity-day-detail-heading"[\s\S]*<table id="dashboard-activity-day-detail-table">[\s\S]*<tbody id="dashboard-activity-day-detail-body">/);
   assert.match(xhtml, /id="dashboard-recent-progress-toggle"/);
   assert.match(xhtml, /id="dashboard-history-range-empty"/);
@@ -946,4 +947,16 @@ test('XHTML and CSS preserve native control order, table semantics, visible focu
   assert.match(css, /--surface-background: #ffffff/);
   assert.match(css, /background: var\(--dashboard-background\)/);
   assert.match(css, /@media \(prefers-color-scheme: dark\)/);
+});
+
+test('filtered summary discloses original T = K + U and uses K for status percentages', () => {
+  const doc = documentFixture();
+  renderDashboard(doc as any, snapshot({ totalPapers: 1, scopeTotal: 7, classifiableItems: 3,
+    unavailableItems: 4, statusDenominator: 3, read: 1,
+    statusCounts: { unavailable: 0, unassigned: 0, 'to-read': 0, reading: 0, skimmed: 0, read: 1, important: 0 }
+  }), 'read');
+  assert.match(doc.getElementById('dashboard-filter-note')?.textContent ?? '', /Showing 1 of 7 items; scope total = 3 classifiable \+ 4 unavailable/);
+  assert.equal(findBar(doc, 'dashboard-status-composition', 'Read')?.children[2]?.textContent, '1 (33%)');
+  const xhtml = readFileSync('addon/dashboard.xhtml', 'utf8');
+  assert.doesNotMatch(xhtml, /dashboard-remaining-pages|dashboard-range-completions|dashboard-completion-trend/);
 });

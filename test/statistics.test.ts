@@ -28,10 +28,15 @@ test('empty statistics snapshot is serializable and exposes every metric bucket'
 
   assert.deepEqual(currentSnapshot, {
     totalPapers: 0,
+    scopeTotal: 0,
+    classifiableItems: 0,
+    unavailableItems: 0,
+    statusDenominator: 0,
     inProgress: 0,
     read: 0,
     statusCounts: {
-      unassigned: 0,
+      unavailable: 0,
+    unassigned: 0,
       'to-read': 0,
       reading: 0,
       skimmed: 0,
@@ -43,8 +48,8 @@ test('empty statistics snapshot is serializable and exposes every metric bucket'
       '1-24': 0,
       '25-49': 0,
       '50-74': 0,
-      '75-94': 0,
-      complete: 0,
+      '75-99': 0,
+      '100': 0,
       unknown: 0
     },
     knownRemainingPages: 0,
@@ -82,17 +87,22 @@ test('status precedence and every progress bucket are calculated from current st
     ...explicitStatuses.map(([status, updates], index) => paper(20 + index, updates))
   ];
 
-  const snapshot = calculateStatisticsSnapshot(papers);
+  const snapshot = calculateStatisticsSnapshot(papers.map(paper => {
+    const [id, maximum] = Object.entries(paper.flowData.p)[0] ?? [];
+    return !id || maximum > 1 ? paper : { ...paper, flowData: { ...paper.flowData,
+      lastAttachmentId: id, lastPage: maximum * 100, pageCount: { [id]: 100 } } };
+  }));
 
   assert.equal(snapshot.totalPapers, 10);
-  assert.equal(snapshot.inProgress, 5);
-  assert.equal(snapshot.read, 1);
+  assert.equal(snapshot.inProgress, 6);
+  assert.equal(snapshot.read, 0);
   assert.deepEqual(snapshot.statusCounts, {
+    unavailable: 0,
     unassigned: 1,
     'to-read': 1,
-    reading: 5,
+    reading: 6,
     skimmed: 1,
-    read: 1,
+    read: 0,
     important: 1
   });
   assert.deepEqual(snapshot.progressDistribution, {
@@ -100,8 +110,8 @@ test('status precedence and every progress bucket are calculated from current st
     '1-24': 2,
     '25-49': 1,
     '50-74': 1,
-    '75-94': 3,
-    complete: 1,
+    '75-99': 4,
+    '100': 0,
     unknown: 1
   });
 });
@@ -114,10 +124,9 @@ test('manual Read does not fabricate measured progress or completion', () => {
   ]);
 
   assert.equal(snapshot.read, 2);
-  assert.equal(snapshot.progressDistribution.complete, 0);
+  assert.equal(snapshot.progressDistribution['100'], 0);
   assert.equal(snapshot.progressDistribution['not-started'], 1);
-  assert.equal(snapshot.progressDistribution['25-49'], 1);
-  assert.equal(snapshot.progressDistribution['75-94'], 1);
+  assert.equal(snapshot.progressDistribution.unknown, 2);
 });
 
 test('last attachment wins, then greatest recorded progress is used once per paper', () => {
@@ -135,10 +144,9 @@ test('last attachment wins, then greatest recorded progress is used once per pap
   ]);
 
   assert.equal(snapshot.totalPapers, 2);
-  assert.equal(snapshot.progressDistribution['1-24'], 1);
-  assert.equal(snapshot.progressDistribution['50-74'], 1);
-  assert.equal(snapshot.knownRemainingPages, 16 + 3);
-  assert.deepEqual(snapshot.remainingPagesCoverage, { knownPapers: 2, totalPapers: 2 });
+  assert.equal(snapshot.progressDistribution.unknown, 2);
+  assert.equal(snapshot.knownRemainingPages, 0);
+  assert.deepEqual(snapshot.remainingPagesCoverage, { knownPapers: 0, totalPapers: 2 });
 });
 
 test('remaining pages follow fractional, legacy, read, and unknown-page rules', () => {
@@ -153,9 +161,9 @@ test('remaining pages follow fractional, legacy, read, and unknown-page rules', 
     paper(8, { p: { '8': 1 }, pageCount: { '8': 100 }, lastAttachmentId: '8', lastPage: 100 })
   ]);
 
-  assert.equal(snapshot.knownRemainingPages, 5 + 6 + 99);
-  assert.deepEqual(snapshot.remainingPagesCoverage, { knownPapers: 4, totalPapers: 8 });
-  assert.equal(snapshot.progressDistribution.unknown, 2);
+  assert.equal(snapshot.knownRemainingPages, 99);
+  assert.deepEqual(snapshot.remainingPagesCoverage, { knownPapers: 2, totalPapers: 8 });
+  assert.equal(snapshot.progressDistribution.unknown, 6);
 });
 
 test('history ranges use local-day boundaries and exclude status-only or reset-only activity', () => {
@@ -515,6 +523,7 @@ test('status filters narrow current metrics and retained history together', () =
 
   assert.equal(snapshot.totalPapers, 1);
   assert.deepEqual(snapshot.statusCounts, {
+    unavailable: 0,
     unassigned: 0,
     'to-read': 0,
     reading: 1,

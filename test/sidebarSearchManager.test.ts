@@ -85,7 +85,7 @@ test('renames only the tracked legacy sidebar search when its status is checked'
 
 test('puts the sidebar list control before secondary appearance settings and states its limits', () => {
   const prefs = readFileSync('addon/prefs.xhtml', 'utf8');
-  assert.ok(prefs.indexOf('Reading list in the left sidebar') < prefs.indexOf('Completed color'));
+  assert.ok(prefs.indexOf('Reading list in the left sidebar') < prefs.indexOf('Debug logging'));
   assert.match(prefs, /Add to Left Sidebar/);
   assert.match(prefs, /under <html:strong>Saved Searches<\/html:strong>/);
   assert.match(prefs, /not an exact status-filtered folder/);

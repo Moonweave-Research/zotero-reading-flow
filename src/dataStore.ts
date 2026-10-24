@@ -5,7 +5,6 @@ import {
   DEFAULT_FLOW_DATA,
   FLOW_PREFIX,
   FlowData,
-  getNormalizedDisplayProgress,
   getLocalDayKey,
   inferStatus,
   isFlowDataSame,
@@ -14,7 +13,6 @@ import {
   normalizeFlowData,
   pruneReadingHistory,
   ReadingHistory,
-  READ_PROGRESS_THRESHOLD,
   ReadingStatus
 } from './flowData';
 
@@ -47,7 +45,7 @@ export class DataStore {
 
   public hasReadingFlowData(item: any): boolean {
     const stored = this.getStoredReadingFlowData(item);
-    return stored ? this.hasMeaningfulData(stored) : false;
+    return stored ? this.hasMeaningfulData(stored) : this.hasReadingFlowNamespace(item);
   }
 
   public hasStoredReadingFlowData(item: any): boolean {
@@ -101,19 +99,24 @@ export class DataStore {
 
   private buildProgressTransition(input: ProgressInput): ((current: FlowData) => FlowData) | null {
     const at = this.normalizeTimestamp(input.at);
-    const observed = normalizeFlowData({ p: { [input.attachmentId]: input.progress } }).p[input.attachmentId];
-    if (!observed) return null;
+    const rawObserved = normalizeFlowData({ p: { [input.attachmentId]: input.progress } }).p[input.attachmentId];
+    if (!rawObserved) return null;
+    // Store a proven exact endpoint as pages, avoiding the legacy raw-1 ambiguity.
+    const observed = rawObserved === 1 && input.pageCount && input.pageCount > 1
+      && input.lastPage === input.pageCount ? input.pageCount : rawObserved;
 
     return (current) => {
       const currentProgress = current.p[input.attachmentId];
-      const comparableCurrent = normalizeComparableProgress(
-        currentProgress,
-        current.pageCount?.[input.attachmentId] ?? input.pageCount
-      );
-      const nextProgress = typeof currentProgress === 'number'
-        && comparableCurrent !== null
-        && observed <= comparableCurrent
+      const pageCount = current.pageCount?.[input.attachmentId] ?? input.pageCount ?? null;
+      const comparableCurrent = normalizeProgressValue(currentProgress, pageCount,
+        current.lastAttachmentId === input.attachmentId ? current.lastPage : null);
+      const comparableObserved = normalizeProgressValue(observed, input.pageCount ?? null, input.lastPage ?? null);
+      const nextProgress = currentProgress === 1 && comparableCurrent === null && comparableObserved !== 1
         ? currentProgress
+        : typeof currentProgress === 'number'
+        && comparableCurrent !== null
+        && comparableObserved !== null && comparableObserved <= comparableCurrent
+        ? (currentProgress === 1 && comparableCurrent === 1 && pageCount && pageCount > 1 ? pageCount : currentProgress)
         : observed;
       const updates: Partial<FlowData> = {
         p: { [input.attachmentId]: nextProgress },
@@ -353,7 +356,7 @@ export class DataStore {
   }
 
   private composeExtra(extra: string, data: FlowData | null): string {
-    const lines = extra.split('\n').filter((line: string) => !line.startsWith(FLOW_PREFIX));
+    const lines = extra.split('\n').filter((line: string) => !line.trimStart().startsWith('ReadingFlow:'));
     if (data) lines.push(`${FLOW_PREFIX}${JSON.stringify(data)}`);
     return lines.join('\n');
   }
@@ -363,7 +366,7 @@ export class DataStore {
   }
 
   private getFlowLinesFromExtra(extra: string): string[] {
-    return extra.split('\n').filter((line: string) => line.startsWith(FLOW_PREFIX));
+    return extra.split('\n').filter((line: string) => line.trimStart().startsWith('ReadingFlow:'));
   }
 
   private areStringArraysEqual(left: string[], right: string[]): boolean {
@@ -389,7 +392,7 @@ export class DataStore {
     if (this.getFlowLinesFromExtra(extra).length > 0) {
       Logger.warn(`ReadingFlow: No supported metadata could be read for ${itemId}`);
     }
-    return { ...DEFAULT_FLOW_DATA };
+    return { ...DEFAULT_FLOW_DATA, ...(this.getFlowLinesFromExtra(extra).length ? { availability: 'unavailable' as const } : {}) };
   }
 
   private getMutationBaseline(itemId: number, extra: string): FlowData | null {
@@ -409,19 +412,41 @@ export class DataStore {
   }
 
   private getLatestSupportedData(extra: string): FlowData | null {
-    let latest: FlowData | null = null;
-    for (const line of this.getFlowLinesFromExtra(extra)) {
-      const parsed = this.parseSupportedLine(line);
-      if (parsed && (!latest || parsed.ts >= latest.ts)) latest = parsed;
-    }
-    return latest;
+    const lines = this.getFlowLinesFromExtra(extra);
+    return lines.length === 1 ? this.parseSupportedLine(lines[0]) : null;
   }
 
   private parseSupportedLine(line: string): FlowData | null {
     try {
-      const parsed = JSON.parse(line.substring(FLOW_PREFIX.length));
+      const parsed = JSON.parse(line.trimStart().substring('ReadingFlow:'.length));
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
       if (parsed.v !== 1 && parsed.v !== 2) return null;
+      if ((parsed.s != null && !['to-read', 'reading', 'skimmed', 'read', 'important'].includes(parsed.s))
+        || (parsed.p != null && (typeof parsed.p !== 'object' || Array.isArray(parsed.p)
+          || Object.values(parsed.p).some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0)))
+        || (parsed.history != null && (!parsed.history.days || typeof parsed.history.days !== 'object'
+          || !Number.isFinite(parsed.history.startedAt)))) return null;
+      const mapIsInvalid = (map: any) => map != null && (typeof map !== 'object' || Array.isArray(map)
+        || Object.values(map).some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0));
+      if ((parsed.ts != null && (!Number.isFinite(parsed.ts) || parsed.ts < 0))
+        || (parsed.c != null && typeof parsed.c !== 'string')
+        || mapIsInvalid(parsed.pageCount)
+        || (parsed.lastPage != null && (!Number.isFinite(parsed.lastPage) || parsed.lastPage <= 0))
+        || (parsed.lastReadAt != null && (!Number.isFinite(parsed.lastReadAt) || parsed.lastReadAt <= 0))
+        || (parsed.lastAttachmentId != null && typeof parsed.lastAttachmentId !== 'string')) return null;
+      if (parsed.history) {
+        if (Array.isArray(parsed.history.days) || parsed.history.startedAt < 0
+          || (parsed.history.completedAt != null && (!Number.isFinite(parsed.history.completedAt) || parsed.history.completedAt < 0))
+          || (parsed.history.activeDaysTotal != null && (!Number.isFinite(parsed.history.activeDaysTotal) || parsed.history.activeDaysTotal < 0))) return null;
+        for (const [key, day] of Object.entries(parsed.history.days) as Array<[string, any]>) {
+          const date = new Date(`${key}T12:00:00`);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || !Number.isFinite(date.getTime()) || getLocalDayKey(date.getTime()) !== key
+            || !day || typeof day !== 'object' || Array.isArray(day) || mapIsInvalid(day.progress)
+            || (day.status != null && !['to-read', 'reading', 'skimmed', 'read', 'important'].includes(day.status))
+            || ['activity', 'reset', 'completed'].some(key => day[key] != null && typeof day[key] !== 'boolean')
+            || (day.lastReadAt != null && (!Number.isFinite(day.lastReadAt) || day.lastReadAt <= 0))) return null;
+        }
+      }
       return normalizeFlowData(parsed);
     } catch {
       return null;
@@ -456,13 +481,6 @@ export class DataStore {
     day.lastReadAt = at;
     day.progress[attachmentId] = Math.max(day.progress[attachmentId] ?? 0, progress);
     day.status = inferStatus(next);
-    const measuredProgress = getNormalizedDisplayProgress(next);
-    if (measuredProgress !== null
-      && measuredProgress >= READ_PROGRESS_THRESHOLD
-      && history.completedAt === null) {
-      history.completedAt = at;
-      day.completed = true;
-    }
     history.activeDaysTotal += wasActive ? 0 : 1;
     history.days[dayKey] = day;
     return pruneReadingHistory(history, at);

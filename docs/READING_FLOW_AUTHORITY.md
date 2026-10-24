@@ -617,6 +617,14 @@ The user authorized implementing the four reviewed PRs in order, testing and rev
 
 **통과 조건:** 빠른 끝 이동과 되돌아오기에도 자동 Read 없음; 수동 Read 우선; 100% 최대 위치 유지; 모호한 과거 값은 미확인; malformed/unsupported/duplicate 데이터는 U로 분리; 목록·필터·통계의 동일 데이터 결과 일치; 날짜 표시와 정렬 일치; 기존 열 설정 유지. 데이터 해석만으로 원본 저장 내용이 바뀌지 않아야 한다.
 
+PR1 implementation write region (2026-10-24, user-approved directory expansion):
+`src/flowData.ts`, `src/dataStore.ts`, `src/columnManager.ts`, `src/statistics.ts`,
+`src/dashboard.ts`, `addon/dashboard.xhtml`, `addon/prefs.xhtml`,
+`addon/locale/en-US/reading-flow.ftl`, directly matching `test/*.test.ts`, this
+file, and `docs/PR1_VERIFICATION.md`. Preferences XHTML changes remove obsolete
+completion wording/controls only; stored preference values and live user
+configuration are not changed. PR2–4 remain unimplemented in this worktree.
+
 ## 제안 PR 2 — 이어 보기와 위치 초기화를 예측 가능하게 한다
 
 **사용자 효과:** 버튼에 적힌 파일·페이지가 실제로 열리고, 상태 변경이나 초기화로 예상 밖의 기록이 사라지지 않는다.

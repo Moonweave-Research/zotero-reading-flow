@@ -83,8 +83,8 @@ test('hasReadingFlowData distinguishes valid metadata from defaults and malforme
   const store = new DataStore();
 
   assert.equal(store.hasReadingFlowData(memoryItem(10)), false);
-  assert.equal(store.hasReadingFlowData(memoryItem(11, `${FLOW_PREFIX}{bad json`)), false);
-  assert.equal(store.hasReadingFlowData(memoryItem(12, `${FLOW_PREFIX}{"p":{},"s":"to-read"}`)), false);
+  assert.equal(store.hasReadingFlowData(memoryItem(11, `${FLOW_PREFIX}{bad json`)), true);
+  assert.equal(store.hasReadingFlowData(memoryItem(12, `${FLOW_PREFIX}{"p":{},"s":"to-read"}`)), true);
   assert.equal(store.hasReadingFlowData(memoryItem(13, `${FLOW_PREFIX}{"v":1,"p":{},"s":"to-read"}`)), true);
   assert.equal(store.hasReadingFlowData(memoryItem(14, `${FLOW_PREFIX}{"v":2,"p":{},"history":{"startedAt":1,"days":{}}}`)), false);
   assert.equal(store.hasReadingFlowData(memoryItem(15, `${FLOW_PREFIX}{"v":2,"p":{},"history":{"startedAt":1,"activeDaysTotal":1,"days":{"2026-07-28":{"activity":true,"progress":{"10":0.2}}}}}`)), true);
@@ -575,7 +575,7 @@ test('reset is a no-op when there is no current progress or resume position', as
   assert.equal(store.getResetTimestamp(item.id), null);
 });
 
-test('observed progress records completion even when a manual status overrides display', async () => {
+test('observed PDF position never fabricates completion and retains manual status', async () => {
   const item = memoryItem(19, `${FLOW_PREFIX}{"v":1,"p":{},"s":"important"}`);
   const store = new DataStore();
   const at = Date.parse('2026-07-28T12:00:00Z');
@@ -586,8 +586,8 @@ test('observed progress records completion even when a manual status overrides d
   const day = saved.history.days[getLocalDayKey(at)];
   assert.equal(saved.s, 'important');
   assert.equal(day.status, 'important');
-  assert.equal(day.completed, true);
-  assert.equal(saved.history.completedAt, at);
+  assert.equal(day.completed, false);
+  assert.equal(saved.history.completedAt, null);
 });
 
 test('a successfully persisted reset suppresses stale queued progress', async () => {
@@ -835,7 +835,7 @@ test('same-day reset preserves the day progress maximum and activity rollup', as
   assert.deepEqual(day.progress, { '10': 0.6 });
   assert.equal(day.activity, true);
   assert.equal(day.lastReadAt, progressAt);
-  assert.equal(day.status, null);
+  assert.equal(day.status, 'reading');
   assert.equal(day.reset, true);
   assert.equal(saved.history.activeDaysTotal, 1);
 });
@@ -948,19 +948,14 @@ test('successful history writes prune days outside the 366-day retention window'
   assert.equal(saved.history.activeDaysTotal, 2);
 });
 
-test('malformed history is dropped on read and rebuilt on the next transition', async () => {
-  const item = memoryItem(8, `${FLOW_PREFIX}{"v":2,"p":{"10":0.4},"history":{"startedAt":"bad","days":{}}}`);
+test('malformed history remains unavailable and cannot be overwritten', async () => {
+  const original = `${FLOW_PREFIX}{"v":2,"p":{"10":0.4},"history":{"startedAt":"bad","days":{}}}`;
+  const item = memoryItem(8, original);
   const store = new DataStore();
-  const at = Date.parse('2026-07-28T12:00:00Z');
-
-  assert.equal(store.getData(item).history, undefined);
-  await store.setStatus(item, 'skimmed', at);
-
-  const saved = readFlowLine(item.getExtra());
-  assert.equal(saved.v, 2);
-  assert.equal(saved.p['10'], 0.4);
-  assert.equal(saved.history.startedAt, at);
-  assert.equal(saved.history.days[getLocalDayKey(at)].status, 'skimmed');
+  assert.equal(store.getData(item).availability, 'unavailable');
+  assert.equal(await store.setStatus(item, 'skimmed'), false);
+  assert.equal(item.getExtra(), original);
+  assert.equal(item.getSaveCount(), 0);
 });
 
 test('historical transition writes are skipped during shutdown', async () => {
