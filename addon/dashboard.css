@@ -5,7 +5,6 @@
   --status-reading: #2563eb;
   --status-skimmed: #7c3aed;
   --status-read: #16a34a;
-  --status-important: #dc2626;
   --dashboard-background: #ffffff;
   --surface-background: #ffffff;
   --control-background: #ffffff;
@@ -320,10 +319,6 @@ button:focus-visible {
   background: var(--status-read);
 }
 
-.status-important .dashboard-bar-fill {
-  background: var(--status-important);
-}
-
 .dashboard-bar-value {
   white-space: nowrap;
   text-align: right;
@@ -570,10 +565,6 @@ button:focus-visible {
 
 .recent-progress-status.status-read {
   color: var(--status-read);
-}
-
-.recent-progress-status.status-important {
-  color: var(--status-important);
 }
 
 .dashboard-history-footnote {

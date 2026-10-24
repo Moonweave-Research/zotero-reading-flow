@@ -28,6 +28,7 @@ export type ReadingFlowDisplayDensity = 'compact' | 'icons';
 type CompositeValue = {
   status: DisplayReadingStatus;
   source: ReadingStatusSource;
+  important?: boolean;
   progress: number | null;
   lastReadAt: number | null;
   positionText?: string;
@@ -41,18 +42,16 @@ const STATUS_LABELS: Record<DisplayReadingStatus, string> = {
   'to-read': 'To Read',
   reading: 'Reading',
   skimmed: 'Skimmed',
-  read: 'Read',
-  important: 'Important'
+  read: 'Read'
 };
 const STATUS_COLORS: Record<ReadingStatus, string> = {
   'to-read': '#6b7280',
   reading: '#2563eb',
   skimmed: '#7c3aed',
-  read: '#16a34a',
-  important: '#dc2626'
+  read: '#16a34a'
 };
 const STATUS_SYMBOLS: Record<ReadingStatus, string> = {
-  'to-read': '📙', reading: '📖', skimmed: '📘', read: '📗', important: '⭐'
+  'to-read': '📙', reading: '📖', skimmed: '📘', read: '📗'
 };
 const BASE_CELL_STYLE = 'display:flex;align-items:center;width:100%;max-width:100%;min-width:0;height:100%;padding:0 6px;box-sizing:border-box;overflow:hidden;';
 
@@ -91,13 +90,13 @@ function progressText(progress: number | null): string {
 function accessibleText(value: CompositeValue): string {
   if (value.status === 'unavailable') return 'Reading Flow record unavailable';
   if (value.status === 'to-read' && value.positionText === 'No saved PDF position' && !value.lastReadAt) {
-    return 'To Read, manual status, No saved PDF position, no PDF activity recorded';
+    return `To Read, manual status, No saved PDF position, no PDF activity recorded${value.important ? ', Important' : ''}`;
   }
   const lastRead = value.lastReadAt && value.lastReadAt > 0
     ? `last PDF activity ${formatRelativeDate(value.lastReadAt)}`
     : value.positionText === 'No saved PDF position' || !value.positionText ? 'no PDF activity recorded' : 'PDF activity date unknown';
   const source = value.source === 'manual' ? 'manual status' : value.source === 'automatic' ? 'PDF activity based status' : 'no status assigned';
-  return `${STATUS_LABELS[value.status] ?? STATUS_LABELS['to-read']}, ${source}, ${value.positionText ?? progressText(value.progress)}, ${value.maximumText ?? ""}, ${lastRead}`;
+  return `${STATUS_LABELS[value.status] ?? STATUS_LABELS['to-read']}, ${source}, ${value.positionText ?? progressText(value.progress)}, ${value.maximumText ?? ""}, ${lastRead}${value.important ? ', Important' : ''}`;
 }
 
 export class ColumnManager {
@@ -131,8 +130,9 @@ export class ColumnManager {
       dataProvider: (item: any) => {
         try {
           if (!item?.isRegularItem?.()) return '';
-          const resolved = resolveReadingStatus(this.dataStore.getData(item));
-          return resolved.status === 'unassigned' ? resolved.status : `${resolved.status}|${resolved.source}`;
+          const data = this.dataStore.getData(item);
+          const resolved = resolveReadingStatus(data);
+          return resolved.status === 'unassigned' && !data.important ? resolved.status : `${resolved.status}|${resolved.source}${data.important ? '|important' : ''}`;
         } catch (e) { Logger.error('status dataProvider failed', e); return 'unavailable|unavailable'; }
       },
       renderCell: (_index: number, data: string, column: any, _first: boolean, doc: Document) => this.renderStatus(data, column, doc)
@@ -156,7 +156,7 @@ export class ColumnManager {
           const data: any = this.dataStore.getData(item);
           const resolved = resolveReadingStatus(data);
           const position = resolveDisplayProgress(data);
-          const value = { status: resolved.status, source: resolved.source, progress: position.pageCount !== null ? position.presentationProgress : null, lastReadAt: getLastActivityAt(data), positionText: formatPDFPosition(data), maximumText: formatMaximumPosition(data), itemID };
+          const value = { important: data.important === true, status: resolved.status, source: resolved.source, progress: position.pageCount !== null ? position.presentationProgress : null, lastReadAt: getLastActivityAt(data), positionText: formatPDFPosition(data), maximumText: formatMaximumPosition(data), itemID };
           return `${nativeSortKey(value)}|${JSON.stringify(value)}`;
         } catch (e) {
           Logger.error('composite dataProvider failed', e);
@@ -221,9 +221,9 @@ export class ColumnManager {
     cell.setAttribute('aria-label', fullText);
     cell.title = fullText;
     if (value.status === 'unavailable') { cell.textContent = '—'; return cell; }
-    if (value.status === 'unassigned') return cell;
+    if (value.status === 'unassigned' && !value.important) return cell;
     const icon = doc.createElement('span');
-    icon.textContent = STATUS_SYMBOLS[value.status];
+    icon.textContent = `${value.status === 'unassigned' ? '' : STATUS_SYMBOLS[value.status]}${value.important ? ' ⭐' : ''}`;
     icon.setAttribute('aria-hidden', 'true');
     cell.appendChild(icon);
     if (this.getDisplayDensity() === 'compact') {
@@ -240,7 +240,7 @@ export class ColumnManager {
       cell.appendChild(microProgress);
       const details = doc.createElement('span');
       const progress = progressText(value.progress);
-      const notStarted = value.status === 'to-read' && value.positionText === 'No saved PDF position' && !value.lastReadAt;
+      const notStarted = (value.status === 'to-read' || value.status === 'unassigned') && value.positionText === 'No saved PDF position' && !value.lastReadAt;
       const visualProgress = value.positionText ?? progress;
       details.textContent = notStarted
         ? 'No PDF activity recorded'
@@ -256,9 +256,9 @@ export class ColumnManager {
     const cell = doc.createElement('span');
     cell.className = `cell ${column.className || ''}`.trim();
     cell.style.cssText = `${BASE_CELL_STYLE};justify-content:center;`;
-    const [statusValue, source] = data.split('|');
+    const [statusValue, source, important] = data.split('|');
     if (!statusValue || !(statusValue in STATUS_LABELS)) return cell;
-    if (statusValue === 'unassigned') {
+    if (statusValue === 'unassigned' && !important) {
       cell.setAttribute('aria-label', 'No reading status assigned');
       cell.title = 'No reading status assigned';
       return cell;
@@ -267,15 +267,17 @@ export class ColumnManager {
     if (statusValue === 'unavailable') { cell.textContent = '—'; cell.title = 'Reading Flow record unavailable'; cell.setAttribute('aria-label', cell.title); return cell; }
     const status = statusValue as ReadingStatus;
     const badge = doc.createElement('span');
-    badge.textContent = STATUS_LABELS[status];
+    badge.textContent = `${STATUS_LABELS[statusValue as DisplayReadingStatus]}${important ? ' ⭐' : ''}`;
     const sourceLabel = source === 'manual' ? 'manual status' : source === 'automatic' ? 'PDF activity based status' : '';
-    badge.title = sourceLabel ? `${STATUS_LABELS[status]} — ${sourceLabel}` : STATUS_LABELS[status];
+    badge.title = sourceLabel ? `${STATUS_LABELS[statusValue as DisplayReadingStatus]} — ${sourceLabel}` : STATUS_LABELS[statusValue as DisplayReadingStatus];
+    if (important) badge.title += ', Important';
+    cell.title = badge.title;
     cell.setAttribute('aria-label', badge.title);
     badge.style.cssText = [
       'display:inline-flex', 'align-items:center', 'justify-content:center', 'max-width:100%',
       'height:18px', 'padding:0 6px', 'border-radius:9px', 'box-sizing:border-box',
       'font-size:10px', 'line-height:1', 'white-space:nowrap', 'overflow:hidden',
-      'text-overflow:ellipsis', `color:${STATUS_COLORS[status]}`, `background:${STATUS_COLORS[status]}1a`
+      'text-overflow:ellipsis', `color:${STATUS_COLORS[status] ?? '#6b7280'}`, `background:${STATUS_COLORS[status] ?? '#6b7280'}1a`
     ].join(';');
     cell.appendChild(badge);
     return cell;

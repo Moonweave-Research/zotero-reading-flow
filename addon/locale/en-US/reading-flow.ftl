@@ -67,3 +67,8 @@ reading-flow-advanced =
     .label = Advanced
 reading-flow-density-help = This changes only the contents of the Reading Flow column. Use Zotero's native column chooser to show or hide it.
 reading-flow-status-unavailable = Record unavailable
+
+reading-flow-clear-important =
+    .label = Clear Important
+
+reading-flow-important-only = Important only

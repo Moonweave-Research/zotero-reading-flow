@@ -110,7 +110,7 @@ test('clearing an untouched item is a strict no-op', async () => {
 });
 
 test('clearing a status-only item removes Reading Flow metadata and preserves unrelated Extra', async () => {
-  const item = memoryItem(17, `Custom: keep\n${FLOW_PREFIX}{"v":1,"p":{},"s":"important"}`);
+  const item = memoryItem(17, `Custom: keep\n${FLOW_PREFIX}{"v":1,"p":{},"s":"read"}`);
   const store = new DataStore();
 
   assert.equal(await store.clearManualStatus(item), true);
@@ -120,7 +120,7 @@ test('clearing a status-only item removes Reading Flow metadata and preserves un
 });
 
 test('clearing a manual status preserves progress and resumes automatic inference', async () => {
-  const item = memoryItem(18, `${FLOW_PREFIX}{"v":1,"p":{"10":0.4},"s":"important","lastAttachmentId":"10","lastPage":4,"lastReadAt":100}`);
+  const item = memoryItem(18, `${FLOW_PREFIX}{"v":1,"p":{"10":0.4},"s":"read","lastAttachmentId":"10","lastPage":4,"lastReadAt":100}`);
   const store = new DataStore();
 
   assert.equal(await store.clearManualStatus(item), true);
@@ -359,7 +359,7 @@ test('mutations preserve malformed or unsupported Reading Flow namespaces', asyn
 
 test('a concurrently appended second Reading Flow line is preserved', async () => {
   const baseline = `${FLOW_PREFIX}{"v":1,"p":{},"s":"reading","ts":100}`;
-  const appended = `${FLOW_PREFIX}{"v":2,"p":{},"s":"important","ts":200}`;
+  const appended = `${FLOW_PREFIX}{"v":2,"p":{},"s":"read","ts":200}`;
   let extra = baseline;
   let saves = 0;
   const item = {
@@ -565,7 +565,7 @@ test('new-item initialization preserves malformed, duplicate, and future namespa
 });
 
 test('reset is a no-op when there is no current progress or resume position', async () => {
-  const original = `${FLOW_PREFIX}{"v":1,"p":{},"s":"important","ts":100}`;
+  const original = `${FLOW_PREFIX}{"v":1,"p":{},"s":"read","ts":100}`;
   const item = memoryItem(59, original);
   const store = new DataStore();
 
@@ -576,7 +576,7 @@ test('reset is a no-op when there is no current progress or resume position', as
 });
 
 test('observed PDF position never fabricates completion and retains manual status', async () => {
-  const item = memoryItem(19, `${FLOW_PREFIX}{"v":1,"p":{},"s":"important"}`);
+  const item = memoryItem(19, `${FLOW_PREFIX}{"v":1,"p":{},"s":"read"}`);
   const store = new DataStore();
   const at = Date.parse('2026-07-28T12:00:00Z');
 
@@ -584,8 +584,8 @@ test('observed PDF position never fabricates completion and retains manual statu
 
   const saved = readFlowLine(item.getExtra());
   const day = saved.history.days[getLocalDayKey(at)];
-  assert.equal(saved.s, 'important');
-  assert.equal(day.status, 'important');
+  assert.equal(saved.s, 'read');
+  assert.equal(day.status, 'read');
   assert.equal(day.completed, false);
   assert.equal(saved.history.completedAt, null);
 });
@@ -841,7 +841,7 @@ test('same-day reset preserves the day progress maximum and activity rollup', as
 });
 
 test('reset progress preserves the manual reading status', async () => {
-  const item = memoryItem(74, `${FLOW_PREFIX}{"v":1,"p":{"10":0.6},"s":"important","lastAttachmentId":"10","lastPage":6,"lastReadAt":100}`);
+  const item = memoryItem(74, `${FLOW_PREFIX}{"v":1,"p":{"10":0.6},"s":"read","lastAttachmentId":"10","lastPage":6,"lastReadAt":100}`);
   const store = new DataStore();
   const resetAt = Date.parse('2026-07-28T12:00:00Z');
 
@@ -850,13 +850,13 @@ test('reset progress preserves the manual reading status', async () => {
   const saved = readFlowLine(item.getExtra());
   const day = saved.history.days[getLocalDayKey(resetAt)];
   assert.deepEqual(saved.p, {});
-  assert.equal(saved.s, 'important');
-  assert.equal(day.status, 'important');
+  assert.equal(saved.s, 'read');
+  assert.equal(day.status, 'read');
   assert.equal(day.reset, true);
 });
 
 test('restart as To Read clears progress and explicitly changes status', async () => {
-  const item = memoryItem(75, `${FLOW_PREFIX}{"v":1,"p":{"10":0.6},"s":"important","lastAttachmentId":"10","lastPage":6,"lastReadAt":100}`);
+  const item = memoryItem(75, `${FLOW_PREFIX}{"v":1,"p":{"10":0.6},"s":"read","lastAttachmentId":"10","lastPage":6,"lastReadAt":100}`);
   const store = new DataStore();
   const resetAt = Date.parse('2026-07-28T12:00:00Z');
 

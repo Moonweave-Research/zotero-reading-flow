@@ -67,6 +67,10 @@ export class DataStore {
       // Last write wins check
       if (updates.ts && updates.ts < current.ts) return false;
 
+      // Explicit generic mutations must use the same guarded representation.
+      if (updates.important !== undefined || (updates.s !== undefined && current.important !== undefined)) {
+        updates = { ...updates, v: 3, important: updates.important ?? Boolean(current.important) };
+      }
       const nextWithoutTimestamp = mergeFlowData(current, updates, current.ts);
       if (isFlowDataSame(current, nextWithoutTimestamp)) return false;
 
@@ -149,11 +153,19 @@ export class DataStore {
     const timestamp = this.normalizeTimestamp(at);
     return this.transition(item, (current) => {
       if (current.s === status) return current;
-      const next = mergeFlowData(current, { s: status }, timestamp);
+      const next = mergeFlowData(current, { s: status, ...(current.important !== undefined ? { v: 3 } : {}) }, timestamp);
       return normalizeFlowData({
         ...next,
         history: this.recordStatusHistory(current.history, next, timestamp)
       });
+    });
+  }
+
+  /** Explicit importance command. No history/activity is fabricated. */
+  public async setImportant(item: any, important: boolean, at = Date.now()): Promise<boolean> {
+    return this.transition(item, current => {
+      if (Boolean(current.important) === important) return current;
+      return mergeFlowData(current, { v: 3, important }, this.normalizeTimestamp(at));
     });
   }
 
@@ -185,7 +197,7 @@ export class DataStore {
       if (!current) return false;
       if (current.s === null) return false;
 
-      const next = normalizeFlowData({ ...current, s: null });
+      const next = normalizeFlowData({ ...current, s: null, ...(current.important !== undefined ? { v: 3 } : {}) });
       if (!this.hasMeaningfulData(next)) {
         return this.removeData(item, originalExtra);
       }
@@ -212,6 +224,7 @@ export class DataStore {
         const next = mergeFlowData(current, {
           p: {},
           s: markToRead ? 'to-read' : current.s,
+          ...(markToRead && current.important !== undefined ? { v: 3 } : {}),
           lastAttachmentId: null,
           lastPage: null,
           lastReadAt: current.lastReadAt
@@ -356,7 +369,7 @@ export class DataStore {
 
   private composeExtra(extra: string, data: FlowData | null): string {
     const lines = extra.split('\n').filter((line: string) => !line.trimStart().startsWith('ReadingFlow:'));
-    if (data) lines.push(`${FLOW_PREFIX}${JSON.stringify(data)}`);
+    if (data) lines.push(`${FLOW_PREFIX}${JSON.stringify(data.v !== 3 && data.important ? { ...data, s: 'important', important: undefined } : data)}`);
     return lines.join('\n');
   }
 
@@ -419,7 +432,9 @@ export class DataStore {
     try {
       const parsed = JSON.parse(line.trimStart().substring('ReadingFlow:'.length));
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-      if (parsed.v !== 1 && parsed.v !== 2) return null;
+      if (parsed.v !== 1 && parsed.v !== 2 && parsed.v !== 3) return null;
+      if ((parsed.v === 3 && (typeof parsed.important !== 'boolean' || parsed.s === 'important'))
+        || (parsed.v !== 3 && parsed.important !== undefined)) return null;
       if ((parsed.s != null && !['to-read', 'reading', 'skimmed', 'read', 'important'].includes(parsed.s))
         || (parsed.p != null && (typeof parsed.p !== 'object' || Array.isArray(parsed.p)
           || Object.values(parsed.p).some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0)))
@@ -513,7 +528,7 @@ export class DataStore {
   }
 
   private hasMeaningfulData(data: FlowData): boolean {
-    if (data.s !== null || data.c !== null || Object.keys(data.p).length > 0) return true;
+    if (data.important || data.s !== null || data.c !== null || Object.keys(data.p).length > 0) return true;
     if (data.lastAttachmentId !== null || data.lastPage !== null || data.lastReadAt !== null) return true;
     if (!data.history) return false;
     if (data.history.completedAt !== null || data.history.activeDaysTotal > 0) return true;

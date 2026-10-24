@@ -152,6 +152,10 @@ function setupMenu(
       }
       return data ?? flowData();
     },
+    async setImportant(_item: any, important: boolean) {
+      mutationCalls.push(`setImportant:${important}`);
+      return true;
+    },
     async setStatus() {
       mutationCalls.push('setStatus');
       return true;
@@ -443,7 +447,7 @@ test('resume menu command uses command context when current selection is unavail
 test('status, automatic, reset, and restart commands use command context', async () => {
   const item = makeRegularItem(20);
   const { menuByL10nID, mutationCalls } = setupMenu([], {
-    20: flowData({ p: { '10': 0.5 }, s: 'important' })
+    20: flowData({ p: { '10': 0.5 }, s: 'read', important: true })
   }, [item]);
   const commandContext = { items: [item] };
 
@@ -627,4 +631,20 @@ test('PR2 readonly PDF remains Open while status mutations are disabled', async 
   assert.equal(mutationContext.enabled, false);
   await status.onCommand();
   assert.deepEqual(mutationCalls, []);
+});
+
+
+test('importance menu uses independent commands, no-ops, parent deduplication and readonly eligibility', async () => {
+  const parent = makeRegularItem(20);
+  const attachment = makePdfAttachment(21, 20);
+  const readonly = makeRegularItem(22, false);
+  const fixture = setupMenu([parent, attachment, readonly], { 20: flowData({ s: 'read' }) }, [parent, attachment, readonly]);
+  await fixture.menuByL10nID('reading-flow-status-important').onCommand(new Event('command'), {});
+  assert.equal(fixture.mutationCalls.filter(c => c === 'setImportant:true').length, 1);
+  assert.equal(fixture.mutationCalls.includes('setStatus'), false);
+  const flagged = setupMenu([parent], { 20: flowData({ s: 'read', important: true }) });
+  await flagged.menuByL10nID('reading-flow-status-important').onCommand(new Event('command'), {});
+  assert.deepEqual(flagged.mutationCalls, []);
+  await flagged.menuByL10nID('reading-flow-clear-important').onCommand(new Event('command'), {});
+  assert.ok(flagged.mutationCalls.includes('setImportant:false'));
 });

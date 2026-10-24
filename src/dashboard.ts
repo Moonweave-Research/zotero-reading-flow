@@ -38,7 +38,8 @@ export interface DashboardBridge {
     scope: StatisticsScope,
     historyRange?: HistoryRange,
     statusFilter?: DashboardStatusFilter,
-    dataset?: StatisticsDataset
+    dataset?: StatisticsDataset,
+    importantOnly?: boolean
   ): Promise<StatisticsSnapshot>;
   getActivityDayDetail?(snapshotId: string, day: string): Promise<ActivityDayDetailResult>;
   beginActivityDayDetailCacheLifecycle?(): ActivityDayDetailCacheLifecycleToken;
@@ -55,8 +56,7 @@ const STATUS_LABELS: Record<DisplayReadingStatus, string> = {
   'to-read': 'To Read',
   reading: 'Reading',
   skimmed: 'Skimmed',
-  read: 'Read',
-  important: 'Important'
+  read: 'Read'
 };
 
 const DATASET_LABELS: Record<StatisticsDataset, string> = {
@@ -82,7 +82,7 @@ const HISTORY_RANGE_LABELS: Record<HistoryRange, string> = {
   'all-time': 'All time'
 };
 
-const STATUSES: DisplayReadingStatus[] = ['unavailable', 'unassigned', 'to-read', 'reading', 'skimmed', 'read', 'important'];
+const STATUSES: DisplayReadingStatus[] = ['unavailable', 'unassigned', 'to-read', 'reading', 'skimmed', 'read'];
 const PROGRESS_BUCKETS: ProgressBucket[] = [
   'not-started',
   '1-24',
@@ -96,6 +96,7 @@ const PROGRESS_BUCKETS: ProgressBucket[] = [
 const RECENT_PROGRESS_INITIAL_LIMIT = 8;
 
 interface DashboardRenderOptions {
+  importantOnly?: boolean;
   recentProgressExpanded?: boolean;
   onToggleRecentProgress?: () => void;
   onFocusItem?: (id: number | string, title: string) => void;
@@ -111,6 +112,7 @@ interface DashboardQuery {
   scope: StatisticsScope;
   historyRange: HistoryRange;
   statusFilter: DashboardStatusFilter;
+  importantOnly?: boolean;
   dataset: StatisticsDataset;
 }
 
@@ -143,7 +145,7 @@ export function renderDashboard(
   setText(
     doc,
     'dashboard-filter-note',
-    `${formatFilterNote(selectedDataset, statusLabel)} Showing ${snapshot.totalPapers} of ${snapshot.scopeTotal ?? snapshot.totalPapers} items; scope total = ${snapshot.classifiableItems ?? snapshot.totalPapers} classifiable + ${snapshot.unavailableItems ?? 0} unavailable. Status percentages use ${snapshot.statusDenominator ?? snapshot.totalPapers} classifiable items in scope. Position percentages use classifiable matching items.`
+    `${formatFilterNote(selectedDataset, statusLabel)}${options.importantOnly ? ' Important only.' : ''} Important: ${snapshot.importantCount ?? 0} matching items (independent of reading status). Showing ${snapshot.totalPapers} of ${snapshot.scopeTotal ?? snapshot.totalPapers} items; scope total = ${snapshot.classifiableItems ?? snapshot.totalPapers} classifiable + ${snapshot.unavailableItems ?? 0} unavailable. Status percentages use ${snapshot.statusDenominator ?? snapshot.totalPapers} classifiable items in scope. Position percentages use classifiable matching items.`
   );
 }
 
@@ -151,6 +153,7 @@ export class DashboardApp {
   private started = false;
   private refreshSequence = 0;
   private statusFilter: DashboardStatusFilter = 'all';
+  private importantOnly = false;
   private historyRange: HistoryRange = '7d';
   private dataset: StatisticsDataset = 'tracked';
   private latestSnapshot: StatisticsSnapshot | null = null;
@@ -175,6 +178,7 @@ export class DashboardApp {
     const dataset = this.doc.getElementById('dashboard-dataset') as HTMLSelectElement | null;
     const status = this.doc.getElementById('dashboard-status-filter') as HTMLSelectElement | null;
     const historyRange = this.doc.getElementById('dashboard-history-range') as HTMLSelectElement | null;
+    this.doc.getElementById('dashboard-important-only')?.addEventListener('change', () => { void this.refresh(); });
     const refresh = this.doc.getElementById('dashboard-refresh') as HTMLButtonElement | null;
 
     if (dataset && isStatisticsDataset(dataset.value)) this.dataset = dataset.value;
@@ -209,10 +213,12 @@ export class DashboardApp {
     if (historyRangeElement && isHistoryRange(historyRangeElement.value)) {
       this.historyRange = historyRangeElement.value;
     }
+    this.importantOnly = (this.doc.getElementById('dashboard-important-only') as HTMLInputElement | null)?.checked === true;
     const query: DashboardQuery = {
       scope,
       historyRange: this.historyRange,
       statusFilter: this.statusFilter,
+      importantOnly: this.importantOnly,
       dataset: this.dataset
     };
     const sequence = ++this.refreshSequence;
@@ -229,7 +235,8 @@ export class DashboardApp {
         query.scope,
         query.historyRange,
         query.statusFilter === 'all' ? undefined : query.statusFilter,
-        query.dataset
+        query.dataset,
+        query.importantOnly
       );
       if (sequence !== this.refreshSequence) return;
       this.latestSnapshot = snapshot;
@@ -284,6 +291,7 @@ export class DashboardApp {
       this.lastUpdatedAt,
       this.dataset,
       {
+        importantOnly: this.latestQuery?.importantOnly,
         onResumeItem: this.bridge?.getPDFTarget ? undefined : (id, title) => { void this.resumeItem(id, title); },
         onResumeActivityDayItem: this.bridge?.getPDFTarget ? undefined : (id, title) => { void this.resumeItem(id, title, 'dashboard-activity-day-action-status'); },
         recentProgressExpanded: this.recentProgressExpanded,
@@ -577,7 +585,7 @@ function renderRecentProgress(
       entry.positionText ?? formatProgress(entry.currentProgress),
       formatDelta(entry.delta),
       entry.lastProgressDay,
-      STATUS_LABELS[entry.status],
+      `${STATUS_LABELS[entry.status]}${entry.statusSource === 'automatic' ? ' (PDF activity based)' : ''}${entry.important ? ' · Important' : ''}`,
       entry.resetCount > 0 ? `${entry.resetCount} reset${entry.resetCount === 1 ? '' : 's'}` : '—'
     ];
     const labels = ['Saved PDF position', 'Change in range', 'Last update', 'Status', 'Reset'];
@@ -722,7 +730,7 @@ function renderActivityDayDetail(
 
     const values = [
       formatRecordedLocation(paper.recordedProgress),
-      STATUS_LABELS[paper.status],
+      `${STATUS_LABELS[paper.status]}${paper.statusSource === 'automatic' ? ' (PDF activity based)' : ''}${paper.important ? ' · Important' : ''}`,
       formatRecordedAt(paper.lastRecordedAt)
     ];
     const labels = ['Recorded location', 'Current status', 'Last recorded update'];
@@ -821,7 +829,7 @@ function formatQueryLabel(query: DashboardQuery): string {
   const scope = query.scope === 'entire-library' ? 'Selected Library' : 'Current View';
   const dataset = DATASET_LABELS[query.dataset];
   const status = query.statusFilter === 'all' ? 'all statuses' : STATUS_LABELS[query.statusFilter];
-  return `${scope} · ${dataset} · ${status} · ${HISTORY_RANGE_LABELS[query.historyRange]}`;
+  return `${scope} · ${dataset} · ${status}${query.importantOnly ? ' · Important only' : ''} · ${HISTORY_RANGE_LABELS[query.historyRange]}`;
 }
 
 function formatUpdatedAt(timestamp: number): string {

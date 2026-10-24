@@ -98,7 +98,7 @@ test('status/reset timestamps are not PDF activity; retained observations supply
 });
 
 test('preexisting manual states and historical completion records survive read-only reinterpretation and writes', async () => {
-  for (const status of ['to-read', 'reading', 'skimmed', 'read', 'important'] as const) {
+  for (const status of ['to-read', 'reading', 'skimmed', 'read'] as const) {
     const history = { startedAt: 1, completedAt: 50, activeDaysTotal: 1, days: {} };
     const paper = item(FLOW_PREFIX + JSON.stringify({ ...DEFAULT_FLOW_DATA, v: 2, s: status, history }));
     const original = paper.getField();

@@ -9,7 +9,7 @@ import {
 } from './preferences';
 
 const VALID_DEFAULT_STATUSES = new Set<ReadingStatus>([
-  'to-read', 'reading', 'skimmed', 'read', 'important'
+  'to-read', 'reading', 'skimmed', 'read'
 ]);
 
 export class NotifierManager {

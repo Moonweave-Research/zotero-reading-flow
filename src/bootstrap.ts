@@ -281,6 +281,7 @@ export function createDashboardBridge({
       scope: 'current-view' | 'entire-library';
       historyRange: HistoryRange;
       statusFilter: DashboardStatusFilter;
+      importantOnly: boolean;
       dataset: StatisticsDataset;
     };
     activeDays: Set<string>;
@@ -291,7 +292,8 @@ export function createDashboardBridge({
       scope,
       historyRange: HistoryRange = '7d',
       statusFilter: DashboardStatusFilter = 'all',
-      dataset: StatisticsDataset = 'tracked'
+      dataset: StatisticsDataset = 'tracked',
+      importantOnly = false
     ) {
       const requestSequence = ++latestRequestSequence;
       const requestLifecycle = currentLifecycle;
@@ -305,10 +307,12 @@ export function createDashboardBridge({
       const snapshot = calculateStatisticsSnapshot(papers, {
         dataset,
         historyRange,
+        importantOnly,
         statusFilter: statusFilter === 'all' ? undefined : statusFilter
       });
       const selectedPapers = selectStatisticsPapers(papers, {
         dataset,
+        importantOnly,
         statusFilter: statusFilter === 'all' ? undefined : statusFilter
       });
       const snapshotId = `reading-flow-${Date.now().toString(36)}-${++nextSnapshotID}`;
@@ -320,7 +324,7 @@ export function createDashboardBridge({
         activityDayCache = {
           snapshotId,
           papers: selectedPapers,
-          query: { scope, historyRange, statusFilter, dataset },
+          query: { scope, historyRange, statusFilter, dataset, importantOnly },
           activeDays: new Set(
             snapshot.history.days
               .filter((day) => day.activePapers > 0)

@@ -33,7 +33,7 @@ export function clearLegacyReadingFlowPreferenceAliases(): void {
 }
 
 export function setNewItemStatusPreference(value: string, now = Date.now()): void {
-  const valid = new Set(['to-read', 'reading', 'skimmed', 'read', 'important']);
+  const valid = new Set(['to-read', 'reading', 'skimmed', 'read']);
   setGlobalPreference(READING_FLOW_PREFS.newItemStatus, valid.has(value) ? value : 'unassigned');
   setNewItemStatusActivationPreference(
     valid.has(value) ? Math.floor(now / 1000) * 1000 : 0
