@@ -165,7 +165,9 @@ export class ReadingFlowItemPaneManager {
       if (!this.current(state, generation, item)) return;
       region.textContent = target.reason;
       if (target.action !== 'none') {
-        const button = this.element(props, 'button', target.fallbackLabel); button.type = 'button'; region.append(button);
+        const button = this.element(props, 'button', target.fallbackLabel); button.type = 'button';
+        for (const [key, value] of Object.entries({ height: 'auto', 'min-height': '2em', 'white-space': 'normal', 'max-width': '100%', 'overflow-wrap': 'anywhere', padding: '0.4em' })) button.style.setProperty(key, value);
+        region.append(button);
         button.addEventListener('click', async () => {
           if (!this.current(state, generation, item)) return;
           button.disabled = true;

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { ReadingFlowItemPaneManager, READING_FLOW_PANE_ID, firstRecordedPDFActivity } from '../src/itemPaneManager';
 import { ColumnManager } from '../src/columnManager';
@@ -205,4 +206,10 @@ test('an already-achieved native command is not reported as a failed save', asyn
  const select=f.body.querySelectorAll('select')[0]; select.value='read'; select.listeners.change(); await tick();
  assert.equal(f.store.getData(f.paper).s,'read'); assert.doesNotMatch(f.body.text(),/No change was saved/);
  f.manager.unregister();
+});
+
+
+test('native View Reading Flow command localizes its menu label attribute', () => {
+ const ftl=readFileSync('addon/locale/en-US/reading-flow.ftl','utf8');
+ assert.match(ftl,/reading-flow-view-pane =\n\s+\.label = View Reading Flow/);
 });

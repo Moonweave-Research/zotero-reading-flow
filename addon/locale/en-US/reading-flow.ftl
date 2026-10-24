@@ -77,4 +77,5 @@ reading-flow-pane-header =
     .label = Reading Flow
 reading-flow-pane-sidenav =
     .tooltiptext = Reading Flow
-reading-flow-view-pane = View Reading Flow
+reading-flow-view-pane =
+    .label = View Reading Flow
