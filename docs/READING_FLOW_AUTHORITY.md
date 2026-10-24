@@ -787,3 +787,5 @@ new format. Never manually downgrade v3 metadata to permit an old writer.
 - [통계 집계](https://github.com/Moonweave-Research/zotero-reading-flow/blob/9afa71f5b75872e8e9f4acd490eeba7eb2d94c2f/src/statistics.ts)
 - [Resume 대상 결정](https://github.com/Moonweave-Research/zotero-reading-flow/blob/9afa71f5b75872e8e9f4acd490eeba7eb2d94c2f/src/resumeReader.ts)
 - [제품 실행 권위](https://github.com/Moonweave-Research/zotero-reading-flow/blob/9afa71f5b75872e8e9f4acd490eeba7eb2d94c2f/docs/READING_FLOW_AUTHORITY.md)
+
+PR3 verification support includes `.github/workflows/verify.yml`: fetch Git history for the pinned baseline writer experiment; do not change token permissions or models.

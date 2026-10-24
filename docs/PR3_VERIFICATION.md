@@ -127,3 +127,6 @@ behavior, restart/reload, and sync between supported clients and the demonstrate
 refusing baseline still require release acceptance. PR1/2 native/human gates
 also remain pending. These are public release gates, not blockers to the
 completed authorized PR3 source implementation. PR4 remains unimplemented.
+
+## Parent review correction
+The pinned old-writer test needs baseline Git history. Both verification workflow checkouts now use fetch-depth: 0 so CI and release verification can run the same cross-version experiment without fetching during tests. Native/human gates remain pending.
