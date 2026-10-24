@@ -213,14 +213,21 @@ export class ReaderTracker {
   }
 
   private getCurrentPageIndex(reader: any, item: any): number | null {
-    const livePageIndex = reader?._state?.pageIndex ?? reader?._internalReader?._state?.pageIndex;
-    if (typeof livePageIndex === 'number' && Number.isFinite(livePageIndex) && livePageIndex >= 0) {
-      return livePageIndex;
+    // PDFViewer updates its visible page before Zotero's asynchronous synced setting.
+    const view = reader?._internalReader?._primaryView?._iframeWindow;
+    const outer = reader?._iframeWindow;
+    const app = (view?.wrappedJSObject ?? view)?.PDFViewerApplication
+      ?? (outer?.wrappedJSObject ?? outer)?.PDFViewerApplication ?? reader?.PDFViewerApplication;
+    const page = app?.pdfViewer?.currentPageNumber ?? app?.page;
+    if (typeof page === 'number' && Number.isInteger(page) && page > 0) return page - 1;
+    // Reader._state may still describe the initial opening location.
+    const currentPageIndex = item.getAttachmentLastPageIndex?.();
+    if (typeof currentPageIndex === 'number' && Number.isFinite(currentPageIndex) && currentPageIndex >= 0) {
+      return currentPageIndex;
     }
-
-    const savedPageIndex = item.getAttachmentLastPageIndex?.();
-    if (typeof savedPageIndex === 'number' && Number.isFinite(savedPageIndex) && savedPageIndex >= 0) {
-      return savedPageIndex;
+    const readerPageIndex = reader?._state?.pageIndex ?? reader?._internalReader?._state?.pageIndex;
+    if (typeof readerPageIndex === 'number' && Number.isFinite(readerPageIndex) && readerPageIndex >= 0) {
+      return readerPageIndex;
     }
 
     return null;

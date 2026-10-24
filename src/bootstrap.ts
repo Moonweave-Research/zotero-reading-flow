@@ -1,3 +1,4 @@
+import { ReadingFlowItemPaneManager } from './itemPaneManager';
 import { DataStore } from './dataStore';
 import { ReaderTracker } from './readerTracker';
 import { ColumnManager } from './columnManager';
@@ -79,6 +80,7 @@ export class Bootstrap {
   private styleManager: StyleManager;
   private notifierManager?: NotifierManager;
   private menuManager?: ReadingFlowMenuManager;
+  private itemPaneManager?: ReadingFlowItemPaneManager;
   private dashboardManager?: DashboardManager;
   private preferencePaneID: string | null = null;
   private started = false;
@@ -158,7 +160,9 @@ export class Bootstrap {
           dashboardBridge
         );
       }
-      this.menuManager = new ReadingFlowMenuManager(this.dataStore!, this.dashboardManager);
+      this.itemPaneManager = new ReadingFlowItemPaneManager(dataStore, resumeReader);
+      this.itemPaneManager.register();
+      this.menuManager = new ReadingFlowMenuManager(this.dataStore!, this.dashboardManager, this.itemPaneManager);
       this.menuManager.register();
       Logger.log('menuManager OK');
     } catch (e) { Logger.error('menuManager FAIL', e); }
@@ -168,6 +172,8 @@ export class Bootstrap {
 
   async shutdown(reason?: number) {
     this.started = false;
+    this.itemPaneManager?.unregister();
+    this.itemPaneManager = undefined;
     this.dashboardManager?.close();
     this.dashboardManager = undefined;
     this.rootURI = null;

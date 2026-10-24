@@ -4,7 +4,7 @@
 >
 > **Last updated:** 2026-10-24
 > **Released baseline:** Zotero Reading Flow v1.3.5
-> **Active implementation target:** Approved PR3 — independent importance (source/tests complete; native/human acceptance pending; PR4 not started)
+> **Active implementation target:** Approved PR1–4 — source/tests and bounded native trial passed; broader accessibility/sync/human release gates remain; no public release
 > **Execution surface:** ORRO (`scout -> flowplan -> proofrun -> proofcheck -> handoff`)
 
 ## Authority and Document Routing
@@ -563,7 +563,7 @@ The user authorized implementing the four reviewed PRs in order, testing and rev
 
 # Reading Flow 기능 정돈 — 최종 제안 PR 목록
 
-2026-10-24 · 검토 3차 수렴 · **PR1·PR2·PR3 소스/테스트 구현 완료 / 네이티브·사람 인수 미실행 / PR4 미구현 / 실제 PR 미생성**
+2026-10-24 · 검토 3차 수렴 · **PR1–4 소스/테스트 구현 완료 / 네이티브·사람 인수 미실행 / 실제 PR 미생성**
 
 ## 결론
 
@@ -656,7 +656,7 @@ bridge), matching tests, locale strings, this authority and
 source/packaged XHTML and diff checks passed. See the verification record for
 exact evidence and unrun native/human gates. This status does not authorize
 public release. The subsequent user instruction separately authorized PR3 implementation;
-PR4 remains outside this task.
+PR4 was outside that completed PR2 task; the subsequent user instruction authorized PR4.
 
 ## 제안 PR 3 — 중요 표시가 읽기 상태를 지우지 않게 한다
 
@@ -676,7 +676,7 @@ PR4 remains outside this task.
 이 PR은 #16에 끼워 넣는 추가 기능이 아니다. 이번 ‘기능 모순 정리’ 요청에 따라 별도 검토하는 호환성 변경이다.
 
 PR3 implementation status (2026-10-24): complete in source and regression tests.
-This task implements PR3 only; it does not start PR4 or authorize public release.
+The completed PR3 task implemented PR3 only. The subsequent user instruction authorized PR4; neither task authorizes public release.
 The version-3 representation adds only `important: boolean`; `s` contains a
 manual reading stage or null. Existing history, including historical
 `status: important` rollups and completion timestamps, remains in its existing
@@ -775,7 +775,7 @@ new format. Never manually downgrade v3 metadata to permit an old writer.
 - 각 PR에 그 변경을 검증하는 회귀·통합 테스트를 포함한다. 마지막에 검증 전용 PR을 몰아 만들지 않는다.
 - 의존 순서는 1 → 2 → 3 → 4. 네 개를 별도로 리뷰하고 하나의 일관된 사용자 버전으로 공개한다. 중간 상태를 공개 릴리스하지 않는다.
 - 의미/호환성/네이티브 인수 기준 중 하나라도 실패하면 공개 릴리스를 보류한다. 구현 중 새 차단 문제가 나오면 해당 설계를 다시 열어야 한다.
-- 이번 완료: 고정 소스 조사, 합성 데이터 모순 재현, 세 차례 설계 검토, 제안 문서 동기화. 이번 미실행: 제품 코드 수정, 변경 후 테스트, 실제 Zotero 통합, 사람 대상 테스트, PR 생성·병합·릴리스.
+- 현재 완료: PR1–4 제품 소스 구현, 회귀·통합 fixture 검증, 고정 구버전 writer 실험 및 패키지 검사. 미실행: 실제 Zotero 네이티브 인수, 사람 대상 테스트, PR 생성·병합·릴리스.
 - 이전 HTML 모형과 이미지는 배치 검토 자료다. 이 문서의 새 상태·중요 표시·통계 의미를 구현한 화면이 아니며, 현재 기능 명세로 사용하지 않는다.
 - 보류: 체류 시간 기반 읽기율, AI 이해도 추정, 재독 회차, EPUB 추적, 과거 시작일/완독일 소급 복원, 새 대시보드. 스크롤 대신 시간을 재는 것만으로 실제 독서를 증명할 수 있다고 가정하지 않는다.
 
@@ -789,3 +789,46 @@ new format. Never manually downgrade v3 metadata to permit an old writer.
 - [제품 실행 권위](https://github.com/Moonweave-Research/zotero-reading-flow/blob/9afa71f5b75872e8e9f4acd490eeba7eb2d94c2f/docs/READING_FLOW_AUTHORITY.md)
 
 PR3 verification support includes `.github/workflows/verify.yml`: fetch Git history for the pinned baseline writer experiment; do not change token permissions or models.
+
+
+## PR4 implementation status — 2026-10-24
+
+PR4 is implemented in source with synthetic lifecycle and cross-feature tests.
+The installed read-only `installed-itemPaneManager.js` and
+`installed-itemDetails.js` were inspected before implementation. The pane uses
+`registerSection`/`unregisterSection`, documented init/destroy/item-change/render/
+async-render hooks, the init `refresh` callback and item notifier cleanup.
+The native menu enters this same section using the installed `item-details`
+`scrollToPane` API. No invented section refresh/focus API is used.
+
+Direct status and independent Important controls call the existing queued
+DataStore methods. Viewing, section refresh, menu entry and target lookup do
+not persist data. The shared ResumeReader supplies the file, page, action and
+reason, and revalidates before opening. Selection generations invalidate stale
+results, detached controls and pending open actions. Read-only and unavailable
+records disable mutation; books without PDFs retain manual status support.
+
+First recorded PDF activity is the earliest retained activity day or genuine
+legacy last-activity date. It never uses `history.startedAt`, manual status or
+reset timestamps. Retention/legacy limits are visible beside the date. No
+actual-start, completion or reread schema is added. Current and maximum PDF
+positions remain distinct; maximum location is in expandable detail.
+
+Approved PR4 write region: `src/itemPaneManager.ts`, `src/bootstrap.ts`,
+`src/menuManager.ts`, `src/resumeReader.ts` (shared unavailable-record reason),
+English locale strings, `test/itemPaneManager.test.ts`,
+this authority, `docs/PR4_VERIFICATION.md` and
+`docs/INTEGRATION_VERIFICATION.md`. Shared persistence and target resolution
+remain in PR1–3 modules. Parent CI `fetch-depth: 0` is retained and the pinned
+baseline object is available locally. See the verification documents for exact
+checks, scenario results and unrun native/human release gates. No native or
+human acceptance is claimed; all four PRs remain one unreleased change set.
+
+## Native trial update — 2026-10-24
+
+Bounded disposable-profile native checks passed with executable code 5a2ba1c.
+See PR4_VERIFICATION.md for observed results, user-operated reset and exact
+package hash. Integration checks passed 272 tests. The native tracker, labels
+and layout findings were fixed. Personal data/model/permissions unchanged.
+Broader sync/accessibility/human gates remain before public release; approved
+PR1–4 can merge as one unreleased change set.

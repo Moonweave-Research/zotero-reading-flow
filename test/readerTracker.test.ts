@@ -88,7 +88,7 @@ test('ReaderTracker ignores non-PDF reader locations instead of persisting them 
   }
 });
 
-test('ReaderTracker prefers live PDF page index over saved attachment page index', () => {
+test('ReaderTracker uses the live PDF viewer page while Reader and asynchronous synced setting are stale', () => {
   const tracker = new ReaderTracker({} as any);
   let savedCall: any[] | null = null;
   (tracker as any).debounceSave = (...args: any[]) => {
@@ -101,14 +101,14 @@ test('ReaderTracker prefers live PDF page index over saved attachment page index
         {
           itemID: 10,
           _type: 'pdf',
-          _state: { pageIndex: 1 },
+          _state: { pageIndex: 399 },
           _internalReader: {
-            _state: { pageIndex: 1 },
+            _state: { pageIndex: 399 },
             _primaryView: {
               _iframeWindow: {
                 wrappedJSObject: {
                   PDFViewerApplication: {
-                    pdfDocument: { numPages: 5 }
+                    pdfDocument: { numPages: 5 }, pdfViewer: { currentPageNumber: 2 }
                   }
                 }
               }

@@ -56,6 +56,8 @@ export class ResumeReader {
     const lastPage = canResume ? target.lastPage : null;
     const totalPages = canResume ? target.totalPages : null;
     const filename = target.attachment.attachmentFilename || target.attachment.getField?.('title') || `PDF ${target.attachment.id}`;
+    const record = item.isPDFAttachment?.() ? this.getParentData(item)
+      : item.isRegularItem?.() ? this.dataStore.getData(item) : undefined;
     const fallbackLabel = `${lastPage ? this.getFallbackLabel(lastPage, totalPages) : 'Open PDF'} — ${filename}`;
     const l10nArgs = this.getL10nArgs(lastPage, totalPages);
 
@@ -63,7 +65,9 @@ export class ResumeReader {
       action: canResume ? 'resume' : 'open',
       sourceId: item.id,
       filename,
-      reason: canResume ? `Saved position for ${filename}.` : `No saved page for ${filename}; Zotero chooses the opening position.`,
+      reason: canResume ? `Saved position for ${filename}.`
+        : record?.availability ? `The saved page for ${filename} cannot be read from this Reading Flow record; Zotero chooses the opening position.`
+          : `No saved page for ${filename}; Zotero chooses the opening position.`,
       canResume,
       attachmentId: target.attachment.id,
       lastPage,
