@@ -197,3 +197,12 @@ test('save-time notifier refresh does not leave controls disabled', async () => 
   assert.equal(f.store.getData(f.paper).s, 'read'); assert.equal(f.counts().saves, 1);
   f.manager.unregister();
 });
+
+
+test('an already-achieved native command is not reported as a failed save', async () => {
+ const f=fixture(); await f.view(); const original=f.store.setStatus.bind(f.store);
+ f.store.setStatus=async (item, status) => { await original(item,status); return false; };
+ const select=f.body.querySelectorAll('select')[0]; select.value='read'; select.listeners.change(); await tick();
+ assert.equal(f.store.getData(f.paper).s,'read'); assert.doesNotMatch(f.body.text(),/No change was saved/);
+ f.manager.unregister();
+});

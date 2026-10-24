@@ -116,31 +116,40 @@ export class ReadingFlowItemPaneManager {
     const data = this.store.getData(parent), status = resolveReadingStatus(data);
     const problem = recordProblem(parent, data);
     const writable = props.editable && parent.isEditable?.() !== false && !problem && !state.busy;
-    const add = (text: string) => { const p = this.element(props, 'p', text); props.body.append(p); return p; };
+    const add = (text: string) => { const p = this.element(props, 'p', text); p.style.setProperty('margin', '0.6em 0'); props.body.append(p); return p; };
     add(problem || (status.source === 'automatic' ? 'Reading — based on recorded PDF activity; this does not confirm that the item was read.' : status.source === 'manual' ? 'Status set manually.' : 'No reading status assigned.'));
     if (resolveReadingAvailability(data) === 'no-record') add('No Reading Flow record.');
     const label = this.element(props, 'label', 'Reading status '), select = this.element(props, 'select');
+    label.style.setProperty('display', 'block');
+    select.style.setProperty('display', 'block');
+    select.style.setProperty('max-width', '100%');
+    select.style.setProperty('width', '100%');
     for (const [value, text] of [['', 'Automatic (clear manual status)'], ['to-read', 'To Read'], ['reading', 'Reading'], ['skimmed', 'Skimmed'], ['read', 'Read']]) {
       const option = this.element(props, 'option', text); option.value = value; select.append(option);
     }
     if (problem) { const option = this.element(props, 'option', 'Record unavailable'); option.value = 'unavailable'; select.append(option); }
     select.value = problem ? 'unavailable' : data.s ?? ''; select.disabled = !writable; label.append(select); props.body.append(label);
-    select.addEventListener('change', () => { if (!this.current(state, generation, props.item)) return; void this.mutate(state, parent, () => select.value ? this.store.setStatus(parent, select.value as ReadingStatus) : this.store.clearManualStatus(parent)); });
+    select.addEventListener('change', () => { if (!this.current(state, generation, props.item)) return; void this.mutate(state, parent, () => select.value ? this.store.setStatus(parent, select.value as ReadingStatus) : this.store.clearManualStatus(parent), () => this.store.getData(parent).s === (select.value || null)); });
     const importantLabel = this.element(props, 'label', ' Important'), important = this.element(props, 'input');
+    importantLabel.style.setProperty('display', 'flex');
+    importantLabel.style.setProperty('align-items', 'center');
+    importantLabel.style.setProperty('gap', '0.4em');
+    importantLabel.style.setProperty('margin', '0.6em 0');
     important.type = 'checkbox'; important.indeterminate = Boolean(problem); important.checked = Boolean(data.important); important.disabled = !writable;
     importantLabel.prepend(important); props.body.append(importantLabel);
-    important.addEventListener('change', () => { if (!this.current(state, generation, props.item)) return; void this.mutate(state, parent, () => this.store.setImportant(parent, important.checked)); });
+    important.addEventListener('change', () => { if (!this.current(state, generation, props.item)) return; void this.mutate(state, parent, () => this.store.setImportant(parent, important.checked), () => Boolean(this.store.getData(parent).important) === important.checked); });
     if (data.v < 3 && data.important) add('Legacy Important records do not preserve the earlier manual reading status. It cannot be recovered from PDF positions.');
     if (!props.editable || parent.isEditable?.() === false) add('This item is read-only. You can view its information and open an accessible PDF.');
     const last = getLastActivityAt(data);
     add(`Recent PDF activity: ${last === null ? (problem ? 'Record unavailable.' : 'No recorded date.') : new Date(last).toLocaleString()}`);
-    add(`First recorded PDF activity: ${firstRecordedPDFActivity(data) ?? (problem ? 'Record unavailable.' : 'No recorded date.')} This is the earliest surviving PDF activity date, not the actual reading start. Detailed history retains at most 366 days; earlier or legacy activity may be missing. Status changes and resets are not PDF activity.`);
+    add(`First retained PDF activity: ${firstRecordedPDFActivity(data) ?? (problem ? 'Record unavailable.' : 'No recorded date.')} Earlier activity may be missing.`);
     const details = this.element(props, 'details');
-    details.append(this.element(props, 'summary', 'Position details'), this.element(props, 'p', `Maximum recorded location: ${formatMaximumPosition(data)}. This is a recorded location, not a measure of reading or understanding.`));
+    details.append(this.element(props, 'summary', 'History and position details'), this.element(props, 'p', `Maximum recorded location: ${formatMaximumPosition(data)}. This is a recorded location, not a measure of reading or understanding.`));
+    details.append(this.element(props, 'p', 'The first recorded PDF activity is the earliest surviving record, not the actual reading start. Detailed history retains at most 366 days; earlier or legacy activity may be missing. Status changes and resets are not PDF activity.'));
     props.body.append(details);
     const target = add('Checking PDF availability…'); target.dataset.readingFlowTarget = 'true';
     const error = add(''); error.setAttribute('role', 'status'); error.dataset.readingFlowError = 'true';
-    add('Position tracking supports PDFs only. Manual status and Important also work for books and items without a PDF; EPUB positions are not tracked.');
+    details.append(this.element(props, 'p', 'Position tracking supports PDFs only. Manual status and Important also work for books and items without a PDF; EPUB positions are not tracked.'));
   }
   private current(state: Instance, generation: number, item: any): boolean {
     return this.instances.get(state.props.body) === state && state.generation === generation && state.props.item === item;
@@ -172,14 +181,14 @@ export class ReadingFlowItemPaneManager {
   private error(state: Instance, text: string) {
     const region = state.props.body.querySelector('[data-reading-flow-error]'); if (region) region.textContent = text;
   }
-  private async mutate(state: Instance, parent: any, operation: () => Promise<boolean>) {
+  private async mutate(state: Instance, parent: any, operation: () => Promise<boolean>, achieved?: () => boolean) {
     if (state.busy || !state.props.editable || parent.isEditable?.() === false || parent.deleted
       || this.parent(state.props.item)?.id !== parent.id || this.store.getData(parent).availability) return;
     const item = state.props.item, mutation = Symbol('pane-mutation');
     state.mutation = mutation; state.busy = true;
     state.props.body.querySelectorAll('select,input').forEach((control: any) => { control.disabled = true; });
     let message = '';
-    try { if (!await operation()) message = 'No change was saved. The record may have changed or may no longer be editable.'; }
+    try { if (!await operation() && !achieved?.()) message = 'No change was saved. The record may have changed or may no longer be editable.'; }
     catch (_) { message = 'The change could not be saved. Select the item again to review its stored record.'; }
     finally {
       if (state.mutation === mutation) {

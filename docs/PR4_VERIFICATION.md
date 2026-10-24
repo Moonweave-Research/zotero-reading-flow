@@ -100,3 +100,5 @@ behavior, group read-only libraries, keyboard/VoiceOver, narrow widths, 200%
 zoom and dark theme remain release gates. Human tasks must establish whether
 users understand manual status, file/page targets and retained activity dates.
 Fixture success does not constitute those acceptance results.
+
+Native follow-up: actual Zotero showed detached Important label, verbose date notes and a misleading no-op save warning. Corrected block/flex layout, moved detailed qualifications into disclosure while keeping retention cue beside date, and suppress failure feedback only if requested stored state is already achieved. Added regression. Native recheck remains required.
