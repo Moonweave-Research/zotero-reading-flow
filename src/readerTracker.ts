@@ -213,14 +213,15 @@ export class ReaderTracker {
   }
 
   private getCurrentPageIndex(reader: any, item: any): number | null {
-    const livePageIndex = reader?._state?.pageIndex ?? reader?._internalReader?._state?.pageIndex;
-    if (typeof livePageIndex === 'number' && Number.isFinite(livePageIndex) && livePageIndex >= 0) {
-      return livePageIndex;
+    // Zotero updates the attachment's page index before emitting pageChange;
+    // Reader._state can still contain its initial opening position.
+    const currentPageIndex = item.getAttachmentLastPageIndex?.();
+    if (typeof currentPageIndex === 'number' && Number.isFinite(currentPageIndex) && currentPageIndex >= 0) {
+      return currentPageIndex;
     }
-
-    const savedPageIndex = item.getAttachmentLastPageIndex?.();
-    if (typeof savedPageIndex === 'number' && Number.isFinite(savedPageIndex) && savedPageIndex >= 0) {
-      return savedPageIndex;
+    const readerPageIndex = reader?._state?.pageIndex ?? reader?._internalReader?._state?.pageIndex;
+    if (typeof readerPageIndex === 'number' && Number.isFinite(readerPageIndex) && readerPageIndex >= 0) {
+      return readerPageIndex;
     }
 
     return null;

@@ -102,3 +102,5 @@ users understand manual status, file/page targets and retained activity dates.
 Fixture success does not constitute those acceptance results.
 
 Native follow-up: actual Zotero showed detached Important label, verbose date notes and a misleading no-op save warning. Corrected block/flex layout, moved detailed qualifications into disclosure while keeping retention cue beside date, and suppress failure feedback only if requested stored state is already achieved. Added regression. Native recheck remains required.
+
+Native PDF finding: Reader showed page 2 and Zotero reader-state pageIndex=1 while FlowData stayed page 10. Installed Zotero reader.js updates getAttachmentLastPageIndex before pageChange, whereas Reader._state may retain opening state. Tracker now prioritizes that updated public attachment value; the old misleading fixture is corrected to cached Reader index 399/current attachment index 1. Native retest required.

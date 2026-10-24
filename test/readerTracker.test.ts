@@ -88,7 +88,7 @@ test('ReaderTracker ignores non-PDF reader locations instead of persisting them 
   }
 });
 
-test('ReaderTracker prefers live PDF page index over saved attachment page index', () => {
+test('ReaderTracker uses the attachment pageChange position instead of cached Reader opening state', () => {
   const tracker = new ReaderTracker({} as any);
   let savedCall: any[] | null = null;
   (tracker as any).debounceSave = (...args: any[]) => {
@@ -101,9 +101,9 @@ test('ReaderTracker prefers live PDF page index over saved attachment page index
         {
           itemID: 10,
           _type: 'pdf',
-          _state: { pageIndex: 1 },
+          _state: { pageIndex: 399 },
           _internalReader: {
-            _state: { pageIndex: 1 },
+            _state: { pageIndex: 399 },
             _primaryView: {
               _iframeWindow: {
                 wrappedJSObject: {
@@ -126,7 +126,7 @@ test('ReaderTracker prefers live PDF page index over saved attachment page index
             return true;
           },
           getAttachmentLastPageIndex() {
-            return 399;
+            return 1;
           }
         };
       }
