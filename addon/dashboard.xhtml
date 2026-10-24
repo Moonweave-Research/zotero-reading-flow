@@ -31,16 +31,17 @@
           </select>
         </span>
         <span class="dashboard-control-group">
-          <label for="dashboard-dataset" data-l10n-id="reading-flow-dashboard-papers-filter">Papers</label>
+          <label for="dashboard-dataset" data-l10n-id="reading-flow-dashboard-papers-filter">Items</label>
           <select id="dashboard-dataset">
             <option value="tracked" data-l10n-id="reading-flow-dashboard-tracked-papers">Reading Flow items</option>
-            <option value="all" data-l10n-id="reading-flow-dashboard-all-papers">All papers (inventory)</option>
+            <option value="all" data-l10n-id="reading-flow-dashboard-all-papers">All items (inventory)</option>
           </select>
         </span>
         <span class="dashboard-control-group">
           <label for="dashboard-status-filter" data-l10n-id="reading-flow-dashboard-status">Status</label>
           <select id="dashboard-status-filter">
             <option value="all" data-l10n-id="reading-flow-dashboard-all-statuses">All statuses</option>
+            <option value="unavailable" data-l10n-id="reading-flow-status-unavailable">Record unavailable</option>
             <option value="unassigned" data-l10n-id="reading-flow-status-unassigned">Unassigned</option>
             <option value="to-read" data-l10n-id="reading-flow-status-to-read">To Read</option>
             <option value="reading" data-l10n-id="reading-flow-status-reading">Reading</option>
@@ -67,14 +68,13 @@
     </header>
 
     <p id="dashboard-error" class="dashboard-error" role="alert" hidden="hidden"></p>
-    <p id="dashboard-filter-note" class="dashboard-filter-note">Tracked papers · all statuses · selected Zotero scope.</p>
+    <p id="dashboard-filter-note" aria-live="polite" class="dashboard-filter-note">Tracked items · all statuses · selected Zotero scope.</p>
 
     <section class="summary-grid" aria-labelledby="summary-heading">
       <h2 id="summary-heading" class="visually-hidden" data-l10n-id="reading-flow-dashboard-summary">Summary</h2>
-      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-papers">Papers</h3><strong id="dashboard-papers">—</strong></article>
+      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-papers">Items</h3><strong id="dashboard-papers">—</strong></article>
       <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-in-progress">In progress</h3><strong id="dashboard-in-progress">—</strong></article>
       <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-read">Read</h3><strong id="dashboard-read">—</strong></article>
-      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-remaining-pages">Known remaining pages</h3><strong id="dashboard-remaining-pages">—</strong><span id="dashboard-remaining-coverage" class="summary-detail">—</span></article>
     </section>
 
     <aside id="dashboard-history-onboarding" class="dashboard-onboarding" role="note" hidden="hidden">
@@ -88,8 +88,7 @@
       <div class="pulse-layout">
         <div class="pulse-metrics">
           <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-active-days">Days with a progress update</h3><strong id="dashboard-range-active-days">—</strong><span class="summary-detail">in selected range</span></article>
-          <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-papers-progress-activity">Papers with a progress update</h3><strong id="dashboard-range-progress-activity">—</strong><span class="summary-detail">in selected range</span></article>
-          <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-first-completions">First completions</h3><strong id="dashboard-range-completions">—</strong><span class="summary-detail">in selected range</span></article>
+          <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-papers-progress-activity">Items with a progress update</h3><strong id="dashboard-range-progress-activity">—</strong><span class="summary-detail">in selected range</span></article>
         </div>
         <div class="pulse-calendar" aria-labelledby="activity-calendar-heading">
           <h3 id="activity-calendar-heading" data-l10n-id="reading-flow-dashboard-activity-calendar">Activity calendar</h3>
@@ -99,10 +98,10 @@
             <p id="dashboard-activity-day-detail-summary" class="dashboard-history-range-note" aria-live="polite"></p>
             <p id="dashboard-activity-day-detail-empty" class="dashboard-empty" hidden="hidden"></p>
             <table id="dashboard-activity-day-detail-table">
-              <caption class="visually-hidden" data-l10n-id="reading-flow-dashboard-activity-day-detail-caption">Papers with a recorded progress update on the selected date, plus user-selected actions</caption>
+              <caption class="visually-hidden" data-l10n-id="reading-flow-dashboard-activity-day-detail-caption">Items with a recorded progress update on the selected date, plus user-selected actions</caption>
               <thead>
                 <tr>
-                  <th scope="col" data-l10n-id="reading-flow-dashboard-paper">Paper</th>
+                  <th scope="col" data-l10n-id="reading-flow-dashboard-paper">Item</th>
                   <th scope="col" data-l10n-id="reading-flow-dashboard-recorded-location">Recorded location</th>
                   <th scope="col" data-l10n-id="reading-flow-dashboard-current-status">Current status</th>
                   <th scope="col" data-l10n-id="reading-flow-dashboard-last-recorded-update">Last recorded update</th>
@@ -118,7 +117,7 @@
 
     <div class="dashboard-panels-grid">
       <section class="dashboard-panel" aria-labelledby="status-heading"><h2 id="status-heading" data-l10n-id="reading-flow-dashboard-status-composition">Status composition</h2><div id="dashboard-status-composition"></div></section>
-      <section class="dashboard-panel" aria-labelledby="progress-heading"><h2 id="progress-heading" data-l10n-id="reading-flow-dashboard-progress-distribution">Progress distribution</h2><div id="dashboard-progress-distribution"></div></section>
+      <section class="dashboard-panel" aria-labelledby="progress-heading"><h2 id="progress-heading" data-l10n-id="reading-flow-dashboard-progress-distribution">Saved PDF position distribution</h2><div id="dashboard-progress-distribution"></div></section>
     </div>
 
     <section id="dashboard-recent-progress-panel" class="dashboard-panel" aria-labelledby="recent-progress-heading" hidden="hidden">
@@ -129,11 +128,11 @@
       </div>
       <p id="dashboard-recent-progress-empty" class="dashboard-empty" hidden="hidden">No retained progress updates in this range.</p>
       <table id="dashboard-recent-progress">
-        <caption class="visually-hidden">Per-paper progress updates and user-selected actions in the selected retained history range</caption>
+        <caption class="visually-hidden">Per-item PDF position updates and user-selected actions in the selected retained history range</caption>
         <thead>
           <tr>
-            <th scope="col">Paper</th>
-            <th scope="col">Current progress</th>
+            <th scope="col">Item</th>
+            <th scope="col">Saved PDF position</th>
             <th scope="col">Change in range</th>
             <th scope="col">Last update</th>
             <th scope="col">Status</th>
@@ -143,11 +142,6 @@
         <tbody id="dashboard-recent-progress-body"></tbody>
       </table>
       <p id="dashboard-recent-progress-action-status" class="dashboard-action-status" aria-live="polite"></p>
-    </section>
-
-    <section id="dashboard-completion-trend-panel" class="dashboard-panel" aria-labelledby="completion-trend-heading" hidden="hidden">
-      <h2 id="completion-trend-heading" data-l10n-id="reading-flow-dashboard-completion-trend">First-completion trend</h2>
-      <div id="dashboard-completion-trend"></div>
     </section>
 
     <p id="dashboard-history-footnote" class="dashboard-history-footnote" hidden="hidden"></p>

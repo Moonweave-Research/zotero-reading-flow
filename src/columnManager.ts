@@ -4,6 +4,9 @@ import {
   ReadingStatus,
   ReadingStatusSource,
   formatRelativeDate,
+  getLastActivityAt,
+  formatPDFPosition,
+  formatMaximumPosition,
   resolveDisplayProgress,
   resolveReadingStatus
 } from './flowData';
@@ -27,10 +30,13 @@ type CompositeValue = {
   source: ReadingStatusSource;
   progress: number | null;
   lastReadAt: number | null;
+  positionText?: string;
+  maximumText?: string;
   itemID?: number;
 };
 
 const STATUS_LABELS: Record<DisplayReadingStatus, string> = {
+  unavailable: 'Record unavailable',
   unassigned: 'Unassigned',
   'to-read': 'To Read',
   reading: 'Reading',
@@ -78,20 +84,20 @@ function nativeSortKey(value: CompositeValue): string {
 }
 
 function progressText(progress: number | null): string {
-  if (progress === null || !Number.isFinite(progress) || progress <= 0) return 'no progress recorded';
-  return progress > 1 ? `page ${Math.round(progress)}` : `${Math.round(progress * 100)}% read`;
+  if (progress === null || !Number.isFinite(progress) || progress <= 0) return 'no saved PDF position';
+  return progress > 1 ? `page ${Math.round(progress)}` : `${Math.round(progress * 100)}% PDF position`;
 }
 
 function accessibleText(value: CompositeValue): string {
-  if (value.status === 'unassigned') return 'No reading status assigned';
-  if (value.status === 'to-read' && progressText(value.progress) === 'no progress recorded' && !value.lastReadAt) {
-    return 'To Read, not started, never read';
+  if (value.status === 'unavailable') return 'Reading Flow record unavailable';
+  if (value.status === 'to-read' && value.positionText === 'No saved PDF position' && !value.lastReadAt) {
+    return 'To Read, manual status, No saved PDF position, no PDF activity recorded';
   }
   const lastRead = value.lastReadAt && value.lastReadAt > 0
-    ? `last read ${formatRelativeDate(value.lastReadAt)}`
-    : 'never read';
-  const source = value.source === 'manual' ? 'manual status' : 'automatic status';
-  return `${STATUS_LABELS[value.status] ?? STATUS_LABELS['to-read']}, ${source}, ${progressText(value.progress)}, ${lastRead}`;
+    ? `last PDF activity ${formatRelativeDate(value.lastReadAt)}`
+    : value.positionText === 'No saved PDF position' || !value.positionText ? 'no PDF activity recorded' : 'PDF activity date unknown';
+  const source = value.source === 'manual' ? 'manual status' : value.source === 'automatic' ? 'PDF activity based status' : 'no status assigned';
+  return `${STATUS_LABELS[value.status] ?? STATUS_LABELS['to-read']}, ${source}, ${value.positionText ?? progressText(value.progress)}, ${value.maximumText ?? ""}, ${lastRead}`;
 }
 
 export class ColumnManager {
@@ -107,11 +113,15 @@ export class ColumnManager {
     if (this.registered) return;
     const manager = (globalThis as any).Zotero.ItemTreeManager;
     const progressKey = await manager.registerColumn({
-      dataKey: PROGRESS_KEY, label: 'Progress', pluginID: PLUGIN_ID, enabledTreeIDs: ['main'], defaultIn: ['default'],
+      dataKey: PROGRESS_KEY, label: 'PDF Position', pluginID: PLUGIN_ID, enabledTreeIDs: ['main'], defaultIn: ['default'],
       zoteroPersist: ['width', 'hidden', 'sortDirection'],
       dataProvider: (item: any) => {
-        try { return item?.isRegularItem?.() ? String(resolveDisplayProgress(this.dataStore.getData(item)).presentationProgress || '') : ''; }
-        catch (e) { Logger.error('column dataProvider failed', e); return ''; }
+        try {
+          if (!item?.isRegularItem?.()) return '';
+          const data = this.dataStore.getData(item);
+          return `${resolveDisplayProgress(data).presentationProgress ?? 0}|${formatPDFPosition(data)}|${formatMaximumPosition(data)}`;
+        }
+        catch (e) { Logger.error('column dataProvider failed', e); return '0|Reading Flow record unavailable|'; }
       },
       renderCell: (_index: number, data: string, column: any, _first: boolean, doc: Document) => this.renderDetailedProgress(data, column, doc)
     });
@@ -123,14 +133,14 @@ export class ColumnManager {
           if (!item?.isRegularItem?.()) return '';
           const resolved = resolveReadingStatus(this.dataStore.getData(item));
           return resolved.status === 'unassigned' ? resolved.status : `${resolved.status}|${resolved.source}`;
-        } catch (e) { Logger.error('status dataProvider failed', e); return ''; }
+        } catch (e) { Logger.error('status dataProvider failed', e); return 'unavailable|unavailable'; }
       },
       renderCell: (_index: number, data: string, column: any, _first: boolean, doc: Document) => this.renderStatus(data, column, doc)
     });
     const lastReadKey = await manager.registerColumn({
-      dataKey: LAST_READ_KEY, label: 'Last Read', pluginID: PLUGIN_ID, enabledTreeIDs: ['main'], defaultIn: ['default'],
+      dataKey: LAST_READ_KEY, label: 'Last PDF Activity', pluginID: PLUGIN_ID, enabledTreeIDs: ['main'], defaultIn: ['default'],
       zoteroPersist: ['width', 'hidden', 'sortDirection'],
-      dataProvider: (item: any) => { try { return item?.isRegularItem?.() ? String(this.dataStore.getData(item).lastReadAt || '') : ''; } catch (e) { Logger.error('last read dataProvider failed', e); return ''; } },
+      dataProvider: (item: any) => { try { if (!item?.isRegularItem?.()) return ''; const data = this.dataStore.getData(item); return data.availability ? 'unavailable' : String(getLastActivityAt(data) || ''); } catch (e) { Logger.error('last read dataProvider failed', e); return 'unavailable'; } },
       renderCell: (_index: number, data: string, column: any, _first: boolean, doc: Document) => this.renderLastRead(data, column, doc)
     });
     const compositeKey = await manager.registerColumn({
@@ -145,11 +155,12 @@ export class ColumnManager {
         try {
           const data: any = this.dataStore.getData(item);
           const resolved = resolveReadingStatus(data);
-          const value = { status: resolved.status, source: resolved.source, progress: resolveDisplayProgress(data).presentationProgress, lastReadAt: data.lastReadAt || null, itemID };
+          const position = resolveDisplayProgress(data);
+          const value = { status: resolved.status, source: resolved.source, progress: position.pageCount !== null ? position.presentationProgress : null, lastReadAt: getLastActivityAt(data), positionText: formatPDFPosition(data), maximumText: formatMaximumPosition(data), itemID };
           return `${nativeSortKey(value)}|${JSON.stringify(value)}`;
         } catch (e) {
           Logger.error('composite dataProvider failed', e);
-          const fallback = { status: 'unassigned' as const, source: 'unassigned' as const, progress: null, lastReadAt: null, itemID };
+          const fallback = { status: 'unavailable' as const, source: 'unavailable' as const, progress: null, lastReadAt: null, itemID };
           return `${nativeSortKey(fallback)}|${JSON.stringify(fallback)}`;
         }
       },
@@ -209,6 +220,7 @@ export class ColumnManager {
     const fullText = accessibleText(value);
     cell.setAttribute('aria-label', fullText);
     cell.title = fullText;
+    if (value.status === 'unavailable') { cell.textContent = '—'; return cell; }
     if (value.status === 'unassigned') return cell;
     const icon = doc.createElement('span');
     icon.textContent = STATUS_SYMBOLS[value.status];
@@ -228,11 +240,11 @@ export class ColumnManager {
       cell.appendChild(microProgress);
       const details = doc.createElement('span');
       const progress = progressText(value.progress);
-      const notStarted = value.status === 'to-read' && progress === 'no progress recorded' && !value.lastReadAt;
-      const visualProgress = progress === 'no progress recorded' ? 'No progress recorded' : progress;
+      const notStarted = value.status === 'to-read' && value.positionText === 'No saved PDF position' && !value.lastReadAt;
+      const visualProgress = value.positionText ?? progress;
       details.textContent = notStarted
-        ? 'Not started'
-        : `${visualProgress} · ${value.lastReadAt ? formatRelativeDate(value.lastReadAt) : 'never read'}`;
+        ? 'No PDF activity recorded'
+        : `${visualProgress} · ${value.lastReadAt ? formatRelativeDate(value.lastReadAt) : 'PDF activity date unknown'}`;
       details.setAttribute('aria-hidden', 'true');
       details.style.cssText = 'min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;';
       cell.appendChild(details);
@@ -252,10 +264,11 @@ export class ColumnManager {
       return cell;
     }
 
+    if (statusValue === 'unavailable') { cell.textContent = '—'; cell.title = 'Reading Flow record unavailable'; cell.setAttribute('aria-label', cell.title); return cell; }
     const status = statusValue as ReadingStatus;
     const badge = doc.createElement('span');
     badge.textContent = STATUS_LABELS[status];
-    const sourceLabel = source === 'manual' ? 'manual status' : source === 'automatic' ? 'automatic status' : '';
+    const sourceLabel = source === 'manual' ? 'manual status' : source === 'automatic' ? 'PDF activity based status' : '';
     badge.title = sourceLabel ? `${STATUS_LABELS[status]} — ${sourceLabel}` : STATUS_LABELS[status];
     cell.setAttribute('aria-label', badge.title);
     badge.style.cssText = [
@@ -272,41 +285,25 @@ export class ColumnManager {
     const cell = doc.createElement('span');
     cell.className = `cell ${column.className || ''}`.trim();
     cell.style.cssText = `${BASE_CELL_STYLE};justify-content:center;font-size:11px;color:var(--fill-secondary, #666);text-overflow:ellipsis;white-space:nowrap;`;
+    cell.title = data === 'unavailable' ? 'Reading Flow record unavailable' : 'No PDF activity timestamp recorded';
+    cell.setAttribute('aria-label', cell.title);
     const timestamp = Number(data);
     if (!Number.isFinite(timestamp) || timestamp <= 0) return cell;
     cell.textContent = formatRelativeDate(timestamp);
-    cell.title = new Date(timestamp).toLocaleString();
+    cell.title = `Last PDF activity: ${new Date(timestamp).toLocaleString()}`;
+    cell.setAttribute('aria-label', cell.title);
     return cell;
   }
   private renderDetailedProgress(data: string, column: any, doc: Document): HTMLElement {
     const cell = doc.createElement('span');
     cell.className = `cell ${column.className || ''}`.trim();
     cell.style.cssText = 'display:flex;align-items:center;justify-content:center;position:relative;width:100%;max-width:100%;min-width:0;height:100%;padding:0;box-sizing:border-box;overflow:hidden;';
-    const value = parseFloat(data);
-    if (!data || isNaN(value) || value === 0) return cell;
-    if (value > 1) {
-      cell.textContent = `p. ${Math.round(value)}`;
-      cell.title = `Last read page ${Math.round(value)}`;
-      cell.style.justifyContent = 'center';
-      cell.style.padding = '0 6px';
-      return cell;
-    }
-    const percent = Math.max(1, Math.min(100, Math.round(value * 100)));
-    const trackRow = doc.createElement('span');
-    trackRow.style.cssText = 'display:flex;align-items:center;width:100%;min-width:0;height:6px;gap:6px;';
-    const label = doc.createElement('span');
-    label.textContent = `${percent}%`;
-    label.title = `${percent}% read`;
-    label.style.cssText = 'z-index:1;color:var(--fill-secondary, #666);font-size:10px;line-height:1;';
-    label.style.whiteSpace = 'nowrap';
-    label.style.flex = '0 0 auto';
-    const track = doc.createElement('div');
-    track.style.cssText = 'flex:1;min-width:0;width:100%;height:6px;background:rgba(0,0,0,0.1);border-radius:3px;overflow:hidden;';
-    const bar = doc.createElement('div');
-    const completedColor = getGlobalPreference<string>(READING_FLOW_PREFS.completedColor) || '#4caf50';
-    const readingColor = getGlobalPreference<string>(READING_FLOW_PREFS.readingColor) || '#2196f3';
-    bar.style.cssText = `width:${percent}%;height:100%;background:${value >= 0.95 ? completedColor : readingColor};`;
-    track.appendChild(bar); trackRow.appendChild(track); trackRow.appendChild(label); cell.appendChild(trackRow);
+    if (!data) return cell;
+    const [, position, maximum] = data.split('|');
+    cell.textContent = position ?? 'Saved PDF position unknown';
+    cell.title = `${cell.textContent}; ${maximum ?? 'Maximum PDF position unknown'}`;
+    cell.setAttribute('aria-label', cell.title);
+    cell.style.padding = '0 6px';
     return cell;
   }
 }

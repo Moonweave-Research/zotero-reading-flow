@@ -588,7 +588,7 @@ test('pending failed reset followed by Reader callback eventually records progre
   }
 });
 
-test('Progress column uses full cell width for the track instead of shrinking it with a fixed label slot', async () => {
+test('PDF position column retains full cell width and exposes the saved page without completion color', async () => {
   const registeredColumns: any[] = [];
   const fakeDoc = {
     createElement() {
@@ -600,7 +600,8 @@ test('Progress column uses full cell width for the track instead of shrinking it
           this.children.push(child);
         },
         textContent: '',
-        title: ''
+        title: '',
+        setAttribute(name: string, value: string) { (this as any)[name] = value; }
       };
     }
   } as any;
@@ -630,7 +631,7 @@ test('Progress column uses full cell width for the track instead of shrinking it
 
   await manager.register();
   const progressColumn = registeredColumns.find((column) => column.dataKey === 'readingFlowProgress');
-  const cell = progressColumn.renderCell(0, '0.5', { className: 'custom-progress', width: 128 }, false, fakeDoc);
+  const cell = progressColumn.renderCell(0, '0.5|50 / 100 PDF pages|Maximum PDF position 98%', { className: 'custom-progress', width: 128 }, false, fakeDoc);
   const trackRow = cell.children[0];
   const track = trackRow?.children?.[0];
   const label = trackRow?.children?.[1];
@@ -638,7 +639,7 @@ test('Progress column uses full cell width for the track instead of shrinking it
   assert.equal(cell.className, 'cell custom-progress');
   assert.match(cell.style.cssText, /padding:0/);
   assert.match(cell.style.cssText, /width:100%/);
-  assert.equal(trackRow.style.cssText.includes('display:flex'), true);
-  assert.match(track.style.cssText, /width:100%/);
-  assert.doesNotMatch(label.style.cssText, /flex:0 0 34px/);
+  assert.equal(cell.textContent, '50 / 100 PDF pages');
+  assert.match(cell.title, /Maximum PDF position 98%/);
+  assert.doesNotMatch(JSON.stringify(cell), /% read|#4caf50/);
 });

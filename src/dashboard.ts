@@ -47,6 +47,7 @@ export interface DashboardBridge {
 }
 
 const STATUS_LABELS: Record<DisplayReadingStatus, string> = {
+  unavailable: 'Record unavailable',
   unassigned: 'Unassigned',
   'to-read': 'To Read',
   reading: 'Reading',
@@ -57,17 +58,17 @@ const STATUS_LABELS: Record<DisplayReadingStatus, string> = {
 
 const DATASET_LABELS: Record<StatisticsDataset, string> = {
   tracked: 'Reading Flow items',
-  all: 'All papers (inventory)'
+  all: 'All items (inventory)'
 };
 
 const PROGRESS_LABELS: Record<ProgressBucket, string> = {
-  'not-started': 'Not started',
+  'not-started': 'No saved PDF position',
   '1-24': '1–24%',
   '25-49': '25–49%',
   '50-74': '50–74%',
-  '75-94': '75–94%',
-  complete: 'Complete',
-  unknown: 'Unknown page count'
+  '75-99': '75–99%',
+  '100': '100% PDF position',
+  unknown: 'PDF position unknown'
 };
 
 const HISTORY_RANGE_LABELS: Record<HistoryRange, string> = {
@@ -78,14 +79,14 @@ const HISTORY_RANGE_LABELS: Record<HistoryRange, string> = {
   'all-time': 'All time'
 };
 
-const STATUSES: DisplayReadingStatus[] = ['unassigned', 'to-read', 'reading', 'skimmed', 'read', 'important'];
+const STATUSES: DisplayReadingStatus[] = ['unavailable', 'unassigned', 'to-read', 'reading', 'skimmed', 'read', 'important'];
 const PROGRESS_BUCKETS: ProgressBucket[] = [
   'not-started',
   '1-24',
   '25-49',
   '50-74',
-  '75-94',
-  'complete',
+  '75-99',
+  '100',
   'unknown'
 ];
 
@@ -123,8 +124,7 @@ export function renderDashboard(
   setText(doc, 'dashboard-papers', String(snapshot.totalPapers));
   setText(doc, 'dashboard-in-progress', String(snapshot.inProgress));
   setText(doc, 'dashboard-read', String(snapshot.read));
-  setText(doc, 'dashboard-remaining-pages', formatRemainingPages(snapshot));
-  setText(doc, 'dashboard-remaining-coverage', formatRemainingCoverage(snapshot));
+
   setText(doc, 'dashboard-updated', `Snapshot updated: ${formatUpdatedAt(updatedAt)}`);
   doc.getElementById('dashboard-updated')?.removeAttribute('data-stale');
   setText(
@@ -140,7 +140,7 @@ export function renderDashboard(
   setText(
     doc,
     'dashboard-filter-note',
-    formatFilterNote(selectedDataset, statusLabel)
+    `${formatFilterNote(selectedDataset, statusLabel)} Showing ${snapshot.totalPapers} of ${snapshot.scopeTotal ?? snapshot.totalPapers} items; scope total = ${snapshot.classifiableItems ?? snapshot.totalPapers} classifiable + ${snapshot.unavailableItems ?? 0} unavailable. Status percentages use ${snapshot.statusDenominator ?? snapshot.totalPapers} classifiable items in scope. Position percentages use classifiable matching items.`
   );
 }
 
@@ -379,7 +379,7 @@ export class DashboardApp {
     actionStatusId = 'dashboard-recent-progress-action-status'
   ) {
     if (!this.bridge?.focusItem) {
-      setText(this.doc, actionStatusId, 'Selecting papers is unavailable in this runtime.');
+      setText(this.doc, actionStatusId, 'Selecting items is unavailable in this runtime.');
       return;
     }
 
@@ -435,32 +435,32 @@ function renderStatusComposition(
   filter: DashboardStatusFilter
 ) {
   const entries = STATUSES
-    .filter((status) => filter === 'all' || filter === status)
+    .filter((status) => status !== 'unavailable' && (filter === 'all' || filter === status))
     .map((status) => ({
       className: `status-${status}`,
       label: STATUS_LABELS[status],
       value: snapshot.statusCounts[status]
     }));
-  renderBars(doc, 'dashboard-status-composition', entries, snapshot.totalPapers, 'No papers match this status filter.');
+  renderBars(doc, 'dashboard-status-composition', entries, snapshot.statusDenominator ?? snapshot.totalPapers, 'No classifiable items match this status filter.');
 }
 
 function renderProgressDistribution(doc: Document, snapshot: StatisticsSnapshot) {
   const entries = PROGRESS_BUCKETS.map((bucket) => ({
-    className: bucket === 'complete' ? 'status-read' : 'progress-neutral',
+    className: 'progress-neutral',
     label: PROGRESS_LABELS[bucket],
     value: snapshot.progressDistribution[bucket]
   }));
-  renderBars(doc, 'dashboard-progress-distribution', entries, snapshot.totalPapers, 'No papers in this scope.');
+  renderBars(doc, 'dashboard-progress-distribution', entries, Object.values(snapshot.progressDistribution).reduce((sum, value) => sum + value, 0), 'No classifiable items match this filter.');
 }
 
 function renderHistory(doc: Document, snapshot: StatisticsSnapshot, options: DashboardRenderOptions) {
   const history = snapshot.history;
   const hasHistory = history.coverage.papersWithHistory > 0;
+  setHidden(doc, 'dashboard-completion-trend-panel', true);
   setHidden(doc, 'dashboard-history-onboarding', hasHistory);
   for (const id of [
     'dashboard-reading-pulse',
     'dashboard-recent-progress-panel',
-    'dashboard-completion-trend-panel',
     'dashboard-history-footnote'
   ]) setHidden(doc, id, !hasHistory);
 
@@ -475,14 +475,13 @@ function renderHistory(doc: Document, snapshot: StatisticsSnapshot, options: Das
 
   setText(doc, 'dashboard-range-active-days', String(history.rangeSummary.activeDays));
   setText(doc, 'dashboard-range-progress-activity', String(history.rangeSummary.papersWithProgressActivity));
-  setText(doc, 'dashboard-range-completions', String(history.rangeSummary.firstCompletions));
   setText(doc, 'dashboard-history-range-note', formatHistoryRangeNote(history));
   setHidden(doc, 'dashboard-history-range-empty', history.recentProgress.length > 0);
   setText(
     doc,
     'dashboard-history-footnote',
     history.range === 'all-time'
-      ? 'All time uses lifetime first-completion totals. Activity and progress detail are limited to retained daily history.'
+      ? 'Activity and PDF position detail are limited to retained local-day history.'
       : 'Activity uses retained local-day history. Status-only and reset-only days do not count as reading activity.'
   );
 
@@ -494,7 +493,7 @@ function renderHistory(doc: Document, snapshot: StatisticsSnapshot, options: Das
     options
   );
   renderRecentProgress(doc, history, options);
-  renderCompletionTrend(doc, history);
+
 }
 
 function renderRecentProgress(
@@ -522,7 +521,7 @@ function renderRecentProgress(
   const displayed = expanded
     ? history.recentProgress
     : history.recentProgress.slice(0, RECENT_PROGRESS_INITIAL_LIMIT);
-  summary.textContent = `Showing ${displayed.length} of ${total} papers with a progress update in this range.`;
+  summary.textContent = `Showing ${displayed.length} of ${total} items with a progress update in this range.`;
   if (total > RECENT_PROGRESS_INITIAL_LIMIT) {
     toggle.hidden = false;
     toggle.textContent = expanded ? 'Show fewer' : `Show all ${total}`;
@@ -553,13 +552,13 @@ function renderRecentProgress(
     row.append(paperCell);
 
     const values = [
-      formatProgress(entry.currentProgress),
+      entry.positionText ?? formatProgress(entry.currentProgress),
       formatDelta(entry.delta),
       entry.lastProgressDay,
       STATUS_LABELS[entry.status],
       entry.resetCount > 0 ? `${entry.resetCount} reset${entry.resetCount === 1 ? '' : 's'}` : '—'
     ];
-    const labels = ['Current progress', 'Change in range', 'Last update', 'Status', 'Reset'];
+    const labels = ['Saved PDF position', 'Change in range', 'Last update', 'Status', 'Reset'];
     values.forEach((value, index) => {
       const cell = doc.createElement('td');
       cell.textContent = value;
@@ -615,7 +614,7 @@ function renderActivityCalendar(
     cell.className = `history-calendar-cell history-activity-${Math.min(day.activePapers, 4)}`;
     cell.setAttribute(
       'aria-label',
-      `${day.day}: ${day.activePapers} papers with a progress update, ${day.completedPapers} first completions, ${day.resetPapers} resets`
+      `${day.day}: ${day.activePapers} items with a PDF position update, ${day.resetPapers} resets`
     );
     if (selectable) {
       const selected = options.selectedActivityDay === day.day;
@@ -667,7 +666,7 @@ function renderActivityDayDetail(
   }
 
   const total = detail.papers.length;
-  summary.textContent = `Showing ${total} of ${total} papers with a progress update on this date.`;
+  summary.textContent = `Showing ${total} of ${total} items with a progress update on this date.`;
   table.hidden = total === 0;
   empty.hidden = total > 0;
   if (total === 0) {
@@ -715,36 +714,6 @@ function renderActivityDayDetail(
   }
 }
 
-function renderCompletionTrend(doc: Document, history: StatisticsSnapshot['history']) {
-  const container = doc.getElementById('dashboard-completion-trend');
-  if (!container) return;
-  container.replaceChildren();
-
-  if (history.completionTrend.length === 0) {
-    appendEmpty(doc, container, 'No first completions in this range.');
-    return;
-  }
-
-  for (const point of history.completionTrend) {
-    appendHistoryRow(doc, container, [
-      point.day,
-      `${point.papers} paper${point.papers === 1 ? '' : 's'}`,
-      `${point.cumulativePapers} cumulative`
-    ]);
-  }
-}
-
-function appendHistoryRow(doc: Document, container: HTMLElement, values: string[]) {
-  const row = doc.createElement('div');
-  row.className = 'history-table-row';
-  for (const value of values) {
-    const cell = doc.createElement('span');
-    cell.textContent = value;
-    row.append(cell);
-  }
-  container.append(row);
-}
-
 function appendEmpty(doc: Document, container: HTMLElement, message: string) {
   const empty = doc.createElement('p');
   empty.className = 'dashboard-empty';
@@ -769,7 +738,7 @@ function renderBars(
   if (!container) return;
   container.replaceChildren();
 
-  if (total === 0) {
+  if (total === 0 || entries.length === 0) {
     appendEmpty(doc, container, emptyMessage);
     return;
   }
@@ -805,38 +774,24 @@ function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
-function formatRemainingPages(snapshot: StatisticsSnapshot): string {
-  if (snapshot.totalPapers === 0) return '—';
-  if (snapshot.remainingPagesCoverage.knownPapers === 0) return 'Unknown';
-  return String(snapshot.knownRemainingPages);
-}
-
-function formatRemainingCoverage(snapshot: StatisticsSnapshot): string {
-  const { knownPapers, totalPapers } = snapshot.remainingPagesCoverage;
-  if (totalPapers === 0) return 'No papers in this scope.';
-  if (knownPapers === 0) return `Unknown for all ${totalPapers} papers.`;
-  const unknownPapers = totalPapers - knownPapers;
-  return `Known for ${knownPapers} of ${totalPapers} papers; ${unknownPapers} unknown.`;
-}
-
 function formatDashboardState(
   snapshot: StatisticsSnapshot,
   filter: DashboardStatusFilter,
   dataset: StatisticsDataset
 ): string {
-  if (snapshot.totalPapers > 0) return `${snapshot.totalPapers} papers in scope.`;
+  if (snapshot.totalPapers > 0) return `${snapshot.totalPapers} items in scope.`;
   if (dataset === 'tracked' && filter === 'all') {
-    return 'No papers in this reading set yet. Record progress or set a Reading Flow status from a paper context menu to add one.';
+    return 'No items in this reading set yet. Record progress or set a Reading Flow status from an item context menu to add one.';
   }
-  if (dataset === 'tracked') return 'No papers in this reading set match this status.';
-  return filter === 'all' ? 'No papers in this scope.' : 'No papers in this scope match this status.';
+  if (dataset === 'tracked') return 'No items in this reading set match this status.';
+  return filter === 'all' ? 'No items in this scope.' : 'No items in this scope match this status.';
 }
 
 function formatFilterNote(dataset: StatisticsDataset, statusLabel: string): string {
   if (dataset === 'tracked') {
-    return `Reading Flow items: papers with Reading Flow data · ${statusLabel} · selected Zotero scope.`;
+    return `Reading Flow items: items with Reading Flow data · ${statusLabel} · selected Zotero scope.`;
   }
-  return `All papers (inventory): includes untracked papers · ${statusLabel} · selected Zotero scope.`;
+  return `All items (inventory): includes untracked items · ${statusLabel} · selected Zotero scope.`;
 }
 
 function formatQueryLabel(query: DashboardQuery): string {

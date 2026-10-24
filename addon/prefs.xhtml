@@ -11,13 +11,9 @@
         <html:button type="button" onclick="void Zotero.ReadingFlowPreferences?.removeSidebarSearch()">Remove from Selected Library</html:button>
       </html:div>
       <html:p id="readingflow-pref-sidebar-message" role="status" aria-live="polite" style="margin: 8px 0 0;"></html:p>
-      <html:p style="margin: 8px 0 0; opacity: .8;">This is a tracked-papers list, not an exact status-filtered folder. Automatic Reading and Read states are calculated from PDF progress and cannot be reproduced exactly by Zotero Saved Searches.</html:p>
+      <html:p style="margin: 8px 0 0; opacity: .8;">This is a tracked-papers list, not an exact status-filtered folder. Automatic Reading is based on recorded PDF activity. Read is always a manual choice. Zotero Saved Searches cannot derive automatic status from PDF activity.</html:p>
     </html:section>
     <html:div style="display: grid; grid-template-columns: 160px 1fr; gap: 12px; align-items: center; max-width: 420px;">
-      <html:label for="readingflow-pref-color-completed">Completed color</html:label>
-      <html:input id="readingflow-pref-color-completed" type="color" preference="extensions.readingflow.color-completed"/>
-      <html:label for="readingflow-pref-color-reading">Reading color</html:label>
-      <html:input id="readingflow-pref-color-reading" type="color" preference="extensions.readingflow.color-reading"/>
       <html:label for="readingflow-pref-debug">Debug logging</html:label>
       <html:input id="readingflow-pref-debug" type="checkbox" preference="extensions.readingflow.debug"/>
       <html:label for="readingflow-pref-density">Reading Flow column density</html:label>
