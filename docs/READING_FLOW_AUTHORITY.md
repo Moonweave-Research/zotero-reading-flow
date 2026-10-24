@@ -4,7 +4,7 @@
 >
 > **Last updated:** 2026-10-24
 > **Released baseline:** Zotero Reading Flow v1.3.5
-> **Active implementation target:** Approved PR1–4 — source/tests implemented; native/human acceptance pending; no public release
+> **Active implementation target:** Approved PR1–4 — source/tests and bounded native trial passed; broader accessibility/sync/human release gates remain; no public release
 > **Execution surface:** ORRO (`scout -> flowplan -> proofrun -> proofcheck -> handoff`)
 
 ## Authority and Document Routing
@@ -823,3 +823,12 @@ remain in PR1–3 modules. Parent CI `fetch-depth: 0` is retained and the pinned
 baseline object is available locally. See the verification documents for exact
 checks, scenario results and unrun native/human release gates. No native or
 human acceptance is claimed; all four PRs remain one unreleased change set.
+
+## Native trial update — 2026-10-24
+
+Bounded disposable-profile native checks passed with executable code 5a2ba1c.
+See PR4_VERIFICATION.md for observed results, user-operated reset and exact
+package hash. Integration checks passed 272 tests. The native tracker, labels
+and layout findings were fixed. Personal data/model/permissions unchanged.
+Broader sync/accessibility/human gates remain before public release; approved
+PR1–4 can merge as one unreleased change set.

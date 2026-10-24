@@ -1,5 +1,17 @@
 # Reading Flow PR1–4 integration assessment — 2026-10-24
 
+## Final integrated native trial — 2026-10-24
+
+Executable code 5a2ba1c passed 272 tests, typecheck, build and package checks;
+GitHub verify also passed. Actual isolated Zotero confirmed manual state and
+Important independence, automatic Reading at maximum 100%, live current-page
+tracking, Resume page 2, normal restarts and reset preserving activity/Important
+while changing Resume to Open PDF. See PR4_VERIFICATION.md for native evidence
+and explicit limits. Multi-client sync and broader accessibility/human checks
+remain public release gates. No public update was published.
+
+## Earlier fixture verification (historical)
+
 All four approved changes are implemented and verified in source/synthetic
 fixtures as one unreleased change set. Native Zotero and human acceptance are
 pending. The authority remains `READING_FLOW_AUTHORITY.md`; this document is a

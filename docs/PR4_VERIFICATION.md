@@ -1,5 +1,43 @@
 # PR4 verification — 2026-10-24
 
+## Final native acceptance — 2026-10-24
+
+Supersedes earlier pending-native notes below. Actual Zotero 10.0.6 ran with a
+separate disposable profile/data directory and synthetic ten-page PDF. Personal
+library data was not edited; model and permission settings were unchanged.
+
+Observed: pane registration; manual Read independent of Important; clearing
+manual state yields Reading even at maximum 100%; unsupported v99 disables
+editing without rewriting; legacy Important remains without invented prior
+state; Reader page 10 to 2 updates current page while retaining maximum 100%;
+Resume opens the displayed file at page 2; normal restarts retain data.
+Native review exposed stale Reader opening state, a blank Fluent menu label,
+layout/date verbosity and false idempotent-save warnings; all were corrected.
+
+The user executed Advanced > Reset tracked PDF positions on the disposable
+fixture because native menu dispatch in the automation tool was unreliable.
+Agent observation and read-only SQLite inspection after normal quit confirmed
+empty positions, null last attachment/page, Important true, automatic Reading,
+unchanged lastReadAt 1792811086288 and retained activity history. The pane
+changed Resume to Open PDF with the correct explanation. Manual Read was not
+set during this native reset; its preservation is covered by regression tests.
+The test instance was normally closed after inspection.
+
+Final executable code: 5a2ba1c027e76368fe36dfad8ecdb662bb0b99f1.
+Local verify: TypeScript, 272 tests (0 failed/skipped), build, 12 packaged files;
+XHTML and whitespace checks passed. GitHub verify checks passed on this head.
+Test XPI SHA256: a07665495d2adbd4a738ae4f721d9e39fc53b63741167172442e3987b32d0fa5.
+Manifest remains 1.3.6; this is a manual test build, not a public update.
+
+Not certified: real multi-client cloud sync/group-library writes, spoken
+VoiceOver/comprehensive keyboard-only use, native 200%/dark acceptance and
+independent user comprehension. Multi/deleted PDFs and read-only behavior have
+fixture coverage, not a complete native acceptance pass. These remain public
+release gates; the four changes may merge as an unreleased coherent set under
+the user's explicit merge authorization. No release/tag is authorized here.
+
+## Earlier implementation evidence (historical)
+
 PR4 is implemented in source and synthetic fixtures. Native Zotero and human
 acceptance have not been performed. No public release, push or merge occurred.
 
