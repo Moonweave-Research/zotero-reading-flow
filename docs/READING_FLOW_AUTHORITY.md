@@ -859,3 +859,24 @@ Approved scope: src/{itemPaneManager,flowData,statistics,dashboard}.ts;
 addon/dashboard.{xhtml,css}; English locale; their regression tests; this
 contract and docs/STATISTICS_CLARITY_VERIFICATION.md. Build outputs are declared
 for observed deterministic ORRO execution, not committed release artifacts.
+
+## Approved panel readability follow-up — 2026-10-24
+
+After inspecting actual personal Zotero captures, the user authorized reducing
+explanatory prose and making status/dates/position immediately scannable,
+followed by native capture verification, PR merge and personal installation.
+
+Default surface: resolved automatic or manual status and independent Important,
+aligned last activity/first recorded dates using YYYY-MM-DD with local minute
+precision for the recent activity, validated saved position and matching-PDF
+maximum, explicit PDF identity and Resume/Open. Keep a short qualification that
+positions are not pages read and older activity may be missing. Move legacy
+status/retention/support explanations into About this record; keep damaged,
+unsupported, read-only and actionable target failures visible. Unknown maxima
+remain unknown. Existing selection/generation guards, queued mutations and
+shared target revalidation remain unchanged. No persisted schema, writer,
+tracking policy, preferences, model or permission changes.
+
+Scope: src/itemPaneManager.ts, test/itemPaneManager.test.ts, this authority and
+docs/PANE_CLARITY_VERIFICATION.md; generated build/test artifacts are allowed
+only for deterministic observed ORRO verification, not as committed outputs.
