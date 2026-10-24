@@ -1,5 +1,5 @@
 import { DataStore } from './dataStore';
-import { FlowData, formatMaximumPosition, getLastActivityAt, getLocalDayKey, getNormalizedDisplayProgress, resolveDisplayProgress, resolveReadingAvailability, resolveReadingStatus, ReadingStatus } from './flowData';
+import { FlowData, getLastActivityAt, getLocalDayKey, resolveDisplayProgress, resolveReadingAvailability, resolveReadingStatus, ReadingStatus } from './flowData';
 import { ResumeReader } from './resumeReader';
 
 export const READING_FLOW_PANE_ID = 'reading-flow-details';
@@ -165,7 +165,7 @@ export class ReadingFlowItemPaneManager {
     props.body.append(this.facts(props, [['Last activity', problem ? 'Unavailable' : recent], ['First recorded', problem ? 'Unavailable' : first ?? 'Not recorded']]));
     const target = this.element(props, 'div', 'Checking PDF availability…');
     target.dataset.readingFlowTarget = 'true'; props.body.append(target);
-    const note = add("Positions aren't pages read. Earlier activity may be missing.");
+    const note = add("PDF positions, not pages read. Earlier activity may be missing.");
     note.style.setProperty('font-size', '0.9em'); note.style.setProperty('line-height', '1.4');
     const details = this.element(props, 'details');
     details.append(this.element(props, 'summary', 'About this record'));
@@ -173,7 +173,6 @@ export class ReadingFlowItemPaneManager {
     if (data.v < 3 && data.important) details.append(this.element(props, 'p', 'Legacy Important records do not preserve the earlier manual reading status. It cannot be recovered from PDF positions.'));
     details.append(this.element(props, 'p', 'Automatic Reading is based on recorded PDF activity. Choosing a manual status overrides it; choosing the automatic option clears that override. Neither activity nor a saved position confirms that the item was read.'));
     details.append(this.element(props, 'p', 'The first recorded PDF activity is the earliest surviving record, not the actual reading start. Detailed history retains at most 366 days; earlier or legacy activity may be missing. Status changes and resets are not PDF activity.'));
-    details.append(this.element(props, 'p', `Recorded maximum: ${formatMaximumPosition(data)}.`));
     details.append(this.element(props, 'p', 'Position tracking supports PDFs only. Manual status and Important also work for books and items without a PDF; EPUB positions are not tracked.'));
     props.body.append(details);
     const error = add(''); error.setAttribute('role', 'status'); error.dataset.readingFlowError = 'true';
@@ -192,10 +191,17 @@ export class ReadingFlowItemPaneManager {
       const target = await this.reader.getResumeDisplayTarget(item);
       if (!this.current(state, generation, item)) return;
       const data = this.store.getData(this.parent(item));
-      const saved = target.action === 'resume' ? `Page ${target.lastPage}${target.totalPages ? ` / ${target.totalPages}` : ''}` : (data.availability || data.lastPage !== null || Object.keys(data.p).length > 0) ? 'Unavailable' : target.action === 'none' ? 'No PDF' : 'Not saved';
-      const maximum = resolveDisplayProgress(data).attachmentId === String(target.attachmentId) ? getNormalizedDisplayProgress(data) : null;
+      const saved = target.action === 'resume' ? `Page ${target.lastPage}${target.totalPages ? ` / ${target.totalPages}` : ''}` : (data.availability || data.lastPage !== null || Object.keys(data.p).length > 0) ? 'Unavailable' : target.action === 'none' ? 'PDF unavailable' : 'Not saved';
+      const display = resolveDisplayProgress(data);
+      const maximum = display.attachmentId === String(target.attachmentId) ? display.normalizedProgress : null;
+      let farthest = maximum === null ? (data.availability ? 'Unavailable' : Object.keys(data.p).length ? 'Unknown' : 'Not recorded')
+        : `About ${Math.floor(maximum * 100)}% of PDF`;
+      if (maximum !== null && display.pageCount !== null) {
+        const page = maximum * display.pageCount;
+        farthest = `${Math.abs(page - Math.round(page)) < 0.000001 ? 'Page' : 'About page'} ${Math.max(1, Math.round(page))} / ${display.pageCount}`;
+      }
       region.textContent = ''; region.replaceChildren();
-      region.append(this.facts(props, [['Saved position', saved], ['Farthest reached', maximum === null ? (data.availability ? 'Unavailable' : Object.keys(data.p).length ? 'Unknown' : 'Not recorded') : `${Math.round(maximum * 100)}%`], ...(target.filename ? [['PDF', target.filename] as [string, string]] : [])]));
+      region.append(this.facts(props, [['Saved position', saved], ['Farthest position', farthest], ...(target.filename ? [['PDF', target.filename] as [string, string]] : [])]));
       if (target.action === 'none' || data.availability || (target.action === 'open' && data.lastPage !== null)) region.append(this.element(props, 'p', target.reason));
       if (target.action !== 'none') {
         const actionLabel = target.action === 'resume' ? `Resume at page ${target.lastPage}${target.totalPages ? ` / ${target.totalPages}` : ''}` : 'Open PDF';
