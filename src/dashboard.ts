@@ -1,5 +1,5 @@
 import { ResumeDisplayTarget } from './resumeReader';
-import type { DisplayReadingStatus, ReadingStatus } from './flowData';
+import { formatActivityTimestamp, formatPDFLocation, type DisplayReadingStatus, type ReadingStatus } from './flowData';
 import {
   HISTORY_RANGES,
   STATISTICS_DATASETS,
@@ -70,7 +70,7 @@ const PROGRESS_LABELS: Record<ProgressBucket, string> = {
   '25-49': '25–49%',
   '50-74': '50–74%',
   '75-99': '75–99%',
-  '100': '100% PDF position',
+  '100': 'Last page of PDF',
   unknown: 'PDF position unknown'
 };
 
@@ -589,12 +589,12 @@ function renderRecentProgress(
 
     const values = [
       entry.positionText ?? formatProgress(entry.currentProgress),
-      entry.positionChange ? `${formatPercent(entry.positionChange.from)} → ${formatPercent(entry.positionChange.to)}` : formatDelta(entry.delta),
-      entry.lastProgressDay,
-      `${STATUS_LABELS[entry.status]}${entry.statusSource === 'automatic' ? ' (PDF activity based)' : ''}${entry.important ? ' · Important' : ''}`,
+      entry.positionChangeText ?? '—',
+      entry.lastActivityAt ? formatActivityTimestamp(entry.lastActivityAt) : entry.lastProgressDay,
+      `${STATUS_LABELS[entry.status]}${entry.statusSource === 'automatic' ? ' (automatic)' : entry.statusSource === 'manual' ? ' (manual)' : ''}${entry.important ? ' · Important' : ''}`,
       entry.resetCount > 0 ? `${entry.resetCount} reset${entry.resetCount === 1 ? '' : 's'}` : '—'
     ];
-    const labels = ['Last saved position', 'Farthest position change', 'Last activity', 'Status', 'Reset'];
+    const labels = ['Last saved position', 'Daily farthest positions', 'Last activity', 'Status', 'Reset'];
     values.forEach((value, index) => {
       const cell = doc.createElement('td');
       cell.textContent = value;
@@ -607,30 +607,12 @@ function renderRecentProgress(
 }
 
 function formatProgress(progress: number | null): string {
-  return progress === null ? '—' : formatPercent(progress);
-}
-
-function formatRecordedLocation(progress: number | null): string {
-  return progress === null ? 'Unknown' : formatPercent(progress);
+  return progress === null ? '—' : formatPDFLocation(progress, null);
 }
 
 function formatRecordedAt(timestamp: number | null): string {
   if (timestamp === null || !Number.isFinite(timestamp)) return 'Unknown time';
-  return new Date(timestamp).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  });
-}
-
-function formatDelta(delta: number | null): string {
-  if (delta === null) return '—';
-  if (delta > 0 && delta * 100 < 1) return '+<1 pp';
-  if (delta < 0 && Math.abs(delta) * 100 < 1) return '−<1 pp';
-  const percent = Math.round(delta * 100);
-  return `${percent > 0 ? '+' : ''}${percent} pp`;
+  return formatActivityTimestamp(timestamp);
 }
 
 function renderActivityCalendar(
@@ -735,8 +717,8 @@ function renderActivityDayDetail(
     row.append(paperCell);
 
     const values = [
-      formatRecordedLocation(paper.recordedProgress),
-      `${STATUS_LABELS[paper.status]}${paper.statusSource === 'automatic' ? ' (PDF activity based)' : ''}${paper.important ? ' · Important' : ''}`,
+      paper.recordedPositionText ?? formatPDFLocation(paper.recordedProgress, null),
+      `${STATUS_LABELS[paper.status]}${paper.statusSource === 'automatic' ? ' (automatic)' : paper.statusSource === 'manual' ? ' (manual)' : ''}${paper.important ? ' · Important' : ''}`,
       formatRecordedAt(paper.lastRecordedAt)
     ];
     const labels = ['Recorded location', 'Current status', 'Last recorded update'];

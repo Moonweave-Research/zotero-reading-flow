@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEFAULT_FLOW_DATA,
+  formatPDFLocation,
+  formatActivityTimestamp,
   HISTORY_RETENTION_DAYS,
   formatRelativeDate,
   getDisplayAttachmentId,
@@ -221,4 +223,17 @@ test('formatRelativeDate gives compact stable labels', () => {
   assert.equal(formatRelativeDate(now - 3 * 60 * 60 * 1000, now), '3h');
   assert.equal(formatRelativeDate(now - 2 * 24 * 60 * 60 * 1000, now), '2d');
   assert.equal(formatRelativeDate(Date.parse('2026-03-01T00:00:00Z'), now), '2026-03-01');
+});
+
+
+test('shared PDF location labels distinguish saved locations from completion and retain uncertainty', () => {
+  assert.equal(formatPDFLocation(1, 7), 'Page 7 / 7');
+  assert.equal(formatPDFLocation(0.9, 10), 'Page 9 / 10');
+  assert.equal(formatPDFLocation(0.875, 8), 'Page 7 / 8');
+  assert.equal(formatPDFLocation(1, null), 'Unknown');
+  assert.equal(formatPDFLocation(0.999, null), 'About 99% of PDF');
+  assert.equal(formatPDFLocation(0.005, null), '<1% of PDF');
+  assert.equal(formatPDFLocation(null, 10), 'Unknown');
+  assert.equal(formatActivityTimestamp(new Date(2026, 9, 24, 14, 11).getTime()), '2026-10-24 14:11');
+  assert.equal(formatActivityTimestamp(null), 'Not recorded');
 });

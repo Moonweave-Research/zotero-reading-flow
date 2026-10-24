@@ -1,5 +1,5 @@
 import { DataStore } from './dataStore';
-import { FlowData, getLastActivityAt, getLocalDayKey, resolveDisplayProgress, resolveReadingAvailability, resolveReadingStatus, ReadingStatus } from './flowData';
+import { FlowData, formatActivityTimestamp, formatPDFLocation, getLastActivityAt, getLocalDayKey, resolveDisplayProgress, resolveReadingAvailability, resolveReadingStatus, ReadingStatus } from './flowData';
 import { ResumeReader } from './resumeReader';
 
 export const READING_FLOW_PANE_ID = 'reading-flow-details';
@@ -161,7 +161,7 @@ export class ReadingFlowItemPaneManager {
     important.addEventListener('change', () => { if (!this.current(state, generation, props.item)) return; void this.mutate(state, parent, () => this.store.setImportant(parent, important.checked), () => Boolean(this.store.getData(parent).important) === important.checked); });
     if (!props.editable || parent.isEditable?.() === false) add('Read-only item.');
     const last = getLastActivityAt(data), first = firstRecordedPDFActivity(data);
-    const recent = last === null ? 'Not recorded' : `${getLocalDayKey(last)} ${String(new Date(last).getHours()).padStart(2, '0')}:${String(new Date(last).getMinutes()).padStart(2, '0')}`;
+    const recent = formatActivityTimestamp(last);
     props.body.append(this.facts(props, [['Last activity', problem ? 'Unavailable' : recent], ['First recorded', problem ? 'Unavailable' : first ?? 'Not recorded']]));
     const target = this.element(props, 'div', 'Checking PDF availability…');
     target.dataset.readingFlowTarget = 'true'; props.body.append(target);
@@ -194,12 +194,7 @@ export class ReadingFlowItemPaneManager {
       const saved = target.action === 'resume' ? `Page ${target.lastPage}${target.totalPages ? ` / ${target.totalPages}` : ''}` : (data.availability || data.lastPage !== null || Object.keys(data.p).length > 0) ? 'Unavailable' : target.action === 'none' ? 'PDF unavailable' : 'Not saved';
       const display = resolveDisplayProgress(data);
       const maximum = display.attachmentId === String(target.attachmentId) ? display.normalizedProgress : null;
-      let farthest = maximum === null ? (data.availability ? 'Unavailable' : Object.keys(data.p).length ? 'Unknown' : 'Not recorded')
-        : `About ${Math.floor(maximum * 100)}% of PDF`;
-      if (maximum !== null && display.pageCount !== null) {
-        const page = maximum * display.pageCount;
-        farthest = `${Math.abs(page - Math.round(page)) < 0.000001 ? 'Page' : 'About page'} ${Math.max(1, Math.round(page))} / ${display.pageCount}`;
-      }
+      const farthest = maximum === null ? (data.availability ? 'Unavailable' : Object.keys(data.p).length ? 'Unknown' : 'Not recorded') : formatPDFLocation(maximum, display.pageCount);
       region.textContent = ''; region.replaceChildren();
       region.append(this.facts(props, [['Saved position', saved], ['Farthest position', farthest], ...(target.filename ? [['PDF', target.filename] as [string, string]] : [])]));
       if (target.action === 'none' || data.availability || (target.action === 'open' && data.lastPage !== null)) region.append(this.element(props, 'p', target.reason));

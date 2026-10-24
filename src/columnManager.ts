@@ -3,7 +3,7 @@ import {
   DisplayReadingStatus,
   ReadingStatus,
   ReadingStatusSource,
-  formatRelativeDate,
+  formatActivityTimestamp,
   getLastActivityAt,
   formatPDFPosition,
   formatMaximumPosition,
@@ -93,7 +93,7 @@ function accessibleText(value: CompositeValue): string {
     return `To Read, manual status, No saved PDF position, no PDF activity recorded${value.important ? ', Important' : ''}`;
   }
   const lastRead = value.lastReadAt && value.lastReadAt > 0
-    ? `last PDF activity ${formatRelativeDate(value.lastReadAt)}`
+    ? `last PDF activity ${formatActivityTimestamp(value.lastReadAt)}`
     : value.positionText === 'No saved PDF position' || !value.positionText ? 'no PDF activity recorded' : 'PDF activity date unknown';
   const source = value.source === 'manual' ? 'manual status' : value.source === 'automatic' ? 'PDF activity based status' : 'no status assigned';
   return `${STATUS_LABELS[value.status] ?? STATUS_LABELS['to-read']}, ${source}, ${value.positionText ?? progressText(value.progress)}, ${value.maximumText ?? ""}, ${lastRead}${value.important ? ', Important' : ''}`;
@@ -244,7 +244,7 @@ export class ColumnManager {
       const visualProgress = value.positionText ?? progress;
       details.textContent = notStarted
         ? 'No PDF activity recorded'
-        : `${visualProgress} · ${value.lastReadAt ? formatRelativeDate(value.lastReadAt) : 'PDF activity date unknown'}`;
+        : `${visualProgress} · ${value.lastReadAt ? formatActivityTimestamp(value.lastReadAt) : 'PDF activity date unknown'}`;
       details.setAttribute('aria-hidden', 'true');
       details.style.cssText = 'min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;';
       cell.appendChild(details);
@@ -286,13 +286,13 @@ export class ColumnManager {
   private renderLastRead(data: string, column: any, doc: Document): HTMLElement {
     const cell = doc.createElement('span');
     cell.className = `cell ${column.className || ''}`.trim();
-    cell.style.cssText = `${BASE_CELL_STYLE};justify-content:center;font-size:11px;color:var(--fill-secondary, #666);text-overflow:ellipsis;white-space:nowrap;`;
+    cell.style.cssText = `${BASE_CELL_STYLE};display:block;align-content:center;font-size:11px;color:var(--fill-secondary, #666);text-overflow:ellipsis;white-space:nowrap;`;
     cell.title = data === 'unavailable' ? 'Reading Flow record unavailable' : 'No PDF activity timestamp recorded';
     cell.setAttribute('aria-label', cell.title);
     const timestamp = Number(data);
     if (!Number.isFinite(timestamp) || timestamp <= 0) return cell;
-    cell.textContent = formatRelativeDate(timestamp);
-    cell.title = `Last PDF activity: ${new Date(timestamp).toLocaleString()}`;
+    cell.textContent = formatActivityTimestamp(timestamp);
+    cell.title = `Last PDF activity: ${formatActivityTimestamp(timestamp)}`;
     cell.setAttribute('aria-label', cell.title);
     return cell;
   }

@@ -285,7 +285,7 @@ test('populated history renders the reading pulse and one semantic Recent Progre
   assert.equal(table?.hidden, false);
   assert.equal(row?.tagName, 'tr');
   assert.deepEqual(row?.children.map((cell) => cell.tagName), ['td', 'td', 'td', 'td', 'td', 'td']);
-  assert.deepEqual(row?.children.map((cell) => cell.attributes['data-label']), ['Paper', 'Last saved position', 'Farthest position change', 'Last activity', 'Status', 'Reset']);
+  assert.deepEqual(row?.children.map((cell) => cell.attributes['data-label']), ['Paper', 'Last saved position', 'Daily farthest positions', 'Last activity', 'Status', 'Reset']);
   assert.match(row?.children[4]?.className ?? '', /status-reading/);
   assert.equal(doc.getElementById('dashboard-recent-progress-summary')?.textContent, 'Showing 1 of 1 items with PDF activity in this period.');
 });
@@ -722,8 +722,8 @@ test('positive percentages below one percent render as less than one instead of 
   assert.equal(findBar(doc, 'dashboard-status-composition', 'Reading')?.children[2]?.textContent, '1 (<1%)');
   assert.equal(findBar(doc, 'dashboard-progress-distribution', '1–24%')?.children[2]?.textContent, '1 (<1%)');
   const cells = doc.getElementById('dashboard-recent-progress-body')?.children[0]?.children;
-  assert.equal(cells?.[1].textContent, '<1%');
-  assert.equal(cells?.[2].textContent, '+<1 pp');
+  assert.equal(cells?.[1].textContent, '<1% of PDF');
+  assert.equal(cells?.[2].textContent, '—');
 });
 
 test('status and measured progress surfaces render independently from the supplied snapshot', () => {
@@ -746,8 +746,8 @@ test('status and measured progress surfaces render independently from the suppli
 
   assert.equal(doc.getElementById('dashboard-read')?.textContent, '1');
   assert.equal(findBar(doc, 'dashboard-status-composition', 'Read')?.children[2]?.textContent, '1 (100%)');
-  assert.equal(findBar(doc, 'dashboard-progress-distribution', '100% PDF position')?.children[2]?.textContent, '1 (100%)');
-  assert.match(findBar(doc, 'dashboard-progress-distribution', '100% PDF position')?.className ?? '', /progress-neutral/);
+  assert.equal(findBar(doc, 'dashboard-progress-distribution', 'Last page of PDF')?.children[2]?.textContent, '1 (100%)');
+  assert.match(findBar(doc, 'dashboard-progress-distribution', 'Last page of PDF')?.className ?? '', /progress-neutral/);
 });
 
 test('empty, large, and unknown-page scopes remain readable without inventing values', () => {
@@ -1030,7 +1030,7 @@ test('recent progress explicitly labels automatic Reading and its independent im
     delta: null, lastProgressDay: '2026-07-28', resetCount: 0 };
   renderDashboard(doc as any, snapshot({ history: history({ recentProgress: [entry] }) }));
   const row = doc.getElementById('dashboard-recent-progress-body')!.children[0];
-  assert.match(JSON.stringify(row), /Reading \(PDF activity based\) · Important/);
+  assert.match(JSON.stringify(row), /Reading \(automatic\) · Important/);
   assert.doesNotMatch(JSON.stringify(row), /restored|completed/);
 });
 
@@ -1038,10 +1038,25 @@ test('recent activity uses first-to-latest maximum endpoints without presenting 
   const doc = documentFixture();
   renderDashboard(doc as any, snapshot({ history: history({ recentProgress: [{
     id: 1, title: 'Paper', status: 'reading', currentProgress: 0.3,
-    positionText: 'Saved at page 3 / 10', delta: 0.8, positionChange: { from: 0.1, to: 0.9 },
+    positionText: 'Saved at page 3 / 10', delta: 0.8, positionChange: { from: 0.1, to: 0.9 }, positionChangeText: 'Page 1 / 10 → Page 9 / 10',
     lastProgressDay: '2026-07-28', resetCount: 0
   }] }) }));
   const cells = doc.getElementById('dashboard-recent-progress-body')!.children[0].children;
   assert.equal(cells[1].textContent, 'Saved at page 3 / 10');
-  assert.equal(cells[2].textContent, '10% → 90%');
+  assert.equal(cells[2].textContent, 'Page 1 / 10 → Page 9 / 10');
+});
+
+
+test('recent activity uses shared local timestamps and explicitly manual status without inventing endpoints', () => {
+  const doc = documentFixture();
+  renderDashboard(doc as any, snapshot({ history: history({ recentProgress: [{
+    id: 1, title: 'Read by choice', status: 'read', statusSource: 'manual', currentProgress: 1,
+    positionText: 'Saved at page 7 / 7', delta: null, lastProgressDay: '2026-10-24',
+    lastActivityAt: new Date(2026, 9, 24, 14, 11).getTime(), resetCount: 0
+  }] }) }));
+  const cells = doc.getElementById('dashboard-recent-progress-body')!.children[0].children;
+  assert.equal(cells[1].textContent, 'Saved at page 7 / 7');
+  assert.equal(cells[2].textContent, '—');
+  assert.equal(cells[3].textContent, '2026-10-24 14:11');
+  assert.equal(cells[4].textContent, 'Read (manual)');
 });

@@ -897,3 +897,20 @@ Scope: src/itemPaneManager.ts, test/itemPaneManager.test.ts, this authority,
 docs/PDF_LOCATION_TRUTH_VERIFICATION.md. No writer, tracker, schema, model or
 permission change; no public release/tag. Generated verification outputs only
 are allowed for deterministic ORRO replay.
+
+
+## Approved cross-surface consistency patch — 2026-10-24
+
+The user authorized patching the observed statistics/list inconsistencies.
+Use one conservative interpretation of ambiguous historical values in daily
+and period views; unknown is not 100%. Show PDF positions as pages when counts
+are known, including list accessibility/tooltip and daily/period statistics.
+Distinguish first/latest daily maxima from an accumulated maximum. Display
+activity timestamps in local YYYY-MM-DD HH:mm across the pane/list/statistics;
+retain explicit missing timestamps and current status/manual source labels.
+Scope: src/{flowData,itemPaneManager,columnManager,statistics,dashboard}.ts,
+their regression tests, addon/dashboard.xhtml and the English dashboard heading
+locale, this authority and docs/SURFACE_CONSISTENCY_VERIFICATION.md. No writer,
+tracker, schema, preference, model or permission changes. Verify native captures,
+PR merge and personal add-on update under the existing installation contract.
+Generated build/test outputs are allowed only for observed ORRO verification.
