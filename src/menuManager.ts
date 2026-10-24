@@ -1,3 +1,4 @@
+import { ReadingFlowItemPaneManager } from './itemPaneManager';
 import { DataStore } from './dataStore';
 import { ReadingStatus } from './flowData';
 import { Logger } from './Logger';
@@ -29,7 +30,8 @@ export class ReadingFlowMenuManager {
 
   constructor(
     private dataStore: DataStore,
-    private dashboardManager?: DashboardManager
+    private dashboardManager?: DashboardManager,
+    private itemPaneManager?: ReadingFlowItemPaneManager
   ) {
     this.resumeReader = new ResumeReader(dataStore);
   }
@@ -64,6 +66,14 @@ export class ReadingFlowMenuManager {
             context?.setVisible?.(true);
           },
           menus: [
+            ...(this.itemPaneManager ? [{
+              menuType: 'menuitem', label: 'View Reading Flow', l10nID: 'reading-flow-view-pane',
+              onShowing: (_event: Event, context: any) => {
+                const selected = this.getSelectedItems(context);
+                context.setEnabled(this.itemPaneManager?.canFocus(selected) ?? false);
+              },
+              onCommand: () => this.itemPaneManager?.focus()
+            }] : []),
             ...dashboardContextMenu,
             {
               menuType: 'menuitem',

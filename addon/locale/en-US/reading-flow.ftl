@@ -72,3 +72,9 @@ reading-flow-clear-important =
     .label = Clear Important
 
 reading-flow-important-only = Important only
+
+reading-flow-pane-header =
+    .label = Reading Flow
+reading-flow-pane-sidenav =
+    .tooltiptext = Reading Flow
+reading-flow-view-pane = View Reading Flow
