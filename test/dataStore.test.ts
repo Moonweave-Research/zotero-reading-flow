@@ -992,3 +992,24 @@ test('an explicit pending-reader flush may persist while the shutdown hook is aw
     (globalThis as any).Services = previousServices;
   }
 });
+
+test('PR2 reset preserves genuine activity timestamp and manual status; status changes preserve positions', async () => {
+  const item = memoryItem(990);
+  const store = new DataStore();
+  await store.recordProgress(item, { attachmentId: '10', progress: 0.7, lastPage: 7, pageCount: 10, at: 1000 });
+  await store.setStatus(item, 'read', 2000);
+  const before = store.getData(item);
+  assert.equal(before.lastPage, 7);
+  assert.deepEqual(before.p, { '10': 0.7 });
+  await store.resetProgress(item, 3000);
+  const after = store.getData(item);
+  assert.equal(after.s, 'read');
+  assert.equal(after.lastReadAt, 1000);
+  assert.equal(after.lastPage, null);
+  assert.equal(after.lastAttachmentId, null);
+  assert.deepEqual(after.p, {});
+  for (const [day, rollup] of Object.entries(before.history!.days)) {
+    assert.deepEqual(after.history!.days[day].progress, rollup.progress);
+    assert.equal(after.history!.days[day].lastReadAt, rollup.lastReadAt);
+  }
+});

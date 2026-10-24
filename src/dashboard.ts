@@ -1,3 +1,4 @@
+import { ResumeDisplayTarget } from './resumeReader';
 import type { DisplayReadingStatus, ReadingStatus } from './flowData';
 import {
   HISTORY_RANGES,
@@ -44,6 +45,8 @@ export interface DashboardBridge {
   discardActivityDayDetailCache?(token?: ActivityDayDetailCacheLifecycleToken): void;
   focusItem?(id: number | string): Promise<boolean>;
   resumeItem?(id: number | string): Promise<boolean>;
+  getPDFTarget?(id: number | string): Promise<ResumeDisplayTarget>;
+  executePDFTarget?(target: ResumeDisplayTarget): Promise<boolean>;
 }
 
 const STATUS_LABELS: Record<DisplayReadingStatus, string> = {
@@ -281,24 +284,42 @@ export class DashboardApp {
       this.lastUpdatedAt,
       this.dataset,
       {
+        onResumeItem: this.bridge?.getPDFTarget ? undefined : (id, title) => { void this.resumeItem(id, title); },
+        onResumeActivityDayItem: this.bridge?.getPDFTarget ? undefined : (id, title) => { void this.resumeItem(id, title, 'dashboard-activity-day-action-status'); },
         recentProgressExpanded: this.recentProgressExpanded,
         onToggleRecentProgress: () => {
           this.recentProgressExpanded = !this.recentProgressExpanded;
           this.renderLatestSnapshot();
         },
         onFocusItem: (id, title) => { void this.focusItem(id, title); },
-        onResumeItem: (id, title) => { void this.resumeItem(id, title); },
+
         selectedActivityDay: this.selectedActivityDay,
         activityDayDetail: this.activityDayDetail,
         onToggleActivityDay: (day) => { void this.toggleActivityDay(day); },
         onFocusActivityDayItem: (id, title) => {
           void this.focusItem(id, title, 'dashboard-activity-day-action-status');
         },
-        onResumeActivityDayItem: (id, title) => {
-          void this.resumeItem(id, title, 'dashboard-activity-day-action-status');
-        }
+
       }
     );
+    if (!this.bridge?.getPDFTarget) return;
+    for (const button of Array.from(this.doc.querySelectorAll?.<HTMLButtonElement>('button[data-pdf-item]') ?? [])) {
+      const id = button.getAttribute('data-pdf-item')!;
+      button.disabled = true;
+      button.textContent = 'Checking PDF…';
+      void this.bridge?.getPDFTarget?.(id).then(target => {
+        if (!button.isConnected) return;
+        button.textContent = target.fallbackLabel;
+        button.title = target.reason;
+        button.setAttribute('aria-label', `${target.fallbackLabel}. ${target.reason}`);
+        button.disabled = target.action === 'none';
+        button.onclick = async () => {
+          const opened = await this.bridge?.executePDFTarget?.(target);
+          setText(this.doc, 'dashboard-recent-progress-action-status', opened
+            ? `Opened ${target.filename}.` : 'PDF target changed or is unavailable. Refresh to inspect it.');
+        };
+      }).catch(() => { button.textContent = 'PDF unavailable'; });
+    }
   }
 
   private clearActivityDayDetail() {
@@ -543,8 +564,9 @@ function renderRecentProgress(
     const resume = doc.createElement('button');
     resume.type = 'button';
     resume.className = 'recent-progress-resume';
-    resume.textContent = 'Resume';
-    resume.addEventListener('click', () => options.onResumeItem?.(entry.id, entry.title));
+    resume.textContent = 'Open PDF';
+    resume.setAttribute('data-pdf-item', String(entry.id));
+    if (options.onResumeItem) resume.addEventListener('click', () => options.onResumeItem?.(entry.id, entry.title));
     const actions = doc.createElement('span');
     actions.className = 'recent-progress-actions';
     actions.append(focus, resume);
@@ -689,8 +711,9 @@ function renderActivityDayDetail(
     const resume = doc.createElement('button');
     resume.type = 'button';
     resume.className = 'recent-progress-resume';
-    resume.textContent = 'Resume';
-    resume.addEventListener('click', () => options.onResumeActivityDayItem?.(paper.itemID, paper.title));
+    resume.textContent = 'Open PDF';
+    resume.setAttribute('data-pdf-item', String(paper.itemID));
+    if (options.onResumeActivityDayItem) resume.addEventListener('click', () => options.onResumeActivityDayItem?.(paper.itemID, paper.title));
     const actions = doc.createElement('span');
     actions.className = 'recent-progress-actions';
     actions.append(focus, resume);

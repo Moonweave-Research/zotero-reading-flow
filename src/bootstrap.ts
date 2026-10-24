@@ -246,7 +246,7 @@ export class Bootstrap {
   }
 }
 
-type DashboardResumeReader = Pick<ResumeReader, 'resume'>;
+type DashboardResumeReader = Pick<ResumeReader, 'resume'> & Partial<Pick<ResumeReader, 'getResumeDisplayTarget' | 'executeTarget'>>;
 
 interface DashboardBridgeDataStore {
   hasReadingFlowData(item: unknown): boolean;
@@ -363,6 +363,16 @@ export function createDashboardBridge({
       const selected = await pane.selectItem(itemID);
       if (selected) Zotero.getMainWindow()?.focus?.();
       return Boolean(selected);
+    },
+    async getPDFTarget(id) {
+      const item = Zotero.Items?.get?.(Number(id));
+      if (!resumeReader.getResumeDisplayTarget || !item || (item as any).deleted) {
+        return { action: 'none', sourceId: Number(id), reason: 'Item unavailable.', canResume: false, fallbackLabel: 'PDF unavailable' };
+      }
+      return resumeReader.getResumeDisplayTarget(item);
+    },
+    async executePDFTarget(target) {
+      return resumeReader.executeTarget?.(target) ?? false;
     },
     async resumeItem(id) {
       return resumeDashboardItem(id, resumeReader);

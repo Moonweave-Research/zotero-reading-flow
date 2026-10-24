@@ -2,9 +2,9 @@
 
 > **Status: AUTHORITATIVE**
 >
-> **Last updated:** 2026-08-27
+> **Last updated:** 2026-10-24
 > **Released baseline:** Zotero Reading Flow v1.3.5
-> **Active planning target:** Slice M — Explicit Status and Safe Library Triage
+> **Active implementation target:** Approved PR2 — Resume/Open and tracked PDF position reset (source/tests complete; native/human acceptance pending)
 > **Execution surface:** ORRO (`scout -> flowplan -> proofrun -> proofcheck -> handoff`)
 
 ## Authority and Document Routing
@@ -563,7 +563,7 @@ The user authorized implementing the four reviewed PRs in order, testing and rev
 
 # Reading Flow 기능 정돈 — 최종 제안 PR 목록
 
-2026-10-24 · 검토 3차 수렴 · **설계 제안 / 제품 미구현 / 실제 PR 미생성**
+2026-10-24 · 검토 3차 수렴 · **PR1·PR2 소스/테스트 구현 완료 / 네이티브·사람 인수 미실행 / PR3·4 미구현 / 실제 PR 미생성**
 
 ## 결론
 
@@ -623,7 +623,7 @@ PR1 implementation write region (2026-10-24, user-approved directory expansion):
 `addon/locale/en-US/reading-flow.ftl`, directly matching `test/*.test.ts`, this
 file, and `docs/PR1_VERIFICATION.md`. Preferences XHTML changes remove obsolete
 completion wording/controls only; stored preference values and live user
-configuration are not changed. PR2–4 remain unimplemented in this worktree.
+configuration are not changed. PR1 source/tests are complete; native/human release acceptance is not a prerequisite for PR2 implementation.
 
 ## 제안 PR 2 — 이어 보기와 위치 초기화를 예측 가능하게 한다
 
@@ -639,6 +639,23 @@ configuration are not changed. PR2–4 remain unimplemented in this worktree.
 **선행:** PR 1. **주요 경계:** `resumeReader.ts`, `menuManager.ts`, `dataStore.ts`, `dashboard.ts`, 관련 테스트.
 
 **통과 조건:** 모든 진입점이 같은 대상·이름·페이지를 사용; 저장 위치 없는 PDF는 Open; 실행 직전 삭제/선택 변경에 다른 자료가 열리지 않음; 초기화 후 수동 상태·최근 활동 표시/정렬·이력 보존; 읽기 전용 자료에서는 조회 가능하되 쓰기는 차단. 새 ‘재독 회차’ 모델은 추가하지 않는다.
+
+PR2 implementation status (2026-10-24): complete in source and regression tests.
+The common serializable `ResumeDisplayTarget` and `executeTarget` API is used
+by the native menu and both dashboard row surfaces and is available for the
+future panel. Unknown page means Open; changed/deleted displayed targets fail
+closed. Read-only viewing is separate from mutation eligibility. The Advanced
+reset confirms current/maximum position removal and preserves manual status,
+genuine last activity and retained history. Status changes preserve positions;
+the common Restart action is removed. No PR3/4 model or panel work is included.
+
+Approved PR2 write region includes `src/resumeReader.ts`, `src/menuManager.ts`,
+`src/dataStore.ts`, `src/dashboard.ts`, `src/bootstrap.ts` (shared dashboard
+bridge), matching tests, locale strings, this authority and
+`docs/PR2_VERIFICATION.md`. Verification: `npm run verify` passed (244 tests),
+source/packaged XHTML and diff checks passed. See the verification record for
+exact evidence and unrun native/human gates. This status does not authorize
+public release or progression to PR3/4 in this task.
 
 ## 제안 PR 3 — 중요 표시가 읽기 상태를 지우지 않게 한다
 

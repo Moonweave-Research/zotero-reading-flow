@@ -1,7 +1,7 @@
 import { DataStore } from './dataStore';
 import { ReadingStatus } from './flowData';
 import { Logger } from './Logger';
-import { ResumeReader } from './resumeReader';
+import { ResumeDisplayTarget, ResumeReader } from './resumeReader';
 import { DashboardManager } from './dashboardManager';
 
 const PLUGIN_ID = 'readingflow@moon.com';
@@ -17,8 +17,7 @@ const MENU_LABELS = {
   statusRead: 'Mark as Read',
   statusImportant: 'Mark as Important',
   statusAutomatic: 'Clear Manual Status (Use Automatic)',
-  resetProgress: 'Reset Progress (Keep Manual Status)',
-  restartToRead: 'Restart as To Read',
+  resetProgress: 'Reset tracked PDF positions',
   viewStatistics: 'View Current View Statistics',
   readingStatistics: 'Reading Statistics'
 } as const;
@@ -26,6 +25,8 @@ const MENU_LABELS = {
 export class ReadingFlowMenuManager {
   private registeredMenuIDs: string[] = [];
   private resumeReader: ResumeReader;
+  private displayedTarget?: ResumeDisplayTarget;
+  private targetSequence = 0;
 
   constructor(
     private dataStore: DataStore,
@@ -70,13 +71,20 @@ export class ReadingFlowMenuManager {
               l10nID: 'reading-flow-resume-reading',
               label: MENU_LABELS.resumeReading,
               onShowing: async (_event: Event, context: any) => {
+                const sequence = ++this.targetSequence;
                 const selected = this.getSelectedItems(context);
                 const displayTarget = selected.length === 1
                   ? await this.resumeReader.getResumeDisplayTarget(selected[0])
-                  : { canResume: false, fallbackLabel: MENU_LABELS.resumeReading };
+                  : { action: 'none' as const, sourceId: 0, reason: 'Select one item.', canResume: false, fallbackLabel: 'PDF unavailable' };
+                if (sequence !== this.targetSequence || this.getSelectedItems(context).length !== selected.length
+                  || this.getSelectedItems(context)[0]?.id !== selected[0]?.id) return;
+                this.displayedTarget = displayTarget;
                 context.setL10nArgs?.(displayTarget.l10nArgs ?? '{}');
+                context.menuElem?.removeAttribute?.('data-l10n-id');
+                context.menuElem?.setAttribute?.('aria-label', `${displayTarget.fallbackLabel}. ${displayTarget.reason}`);
+                context.menuElem?.setAttribute?.('tooltiptext', displayTarget.reason);
                 this.setMenuItemLabel(context, displayTarget.fallbackLabel);
-                context.setEnabled(displayTarget.canResume);
+                context.setEnabled(displayTarget.action !== 'none');
               },
               onCommand: (_event: Event, context: any) => this.resumeSelectedItem(context)
             },
@@ -91,6 +99,7 @@ export class ReadingFlowMenuManager {
             {
               menuType: 'menuitem',
               l10nID: 'reading-flow-status-automatic',
+              onShowing: (_event: Event, context: any) => context.setEnabled(this.getMutationSelection(context).items.length > 0),
               label: MENU_LABELS.statusAutomatic,
               onCommand: (_event: Event, context: any) => this.updateSelectedItems(
                 (item) => this.dataStore.clearManualStatus(item),
@@ -102,28 +111,22 @@ export class ReadingFlowMenuManager {
               menuType: 'separator'
             },
             {
+              menuType: 'submenu',
+              label: 'Advanced',
+              l10nID: 'reading-flow-advanced',
+              menus: [{
               menuType: 'menuitem',
               l10nID: 'reading-flow-reset-progress',
+              onShowing: (_event: Event, context: any) => context.setEnabled(this.getMutationSelection(context).items.length > 0),
               label: MENU_LABELS.resetProgress,
-              onCommand: (_event: Event, context: any) => this.updateSelectedItems(
+              onCommand: (_event: Event, context: any) => this.confirmReset() && this.updateSelectedItems(
                 (item) => this.dataStore.resetProgress(item),
                 context,
                 (item) => !this.hasResumeState(item)
               )
+              }]
             },
-            {
-              menuType: 'menuitem',
-              l10nID: 'reading-flow-restart-to-read',
-              label: MENU_LABELS.restartToRead,
-              onCommand: (_event: Event, context: any) => this.updateSelectedItems(
-                (item) => this.dataStore.restartAsToRead(item),
-                context,
-                (item) => {
-                  const data = this.getCurrentData(item);
-                  return data.s === 'to-read' && !this.hasResumeState(item);
-                }
-              )
-            }
+
           ]
         }
       ]
@@ -170,6 +173,7 @@ export class ReadingFlowMenuManager {
       menuType: 'menuitem',
       l10nID,
       label,
+      onShowing: (_event: Event, context: any) => context.setEnabled(this.getMutationSelection(context).items.length > 0),
       onCommand: (_event: Event, context: any) => this.updateSelectedItems(
         (item) => this.dataStore.setStatus(item, status),
         context,
@@ -192,7 +196,12 @@ export class ReadingFlowMenuManager {
 
     const item = selected[0];
     try {
-      await this.resumeReader.resume(item);
+      const target = this.displayedTarget ?? await this.resumeReader.getResumeDisplayTarget(item);
+      if (target.sourceId !== item.id) return;
+      await this.resumeReader.executeTarget(target, () => {
+        const current = this.getSelectedItems(context);
+        return current.length === 1 && current[0].id === item.id;
+      });
     } catch (e) {
       Logger.error(`resume reading failed for item ${item?.id}`, e);
     }
@@ -215,7 +224,7 @@ export class ReadingFlowMenuManager {
     if (this.getMutationSelection(context).items.length > 0) return true;
 
     const selected = this.getSelectedItems(context);
-    return selected.length === 1 && await this.resumeReader.canResume(selected[0]);
+    return selected.length === 1 && (await this.resumeReader.getResumeDisplayTarget(selected[0])).action !== 'none';
   }
 
   private getSelectedItems(context?: any): any[] {
@@ -312,13 +321,19 @@ export class ReadingFlowMenuManager {
     const data = this.getCurrentData(item);
     return Object.keys(data.p).length > 0
       || data.lastAttachmentId !== null
-      || data.lastPage !== null
-      || data.lastReadAt !== null;
+      || data.lastPage !== null;
   }
 
   private getCurrentData(item: any) {
     this.dataStore.invalidateCache(item.id);
     return this.dataStore.getData(item);
+  }
+
+  private confirmReset(): boolean {
+    return (globalThis as any).Services?.prompt?.confirm?.(
+      Zotero.getMainWindow?.() ?? null, 'Reset tracked PDF positions',
+      'Clear current and maximum tracked PDF positions for the selected items? Manual status, last PDF activity, and history are preserved. This does not open a PDF at its first page.'
+    ) === true;
   }
 
   private confirmLargeBatch(count: number): boolean {

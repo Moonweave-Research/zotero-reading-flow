@@ -69,6 +69,7 @@ test('canResume returns true when parent lastAttachmentId resolves to a PDF atta
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 10);
         return attachment;
       }
@@ -78,6 +79,7 @@ test('canResume returns true when parent lastAttachmentId resolves to a PDF atta
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -94,6 +96,7 @@ test('getResumeDisplayTarget provides dynamic menu metadata for page and total',
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 10);
         return attachment;
       }
@@ -103,6 +106,7 @@ test('getResumeDisplayTarget provides dynamic menu metadata for page and total',
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -116,7 +120,7 @@ test('getResumeDisplayTarget provides dynamic menu metadata for page and total',
   assert.equal(target.lastPage, 4);
   assert.equal(target.totalPages, 5);
   assert.equal(target.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 5 }));
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 5');
+  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 5 — PDF 10');
 });
 
 test('getResumeDisplayTarget disables resume when no last page is known', async () => {
@@ -125,6 +129,7 @@ test('getResumeDisplayTarget disables resume when no last page is known', async 
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 10);
         return attachment;
       }
@@ -134,6 +139,7 @@ test('getResumeDisplayTarget disables resume when no last page is known', async 
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -145,7 +151,7 @@ test('getResumeDisplayTarget disables resume when no last page is known', async 
   assert.equal(target.canResume, false);
   assert.equal(target.lastPage, null);
   assert.equal(target.l10nArgs, undefined);
-  assert.equal(target.fallbackLabel, 'Resume Reading');
+  assert.equal(target.fallbackLabel, 'Open PDF — PDF 10');
 });
 
 test('resume opens parent last attachment at stored 1-based lastPage converted to 0-based pageIndex', async () => {
@@ -155,6 +161,7 @@ test('resume opens parent last attachment at stored 1-based lastPage converted t
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 10);
         return attachment;
       }
@@ -166,6 +173,7 @@ test('resume opens parent last attachment at stored 1-based lastPage converted t
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -194,6 +202,7 @@ test('resume falls back to best PDF attachment when parent lastAttachmentId is i
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData() {
       return flowData({ lastAttachmentId: 'not-a-number', lastPage: 3 });
@@ -211,6 +220,7 @@ test('resume falls back to best PDF attachment when tracked attachment is not a 
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 10);
         return {
           id: 10,
@@ -227,6 +237,7 @@ test('resume falls back to best PDF attachment when tracked attachment is not a 
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -245,6 +256,7 @@ test('resume falls back to best PDF attachment without stale page when tracked a
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 10);
         return null;
       }
@@ -256,6 +268,7 @@ test('resume falls back to best PDF attachment without stale page when tracked a
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -274,6 +287,7 @@ test('resume falls back to best PDF attachment without stale page when tracked a
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 10);
         return undefined;
       }
@@ -285,6 +299,7 @@ test('resume falls back to best PDF attachment without stale page when tracked a
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -304,6 +319,7 @@ test('resume ignores tracked PDF from a different parent and opens best attachme
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 10);
         return otherParentAttachment;
       }
@@ -315,6 +331,7 @@ test('resume ignores tracked PDF from a different parent and opens best attachme
     }
   };
 
+  installFixtureLookup([fallbackAttachment, otherParentAttachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -333,6 +350,7 @@ test('resume uses PDF attachment directly and reads parent lastPage when parent 
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 20);
         return parent;
       }
@@ -344,6 +362,7 @@ test('resume uses PDF attachment directly and reads parent lastPage when parent 
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -362,6 +381,7 @@ test('resume opens direct PDF without stale page when parent lastAttachmentId po
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 20);
         return parent;
       }
@@ -373,6 +393,7 @@ test('resume opens direct PDF without stale page when parent lastAttachmentId po
     }
   };
 
+  installFixtureLookup([attachmentB, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -390,6 +411,7 @@ test('getResumeDisplayTarget for direct PDF attachment uses cached total pages f
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 20);
         return parent;
       }
@@ -399,6 +421,7 @@ test('getResumeDisplayTarget for direct PDF attachment uses cached total pages f
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -410,7 +433,7 @@ test('getResumeDisplayTarget for direct PDF attachment uses cached total pages f
   assert.equal(target.canResume, true);
   assert.equal(target.totalPages, 7);
   assert.equal(target.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 7 }));
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 7');
+  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 7 — PDF 10');
 });
 
 test('direct PDF attachment falls back to PDF metadata when parent cache page count is unavailable', async () => {
@@ -419,6 +442,7 @@ test('direct PDF attachment falls back to PDF metadata when parent cache page co
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 20);
         return parent;
       }
@@ -428,6 +452,7 @@ test('direct PDF attachment falls back to PDF metadata when parent cache page co
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -438,7 +463,7 @@ test('direct PDF attachment falls back to PDF metadata when parent cache page co
   const target = await reader.getResumeDisplayTarget(attachment);
   assert.equal(target.canResume, true);
   assert.equal(target.totalPages, 12);
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 12');
+  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 12 — PDF 10');
   assert.equal(target.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 12 }));
 });
 
@@ -448,6 +473,7 @@ test('direct PDF attachment uses live reader page count when metadata and cache 
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 20);
         return parent;
       }
@@ -474,6 +500,7 @@ test('direct PDF attachment uses live reader page count when metadata and cache 
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -484,7 +511,7 @@ test('direct PDF attachment uses live reader page count when metadata and cache 
   const target = await reader.getResumeDisplayTarget(attachment);
   assert.equal(target.canResume, true);
   assert.equal(target.totalPages, 9);
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 9');
+  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 9 — PDF 10');
 });
 
 test('direct PDF attachment prefers cached pageCount string when reader is unavailable', async () => {
@@ -493,6 +520,7 @@ test('direct PDF attachment prefers cached pageCount string when reader is unava
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 20);
         return parent;
       }
@@ -502,6 +530,7 @@ test('direct PDF attachment prefers cached pageCount string when reader is unava
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -512,7 +541,7 @@ test('direct PDF attachment prefers cached pageCount string when reader is unava
   const target = await reader.getResumeDisplayTarget(attachment);
   assert.equal(target.canResume, true);
   assert.equal(target.totalPages, 12);
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 12');
+  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 12 — PDF 10');
 });
 
 test('direct PDF attachment prefers cached page count when live reader count conflicts', async () => {
@@ -521,6 +550,7 @@ test('direct PDF attachment prefers cached page count when live reader count con
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 20);
         return parent;
       }
@@ -547,6 +577,7 @@ test('direct PDF attachment prefers cached page count when live reader count con
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -557,7 +588,7 @@ test('direct PDF attachment prefers cached page count when live reader count con
   const target = await reader.getResumeDisplayTarget(attachment);
   assert.equal(target.canResume, true);
   assert.equal(target.totalPages, 5);
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 5');
+  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 5 — PDF 10');
 });
 
 test('direct PDF attachment prefers live reader page count when cached page count conflicts', async () => {
@@ -566,6 +597,7 @@ test('direct PDF attachment prefers live reader page count when cached page coun
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 20);
         return parent;
       }
@@ -592,6 +624,7 @@ test('direct PDF attachment prefers live reader page count when cached page coun
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -602,7 +635,7 @@ test('direct PDF attachment prefers live reader page count when cached page coun
   const target = await reader.getResumeDisplayTarget(attachment);
   assert.equal(target.canResume, true);
   assert.equal(target.totalPages, 5);
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 5');
+  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 5 — PDF 10');
 });
 
 test('resume opens without location when no positive lastPage is available', async () => {
@@ -617,6 +650,7 @@ test('resume opens without location when no positive lastPage is available', asy
     }
   };
 
+  installFixtureLookup([attachment]);
   const reader = new ResumeReader({
     getData() {
       dataReads += 1;
@@ -649,7 +683,8 @@ test('resume returns false and logs a warning when opening without location fail
   };
 
   try {
-    const reader = new ResumeReader({
+    installFixtureLookup([attachment]);
+  const reader = new ResumeReader({
       getData() {
         return flowData();
       }
@@ -685,7 +720,8 @@ test('resume uses only Zotero.Reader.open and does not fall back to pane openPDF
   };
 
   try {
-    const reader = new ResumeReader({
+    installFixtureLookup([attachment]);
+  const reader = new ResumeReader({
       getData() {
         return flowData();
       }
@@ -700,13 +736,14 @@ test('resume uses only Zotero.Reader.open and does not fall back to pane openPDF
   }
 });
 
-test('resume retries without location when opening at page location throws', async () => {
+test('resume refuses unspecified opening when saved-page opening fails', async () => {
   const calls: any[] = [];
   const attachment = pdfAttachment(10, 20);
   const parent = regularItem(20);
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 20);
         return parent;
       }
@@ -721,6 +758,7 @@ test('resume retries without location when opening at page location throws', asy
     }
   };
 
+  installFixtureLookup([attachment, parent]);
   const reader = new ResumeReader({
     getData(item: any) {
       assert.equal(item, parent);
@@ -728,8 +766,8 @@ test('resume retries without location when opening at page location throws', asy
     }
   } as any);
 
-  assert.equal(await reader.resume(attachment), true);
-  assert.deepEqual(calls, [[10, { pageIndex: 1 }], [10, undefined]]);
+  assert.equal(await reader.resume(attachment), false);
+  assert.deepEqual(calls, [[10, { pageIndex: 1 }]]);
 });
 
 test('resume returns false when no PDF target can be resolved', async () => {
@@ -752,6 +790,7 @@ test('resume returns false when no PDF target can be resolved', async () => {
     }
   };
 
+  installFixtureLookup([parent]);
   const reader = new ResumeReader({
     getData() {
       return flowData({ lastAttachmentId: '10' });
@@ -779,7 +818,8 @@ test('resume returns false and warns when flow data read fails during resolution
   };
 
   try {
-    const reader = new ResumeReader({
+    installFixtureLookup([parent]);
+  const reader = new ResumeReader({
       getData() {
         throw new Error('data failed');
       }
@@ -848,6 +888,7 @@ test('resume opens direct PDF without location when resolved parent is not a reg
   (globalThis as any).Zotero = {
     Items: {
       get(id: number) {
+        if (typeof parent !== 'undefined' && id === parent.id) return parent;
         assert.equal(id, 20);
         return {
           id: 20,
@@ -864,6 +905,7 @@ test('resume opens direct PDF without location when resolved parent is not a reg
     }
   };
 
+  installFixtureLookup([attachment]);
   const reader = new ResumeReader({
     getData() {
       dataReads += 1;
@@ -913,4 +955,71 @@ test('resume ignores unsupported non-PDF non-regular items without reading data 
   assert.equal(dataReads, 0);
   assert.equal(bestAttachmentCalls, 0);
   assert.deepEqual(calls, []);
+});
+
+test('PR2 shared target keeps same-parent PDFs separate and rejects deletion or delayed selection changes', async () => {
+  const first = pdfAttachment(101, 100);
+  const second = pdfAttachment(102, 100);
+  const parent = regularItem(100, second);
+  const items = new Map<number, any>([[100, parent], [101, first], [102, second]]);
+  const calls: unknown[] = [];
+  (globalThis as any).Zotero = { Items: { get: (id: number) => items.get(id) }, Reader: { open: async (...args: any[]) => calls.push(args) } };
+  const data = flowData({ lastAttachmentId: '101', lastPage: 12, pageCount: { '101': 40 } });
+  const reader = new ResumeReader({ getData: () => data } as any);
+  const tracked = await reader.getResumeDisplayTarget(parent);
+  assert.equal(tracked.action, 'resume');
+  assert.equal(tracked.attachmentId, 101);
+  const other = await reader.getResumeDisplayTarget(second);
+  assert.equal(other.action, 'open');
+  assert.equal(other.lastPage, null);
+  assert.match(other.reason, /No saved page/);
+  assert.equal(await reader.executeTarget(tracked, () => false), false);
+  items.delete(101);
+  assert.equal(await reader.executeTarget(tracked), false);
+  const fallback = await reader.getResumeDisplayTarget(parent);
+  assert.equal(fallback.action, 'open');
+  assert.equal(fallback.attachmentId, 102);
+  assert.equal(fallback.lastPage, null);
+  assert.deepEqual(calls, []);
+  (parent as any).isEditable = () => false;
+  assert.equal(await reader.executeTarget(fallback), true);
+  assert.deepEqual(calls, [[102, undefined]]);
+});
+
+
+// Real Zotero resolves both source and target IDs; older fixtures only mocked one lookup.
+function installFixtureLookup(items: any[]) {
+  const zotero = (globalThis as any).Zotero;
+  const oldGet = zotero.Items?.get;
+  zotero.Items = { get(id: number) {
+    return items.find(item => item.id === id) ?? oldGet?.(id);
+  } };
+}
+
+test('PR2 async validation rejects selection changes and target deletion while resolving', async () => {
+  const attachment = pdfAttachment(502, 501);
+  const parent = regularItem(501, attachment);
+  let release: (() => void) | undefined;
+  let delay = false;
+  let selected = true;
+  (attachment as any).fileExists = async () => {
+    if (delay) await new Promise<void>(resolve => { release = resolve; });
+    return true;
+  };
+  const items = new Map<number, any>([[501, parent], [502, attachment]]);
+  const calls: unknown[] = [];
+  (globalThis as any).Zotero = { Items: { get: (id: number) => items.get(id) }, Reader: { open: async (...args: any[]) => calls.push(args) } };
+  const reader = new ResumeReader({ getData: () => flowData() } as any);
+  const target = await reader.getResumeDisplayTarget(parent);
+  delay = true;
+  const execution = reader.executeTarget(target, () => selected);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  selected = false;
+  items.delete(502);
+  release!();
+  assert.equal(await execution, false);
+  assert.deepEqual(calls, []);
+  delay = false;
+  (attachment as any).fileExists = async () => false;
+  assert.equal((await reader.getResumeDisplayTarget(parent)).action, 'none');
 });
