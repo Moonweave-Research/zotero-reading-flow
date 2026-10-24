@@ -928,3 +928,16 @@ verification documentation. Run RED/GREEN, full verification, deterministic
 ORRO replay and native test-profile captures, then PR/CI merge and the exact
 verified XPI update in personal Zotero. Preserve data/settings/models/permissions;
 no public release or tag. Generated build/test outputs only for verification.
+
+## Approved narrow-pane font reflow follow-up — 2026-10-24
+
+During the authorized remaining native acceptance, a 320 CSS px pane at Zotero
+font scale 2.00 split activity dates and PDF positions across multiple short
+lines. Fix only the facts layout: keep paired semantic labels and values on one
+row when they fit, and let each value use its own line when they do not. Preserve
+status, dates, positions, PDF identity, read-only rendering and all existing
+actions. Scope: src/itemPaneManager.ts, this authority and verification notes.
+Use existing regressions and actual native before/after captures; no CSS-string
+test may substitute for layout acceptance. Follow the existing ORRO replay,
+PR/CI merge and personal XPI installation contract. No schema, writer, tracking,
+personal preference, model or permission changes; no public release/tag.
