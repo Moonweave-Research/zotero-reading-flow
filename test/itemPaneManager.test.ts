@@ -45,7 +45,7 @@ function fixture(extra = '', editable = true) {
   manager.register();
   const body = new Element('body'), doc = { createElementNS: (_ns: string, tag: string) => new Element(tag) };
   const props: any = { body, doc, item: paper, editable, setEnabled: (value: boolean) => { props.enabled = value; }, refresh: () => { refreshes++; } };
-  async function view(item = paper) { props.item = item; hooks.onItemChange({ ...props }); hooks.onRender({ ...props }); await hooks.onAsyncRender({ ...props }); }
+  async function view(item = paper) { props.item = item; hooks.onItemChange({ ...props }); await hooks.onRender({ ...props }); await hooks.onAsyncRender?.({ ...props }); }
   hooks.onInit(props);
   return { store, reader, manager, paper, pdf, props, body, items, view, menus, opens, scrolls,
     pane, details, hooks: () => hooks, select: (items: any[]) => { selection = items; }, notify: () => observer.notify('modify', 'item', [1]),
@@ -293,4 +293,19 @@ test('unknown page count does not round a fractional PDF location up to 100 perc
   await f.view(); assert.match(f.body.text(), /Farthest position.*About 99% of PDF/);
   assert.doesNotMatch(f.body.text(), /100%|End of PDF/);
   assert.equal(f.counts().saves, 0); f.manager.unregister();
+});
+
+
+test('a sync pane rerender resolves PDF details without another async hook or scroll and writes nothing', async () => {
+  const original = payload({ lastAttachmentId: '2', lastPage: 3, p: { '2': 0.9 }, pageCount: { '2': 10 } });
+  const f = fixture(original); await f.view();
+  assert.match(f.body.text(), /Page 3 \/ 10/);
+  await f.hooks().onRender({ ...f.props }); await tick();
+  assert.doesNotMatch(f.body.text(), /Checking PDF availability/);
+  assert.match(f.body.text(), /Page 3 \/ 10/);
+  assert.match(f.body.text(), /Page 9 \/ 10/);
+  assert.match(f.body.text(), /Resume at page 3 \/ 10/);
+  assert.equal(f.paper.getField('extra'), original);
+  assert.equal(f.counts().saves, 0); assert.equal(f.counts().setters, 0); assert.equal(f.opens.length, 0);
+  f.manager.unregister();
 });
