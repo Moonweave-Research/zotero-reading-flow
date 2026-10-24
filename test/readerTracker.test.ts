@@ -88,7 +88,7 @@ test('ReaderTracker ignores non-PDF reader locations instead of persisting them 
   }
 });
 
-test('ReaderTracker uses the attachment pageChange position instead of cached Reader opening state', () => {
+test('ReaderTracker uses the live PDF viewer page while Reader and asynchronous synced setting are stale', () => {
   const tracker = new ReaderTracker({} as any);
   let savedCall: any[] | null = null;
   (tracker as any).debounceSave = (...args: any[]) => {
@@ -108,7 +108,7 @@ test('ReaderTracker uses the attachment pageChange position instead of cached Re
               _iframeWindow: {
                 wrappedJSObject: {
                   PDFViewerApplication: {
-                    pdfDocument: { numPages: 5 }
+                    pdfDocument: { numPages: 5 }, pdfViewer: { currentPageNumber: 2 }
                   }
                 }
               }
@@ -126,7 +126,7 @@ test('ReaderTracker uses the attachment pageChange position instead of cached Re
             return true;
           },
           getAttachmentLastPageIndex() {
-            return 1;
+            return 399;
           }
         };
       }
