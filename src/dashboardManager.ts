@@ -16,7 +16,8 @@ export interface DashboardDataSource {
     scope: StatisticsScope,
     historyRange?: HistoryRange,
     statusFilter?: DashboardStatusFilter,
-    dataset?: StatisticsDataset
+    dataset?: StatisticsDataset,
+    importantOnly?: boolean
   ): Promise<StatisticsSnapshot>;
 }
 

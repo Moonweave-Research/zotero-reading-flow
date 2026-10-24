@@ -4,7 +4,7 @@
 >
 > **Last updated:** 2026-10-24
 > **Released baseline:** Zotero Reading Flow v1.3.5
-> **Active implementation target:** Approved PR2 — Resume/Open and tracked PDF position reset (source/tests complete; native/human acceptance pending)
+> **Active implementation target:** Approved PR3 — independent importance (source/tests complete; native/human acceptance pending; PR4 not started)
 > **Execution surface:** ORRO (`scout -> flowplan -> proofrun -> proofcheck -> handoff`)
 
 ## Authority and Document Routing
@@ -563,7 +563,7 @@ The user authorized implementing the four reviewed PRs in order, testing and rev
 
 # Reading Flow 기능 정돈 — 최종 제안 PR 목록
 
-2026-10-24 · 검토 3차 수렴 · **PR1·PR2 소스/테스트 구현 완료 / 네이티브·사람 인수 미실행 / PR3·4 미구현 / 실제 PR 미생성**
+2026-10-24 · 검토 3차 수렴 · **PR1·PR2·PR3 소스/테스트 구현 완료 / 네이티브·사람 인수 미실행 / PR4 미구현 / 실제 PR 미생성**
 
 ## 결론
 
@@ -655,7 +655,8 @@ bridge), matching tests, locale strings, this authority and
 `docs/PR2_VERIFICATION.md`. Verification: `npm run verify` passed (244 tests),
 source/packaged XHTML and diff checks passed. See the verification record for
 exact evidence and unrun native/human gates. This status does not authorize
-public release or progression to PR3/4 in this task.
+public release. The subsequent user instruction separately authorized PR3 implementation;
+PR4 remains outside this task.
 
 ## 제안 PR 3 — 중요 표시가 읽기 상태를 지우지 않게 한다
 
@@ -673,6 +674,58 @@ public release or progression to PR3/4 in this task.
 **통과 조건:** Read + Important 동시 유지; 각각 변경/해제해도 다른 값 유지; legacy Important와 손상 기록의 무손실 조회; 사용자 태그 불변; 지원 버전 간 동기화와 이전 버전 writer 왕복에서 손실 없음 또는 검증된 안전한 거부. 완료 날짜 등 별도 이력 스키마 확장은 제외한다.
 
 이 PR은 #16에 끼워 넣는 추가 기능이 아니다. 이번 ‘기능 모순 정리’ 요청에 따라 별도 검토하는 호환성 변경이다.
+
+PR3 implementation status (2026-10-24): complete in source and regression tests.
+This task implements PR3 only; it does not start PR4 or authorize public release.
+The version-3 representation adds only `important: boolean`; `s` contains a
+manual reading stage or null. Existing history, including historical
+`status: important` rollups and completion timestamps, remains in its existing
+schema. No new completion/history model is introduced.
+
+- Legacy `s=important` resolves to `important=true`, `s=null`. Its previous
+  manual stage is unknowable. Only genuine PDF evidence may derive Reading,
+  explicitly described as PDF activity based; progress never restores Read.
+- Reads, startup, dashboard review and no-op commands perform no item writes or
+  bulk migration. An explicit importance change writes v3; an explicit manual
+  stage change on a legacy importance item also writes v3 to retain both values.
+  Unchanged legacy importance commands remain no-ops. Background PDF writes and
+  position-only reset retain legacy importance encoding until that explicit
+  transition. Once v3, subsequent supported writes retain v3 and the boolean,
+  including false. Importance changes alone do not create history or activity.
+- Mark/Clear Important are independent menu commands using the existing parent
+  deduplication, editability, batch confirmation and mutation serialization.
+  Clear Manual Status and position reset preserve importance. Zotero user tags
+  are never created, removed, renamed or synchronized.
+- Status and Compact/Icons columns show the stage plus a separate star and full
+  accessible importance text without changing column IDs/layout/sort contracts.
+  Dashboard status buckets are disjoint stages; the independent Important only
+  checkbox intersects status/dataset/scope/range and bounds the activity cache.
+  A separate matching importance count and row text do not count importance as
+  a reading stage. New-item status settings no longer offer Important; an
+  existing legacy Important default is inactive without rewriting preferences.
+- `scripts/verify-pr3-compatibility.js` executes the unmodified DataStore and
+  its dependencies from pinned v1.3.6 source
+  `9afa71f5b75872e8e9f4acd490eeba7eb2d94c2f`. Its eight mutation APIs refuse
+  canonical new-writer v3 Extra with both flag values, with zero setters/saves
+  and exact byte retention (16 refusals). Supported-v2 and version-downgrade
+  controls demonstrate a functioning writer and dependence on the guard.
+  Supported new-client round trips preserve the flag. This proves refusal for
+  that pinned baseline, not every unknown ancient writer or old-client display.
+
+Approved PR3 write region: `src/flowData.ts`, `src/dataStore.ts`,
+`src/menuManager.ts`, `src/columnManager.ts`, `src/statistics.ts`,
+`src/dashboard.ts`, `src/bootstrap.ts`, `src/dashboardManager.ts`,
+`src/preferences.ts`, `src/notifierManager.ts`, dashboard XHTML/CSS,
+preferences XHTML, locale strings, directly matching regression tests,
+`scripts/verify-pr3-compatibility.js`, this authority,
+`docs/PR3_VERIFICATION.md` and `docs/RELEASE.md` (upgrade/release gates).
+Verification: `npm run verify` passed (257 tests), source/packaged XHTML and
+diff checks passed. See `docs/PR3_VERIFICATION.md` for the exact checks and
+engineering scenario review.
+Native/human acceptance remains a release gate, not a source implementation
+blocker. All writing clients must support v3 or be explicitly demonstrated to
+refuse it; unknown old writers must be upgraded or disabled before using the
+new format. Never manually downgrade v3 metadata to permit an old writer.
 
 ## 제안 PR 4 — 개별 자료의 읽기 정보를 한곳에서 확인하고 바꾼다
 
@@ -734,3 +787,5 @@ public release or progression to PR3/4 in this task.
 - [통계 집계](https://github.com/Moonweave-Research/zotero-reading-flow/blob/9afa71f5b75872e8e9f4acd490eeba7eb2d94c2f/src/statistics.ts)
 - [Resume 대상 결정](https://github.com/Moonweave-Research/zotero-reading-flow/blob/9afa71f5b75872e8e9f4acd490eeba7eb2d94c2f/src/resumeReader.ts)
 - [제품 실행 권위](https://github.com/Moonweave-Research/zotero-reading-flow/blob/9afa71f5b75872e8e9f4acd490eeba7eb2d94c2f/docs/READING_FLOW_AUTHORITY.md)
+
+PR3 verification support includes `.github/workflows/verify.yml`: fetch Git history for the pinned baseline writer experiment; do not change token permissions or models.

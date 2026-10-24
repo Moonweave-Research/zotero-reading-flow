@@ -220,3 +220,22 @@ test('discard clears only the matching current lifecycle cache', async () => {
     'unavailable'
   );
 });
+
+
+test('importance and status intersection also bounds the activity drill-down cache', async () => {
+  const { bridge, requests } = bridgeFixture();
+  const pending = bridge.getSnapshot('current-view', 'all-time', 'read', 'tracked', true);
+  const selected = item(30, 'Read and Important', 0.4);
+  selected.flowData = { ...selected.flowData, v: 3, s: 'read', important: true };
+  const unflagged = item(31, 'Read only', 0.4); unflagged.flowData.s = 'read';
+  const otherStage = item(32, 'Reading and Important', 0.4); otherStage.flowData.important = true;
+  requests[0].resolve([selected, unflagged, otherStage]);
+  const snapshot = await pending;
+  assert.equal(snapshot.totalPapers, 1); assert.equal(snapshot.importantCount, 1);
+  const detail = await bridge.getActivityDayDetail(snapshot.snapshotId!, DAY);
+  assert.equal(detail.state, 'available');
+  if (detail.state === 'available') {
+    assert.deepEqual(detail.papers.map(p => p.itemID), [30]);
+    assert.equal(detail.papers[0].important, true); assert.equal(detail.papers[0].status, 'read');
+  }
+});

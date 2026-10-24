@@ -146,12 +146,12 @@ function snapshot(overrides: Partial<StatisticsSnapshot> = {}): StatisticsSnapsh
     inProgress: 3,
     read: 2,
     statusCounts: {
-      unassigned: 0,
+      unavailable: 0,
+      unassigned: 1,
       'to-read': 3,
       reading: 3,
       skimmed: 1,
       read: 2,
-      important: 1
     },
     progressDistribution: {
       'not-started': 3,
@@ -226,12 +226,12 @@ test('renderDashboard keeps current summary honest and uses semantic status colo
   assert.equal(doc.getElementById('dashboard-read')?.textContent, '2');
   assert.equal(doc.getElementById('dashboard-remaining-pages')?.textContent, '');
   assert.equal(doc.getElementById('dashboard-remaining-coverage')?.textContent, '');
-  assert.equal(doc.getElementById('dashboard-status-composition')?.children.length, 6);
+  assert.equal(doc.getElementById('dashboard-status-composition')?.children.length, 5);
   assert.match(findBar(doc, 'dashboard-status-composition', 'Reading')?.className ?? '', /status-reading/);
   assert.match(findBar(doc, 'dashboard-status-composition', 'Read')?.className ?? '', /status-read/);
   assert.equal(findBar(doc, 'dashboard-status-composition', 'Read')?.children[2]?.textContent, '2 (20%)');
   assert.equal(doc.getElementById('dashboard-progress-distribution')?.children.length, 7);
-  assert.equal(doc.getElementById('dashboard-filter-note')?.textContent, 'Reading Flow items: items with Reading Flow data · all statuses · selected Zotero scope. Showing 10 of 10 items; scope total = 10 classifiable + 0 unavailable. Status percentages use 10 classifiable items in scope. Position percentages use classifiable matching items.');
+  assert.equal(doc.getElementById('dashboard-filter-note')?.textContent, 'Reading Flow items: items with Reading Flow data · all statuses · selected Zotero scope. Important: 0 matching items (independent of reading status). Showing 10 of 10 items; scope total = 10 classifiable + 0 unavailable. Status percentages use 10 classifiable items in scope. Position percentages use classifiable matching items.');
 });
 
 test('no-history state shows one onboarding callout and hides every retained-history detail panel', () => {
@@ -245,7 +245,7 @@ test('no-history state shows one onboarding callout and hides every retained-his
   assert.equal(doc.getElementById('dashboard-completion-trend-panel')?.hidden, true);
   assert.equal(doc.getElementById('dashboard-history-footnote')?.hidden, true);
   assert.equal(doc.getElementById('dashboard-papers')?.textContent, '10');
-  assert.equal(doc.getElementById('dashboard-status-composition')?.children.length, 6);
+  assert.equal(doc.getElementById('dashboard-status-composition')?.children.length, 5);
   assert.equal(doc.getElementById('dashboard-history-calendar')?.children.length, 0);
   assert.equal(doc.getElementById('dashboard-recent-progress-body')?.children.length, 0);
 });
@@ -696,7 +696,7 @@ test('positive percentages below one percent render as less than one instead of 
   const doc = documentFixture();
   renderDashboard(doc as any, snapshot({
     totalPapers: 1000,
-    statusCounts: { unassigned: 0, 'to-read': 999, reading: 1, skimmed: 0, read: 0, important: 0 },
+    statusCounts: { unassigned: 0, 'to-read': 999, reading: 1, skimmed: 0, read: 0 },
     progressDistribution: {
       'not-started': 999,
       '1-24': 1,
@@ -732,7 +732,7 @@ test('status and measured progress surfaces render independently from the suppli
     totalPapers: 1,
     inProgress: 0,
     read: 1,
-    statusCounts: { unassigned: 0, 'to-read': 0, reading: 0, skimmed: 0, read: 1, important: 0 },
+    statusCounts: { unassigned: 0, 'to-read': 0, reading: 0, skimmed: 0, read: 1 },
     progressDistribution: {
       'not-started': 0,
       '1-24': 0,
@@ -756,7 +756,7 @@ test('empty, large, and unknown-page scopes remain readable without inventing va
     totalPapers: 0,
     inProgress: 0,
     read: 0,
-    statusCounts: { unassigned: 0, 'to-read': 0, reading: 0, skimmed: 0, read: 0, important: 0 },
+    statusCounts: { unassigned: 0, 'to-read': 0, reading: 0, skimmed: 0, read: 0 },
     progressDistribution: {
       'not-started': 0,
       '1-24': 0,
@@ -790,15 +790,15 @@ test('empty, large, and unknown-page scopes remain readable without inventing va
   }), 'all', 0, 'all');
   assert.equal(largeDoc.getElementById('dashboard-papers')?.textContent, '125000');
   assert.equal(largeDoc.getElementById('dashboard-remaining-pages')?.textContent, '');
-  assert.equal(largeDoc.getElementById('dashboard-filter-note')?.textContent, 'All items (inventory): includes untracked items · all statuses · selected Zotero scope. Showing 125000 of 125000 items; scope total = 125000 classifiable + 0 unavailable. Status percentages use 125000 classifiable items in scope. Position percentages use classifiable matching items.');
+  assert.equal(largeDoc.getElementById('dashboard-filter-note')?.textContent, 'All items (inventory): includes untracked items · all statuses · selected Zotero scope. Important: 0 matching items (independent of reading status). Showing 125000 of 125000 items; scope total = 125000 classifiable + 0 unavailable. Status percentages use 125000 classifiable items in scope. Position percentages use classifiable matching items.');
 });
 
 test('DashboardApp installs one deterministic listener set and passes scope, range, status, and dataset', async () => {
   const doc = documentFixture();
   const requests: Array<[string, string | undefined, string | undefined, StatisticsDataset | undefined]> = [];
   const app = new DashboardApp(doc as any, {
-    async getSnapshot(scope, range, statusFilter, dataset) {
-      requests.push([scope, range, statusFilter, dataset]);
+    async getSnapshot(scope, range, statusFilter, dataset, importantOnly) {
+      requests.push([scope, range, statusFilter, dataset, importantOnly]);
       return snapshot();
     }
   }, () => 0);
@@ -806,7 +806,7 @@ test('DashboardApp installs one deterministic listener set and passes scope, ran
   app.start();
   app.start();
   await flush();
-  assert.deepEqual(requests, [['current-view', '7d', undefined, 'tracked']]);
+  assert.deepEqual(requests, [['current-view', '7d', undefined, 'tracked', false]]);
   assert.equal(doc.getElementById('dashboard-scope')?.listeners.change?.length, 1);
   assert.equal(doc.getElementById('dashboard-dataset')?.listeners.change?.length, 1);
   assert.equal(doc.getElementById('dashboard-status-filter')?.listeners.change?.length, 1);
@@ -821,7 +821,7 @@ test('DashboardApp installs one deterministic listener set and passes scope, ran
   doc.getElementById('dashboard-status-filter')!.listeners.change[0]();
   doc.getElementById('dashboard-history-range')!.listeners.change[0]();
   await flush();
-  assert.deepEqual(requests.at(-1), ['entire-library', 'all-time', 'read', 'all']);
+  assert.deepEqual(requests.at(-1), ['entire-library', 'all-time', 'read', 'all', false]);
   assert.equal(doc.getElementById('dashboard-error')?.hidden, true);
   assert.deepEqual(DEFAULT_FLOW_DATA.p, {});
 });
@@ -842,7 +842,7 @@ test('malformed control values fail closed to current view, tracked papers, all 
 
   app.start();
   await flush();
-  assert.deepEqual(requests, [['current-view', '7d', undefined, 'tracked']]);
+  assert.deepEqual(requests, [['current-view', '7d', undefined, 'tracked', false]]);
 });
 
 test('refresh race protection ignores an older response that completes last', async () => {
@@ -966,7 +966,7 @@ test('filtered summary discloses original T = K + U and uses K for status percen
   const doc = documentFixture();
   renderDashboard(doc as any, snapshot({ totalPapers: 1, scopeTotal: 7, classifiableItems: 3,
     unavailableItems: 4, statusDenominator: 3, read: 1,
-    statusCounts: { unavailable: 0, unassigned: 0, 'to-read': 0, reading: 0, skimmed: 0, read: 1, important: 0 }
+    statusCounts: { unavailable: 0, unassigned: 0, 'to-read': 0, reading: 0, skimmed: 0, read: 1 }
   }), 'read');
   assert.match(doc.getElementById('dashboard-filter-note')?.textContent ?? '', /Showing 1 of 7 items; scope total = 3 classifiable \+ 4 unavailable/);
   assert.equal(findBar(doc, 'dashboard-status-composition', 'Read')?.children[2]?.textContent, '1 (33%)');
@@ -997,4 +997,37 @@ test('PR2 dashboard displays shared file-specific Open action and only executes 
   assert.deepEqual(executions, []);
   await button.onclick!();
   assert.deepEqual(executions, [target]);
+});
+
+
+test('Important only combines with Read, refreshes once per change, and identifies stale filter state', async () => {
+  const doc = documentFixture();
+  const checkbox = Object.assign(doc.add('dashboard-important-only', 'input'), { checked: true });
+  doc.getElementById('dashboard-status-filter')!.value = 'read';
+  const requests: unknown[][] = [];
+  let fail = false;
+  const app = new DashboardApp(doc as any, {
+    async getSnapshot(...args) { requests.push(args); if (fail) throw new Error('offline'); return snapshot({ importantCount: 2 }); }
+  }, () => 1);
+  app.start(); await flush();
+  assert.deepEqual(requests[0], ['current-view', '7d', 'read', 'tracked', true]);
+  assert.match(doc.getElementById('dashboard-filter-note')!.textContent, /Important only/);
+  assert.match(doc.getElementById('dashboard-filter-note')!.textContent, /Important: 2/);
+  assert.equal(checkbox.listeners.change.length, 1);
+  fail = true; checkbox.checked = false;
+  checkbox.listeners.change[0](); await flush();
+  assert.equal(requests.length, 2);
+  assert.match(doc.getElementById('dashboard-filter-note')!.textContent, /Read · Important only/);
+});
+
+
+test('recent progress explicitly labels automatic Reading and its independent importance', () => {
+  const doc = documentFixture();
+  const entry = { id: 9, title: 'Legacy important paper', status: 'reading' as const,
+    important: true, statusSource: 'automatic' as const, currentProgress: 0.5,
+    delta: null, lastProgressDay: '2026-07-28', resetCount: 0 };
+  renderDashboard(doc as any, snapshot({ history: history({ recentProgress: [entry] }) }));
+  const row = doc.getElementById('dashboard-recent-progress-body')!.children[0];
+  assert.match(JSON.stringify(row), /Reading \(PDF activity based\) · Important/);
+  assert.doesNotMatch(JSON.stringify(row), /restored|completed/);
 });

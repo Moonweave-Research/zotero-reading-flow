@@ -6,7 +6,8 @@ import {
   getLocalDayKey,
   normalizeProgressValue,
   resolveDisplayProgress,
-  resolveReadingStatus
+  resolveReadingStatus,
+  ReadingStatusSource
 } from './flowData';
 
 export const PROGRESS_BUCKETS = [
@@ -72,6 +73,8 @@ export interface RecentProgressSnapshot {
   id: number | string;
   title: string;
   status: DisplayReadingStatus;
+  important?: boolean;
+  statusSource?: ReadingStatusSource;
   currentProgress: number | null;
   positionText?: string;
   delta: number | null;
@@ -84,6 +87,8 @@ export interface ActivityDayDetailPaper {
   title: string;
   recordedProgress: number | null;
   status: DisplayReadingStatus;
+  important?: boolean;
+  statusSource?: ReadingStatusSource;
   lastRecordedAt: number | null;
 }
 
@@ -92,6 +97,7 @@ export interface StatisticsOptions {
   historyRange?: HistoryRange;
   now?: number;
   statusFilter?: DisplayReadingStatus;
+  importantOnly?: boolean;
 }
 
 export const READING_STATUSES = [
@@ -100,8 +106,7 @@ export const READING_STATUSES = [
   'to-read',
   'reading',
   'skimmed',
-  'read',
-  'important'
+  'read'
 ] as const satisfies readonly DisplayReadingStatus[];
 
 export interface StatisticsPaper {
@@ -121,6 +126,7 @@ export interface StatisticsSnapshot {
   statusDenominator?: number;
   inProgress: number;
   read: number;
+  importantCount?: number;
   statusCounts: Record<DisplayReadingStatus, number>;
   progressDistribution: Record<ProgressBucket, number>;
   knownRemainingPages: number;
@@ -142,17 +148,16 @@ interface DisplayState {
 
 export function selectStatisticsPapers(
   papers: readonly StatisticsPaper[],
-  options: Pick<StatisticsOptions, 'dataset' | 'statusFilter'> = {}
+  options: Pick<StatisticsOptions, 'dataset' | 'statusFilter' | 'importantOnly'> = {}
 ): StatisticsPaper[] {
   const datasetPapers = options.dataset === 'all'
     ? papers
     : papers.filter((paper) => paper.tracked !== false);
 
-  return options.statusFilter
-    ? datasetPapers.filter((paper) => {
-      return resolveReadingStatus(paper.flowData).status === options.statusFilter;
-    })
-    : [...datasetPapers];
+  return datasetPapers.filter(paper =>
+    (!options.statusFilter || resolveReadingStatus(paper.flowData).status === options.statusFilter)
+    && (!options.importantOnly || (!paper.flowData.availability && paper.flowData.important === true))
+  );
 }
 
 export function calculateStatisticsSnapshot(
@@ -183,6 +188,7 @@ export function calculateStatisticsSnapshot(
   }
 
   return {
+    importantCount: selectedPapers.filter(paper => !paper.flowData.availability && paper.flowData.important).length,
     totalPapers: selectedPapers.length,
     scopeTotal: scopePapers.length,
     classifiableItems: scopePapers.filter(paper => !paper.flowData.availability).length,
@@ -318,7 +324,7 @@ export function calculateActivityDayDetail(
   if (!isValidDayKey(day)) return [];
 
   return papers
-    .map((paper) => {
+    .map((paper): ActivityDayDetailPaper | null => {
       const rollup = paper.flowData.history?.days[day];
       if (!rollup || !rollup.activity || maxRollupProgress(rollup) === null) return null;
 
@@ -327,6 +333,8 @@ export function calculateActivityDayDetail(
         title: paper.title?.trim() || `Paper ${paper.id}`,
         recordedProgress: normalizeRecordedDayProgress(paper.flowData, rollup),
         status: resolveReadingStatus(paper.flowData).status,
+        important: paper.flowData.important === true,
+        statusSource: resolveReadingStatus(paper.flowData).source,
         lastRecordedAt: rollup.lastReadAt
       };
     })
@@ -366,6 +374,8 @@ function buildRecentProgressSnapshot(
     id: paper.id,
     title: paper.title?.trim() || `Paper ${paper.id}`,
     status: resolveReadingStatus(paper.flowData).status,
+    important: paper.flowData.important === true,
+    statusSource: resolveReadingStatus(paper.flowData).source,
     currentProgress: display.normalizedProgress,
     positionText: formatPDFPosition(paper.flowData),
     delta: previous ? latest.progress - previous.progress : null,
@@ -504,8 +514,7 @@ function emptyStatusCounts(): Record<DisplayReadingStatus, number> {
     'to-read': 0,
     reading: 0,
     skimmed: 0,
-    read: 0,
-    important: 0
+    read: 0
   };
 }
 

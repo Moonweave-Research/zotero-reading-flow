@@ -1,4 +1,4 @@
-export type ReadingStatus = 'to-read' | 'reading' | 'skimmed' | 'read' | 'important';
+export type ReadingStatus = 'to-read' | 'reading' | 'skimmed' | 'read';
 export type DisplayReadingStatus = ReadingStatus | 'unassigned' | 'unavailable';
 export type ReadingStatusSource = 'manual' | 'automatic' | 'unassigned' | 'unavailable';
 
@@ -21,7 +21,7 @@ export interface DailyReadingRollup {
   activity: boolean;
   lastReadAt: number | null;
   progress: { [attachmentId: string]: number };
-  status: ReadingStatus | null;
+  status: ReadingStatus | 'important' | null;
   reset: boolean;
   completed: boolean;
 }
@@ -37,6 +37,9 @@ export interface FlowData {
   /** Read-only interpretation; never persisted by a supported writer. */
   availability?: 'unavailable';
   v: number;
+  /** Independent flag; legacy s=important is interpreted without recovering a manual stage.
+   * v3 persists a boolean. Older encodings are retained until an explicit transition. */
+  important?: boolean;
   p: { [attId: string]: number };
   pageCount?: { [attId: string]: number };
   c: string | null;
@@ -61,7 +64,7 @@ export const DEFAULT_FLOW_DATA: FlowData = {
   lastReadAt: null
 };
 
-const VALID_STATUSES = new Set<ReadingStatus>(['to-read', 'reading', 'skimmed', 'read', 'important']);
+const VALID_STATUSES = new Set<ReadingStatus>(['to-read', 'reading', 'skimmed', 'read']);
 const MAX_REASONABLE_PAGE_COUNT = 100000;
 
 export function normalizeFlowData(input: any): FlowData {
@@ -76,7 +79,7 @@ export function normalizeFlowData(input: any): FlowData {
       : null;
 
   const normalized: FlowData = {
-    v: history ? 2 : 1,
+    v: input?.v === 3 ? 3 : history ? 2 : 1,
     p: progress,
     pageCount: Object.keys(pageCount).length ? pageCount : undefined,
     c: typeof input?.c === 'string' ? input.c : null,
@@ -87,6 +90,7 @@ export function normalizeFlowData(input: any): FlowData {
     lastReadAt: finiteNumberOrNull(input?.lastReadAt)
   };
 
+  if (input?.important === true || input?.s === 'important' || input?.v === 3) normalized.important = input?.important === true || input?.s === 'important';
   if (history) normalized.history = history;
   return normalized;
 }
@@ -100,6 +104,7 @@ export function mergeFlowData(current: FlowData, updates: Partial<FlowData>, now
   const nextWithoutTimestamp = normalizeFlowData({
     ...current,
     ...updates,
+    v: current.v === 3 ? 3 : updates.v ?? current.v,
     p: shouldReplaceProgress ? {} : { ...current.p, ...(updates.p || {}) },
     pageCount: Object.keys(mergedPageCount).length ? mergedPageCount : undefined,
     ts: current.ts
@@ -136,7 +141,7 @@ export type ReadingAvailability = 'no-record' | 'available' | 'unavailable';
 
 export function resolveReadingAvailability(data: FlowData): ReadingAvailability {
   if (data.availability) return 'unavailable';
-  return data.s || data.c || Object.keys(data.p).length || data.lastAttachmentId
+  return data.important || data.s || data.c || Object.keys(data.p).length || data.lastAttachmentId
     || data.lastPage || data.lastReadAt || data.history ? 'available' : 'no-record';
 }
 
@@ -299,7 +304,7 @@ function normalizeReadingHistory(input: unknown): ReadingHistory | undefined {
       activity: rollup.activity === true,
       lastReadAt: finiteNumberOrNull(rollup.lastReadAt),
       progress: normalizeProgressMap(rollup.progress),
-      status: VALID_STATUSES.has(rollup.status) ? rollup.status : null,
+      status: rollup.status === 'important' || VALID_STATUSES.has(rollup.status) ? rollup.status : null,
       reset: rollup.reset === true,
       completed: rollup.completed === true
     };

@@ -27,6 +27,7 @@ test('empty statistics snapshot is serializable and exposes every metric bucket'
   const { history, ...currentSnapshot } = snapshot;
 
   assert.deepEqual(currentSnapshot, {
+    importantCount: 0,
     totalPapers: 0,
     scopeTotal: 0,
     classifiableItems: 0,
@@ -36,12 +37,11 @@ test('empty statistics snapshot is serializable and exposes every metric bucket'
     read: 0,
     statusCounts: {
       unavailable: 0,
-    unassigned: 0,
+      unassigned: 0,
       'to-read': 0,
       reading: 0,
       skimmed: 0,
       read: 0,
-      important: 0
     },
     progressDistribution: {
       'not-started': 0,
@@ -73,7 +73,7 @@ test('empty statistics snapshot is serializable and exposes every metric bucket'
 test('status precedence and every progress bucket are calculated from current state', () => {
   const explicitStatuses: Array<[ReadingStatus, Partial<FlowData>]> = [
     ['skimmed', { s: 'skimmed', p: { '1': 0.2 } }],
-    ['important', { s: 'important', p: { '2': 0.8 } }],
+    ['important', { s: null, important: true, p: { '2': 0.8 } }],
     ['to-read', { s: 'to-read', p: { '3': 0.9 } }]
   ];
   const papers = [
@@ -94,16 +94,15 @@ test('status precedence and every progress bucket are calculated from current st
   }));
 
   assert.equal(snapshot.totalPapers, 10);
-  assert.equal(snapshot.inProgress, 6);
+  assert.equal(snapshot.inProgress, 7);
   assert.equal(snapshot.read, 0);
   assert.deepEqual(snapshot.statusCounts, {
     unavailable: 0,
     unassigned: 1,
     'to-read': 1,
-    reading: 6,
+    reading: 7,
     skimmed: 1,
     read: 0,
-    important: 1
   });
   assert.deepEqual(snapshot.progressDistribution, {
     'not-started': 1,
@@ -389,6 +388,8 @@ test('activity day detail keeps every real progress update, excludes status/rese
       title: 'Alpha paper',
       recordedProgress: null,
       status: 'skimmed',
+      important: false,
+      statusSource: 'manual',
       lastRecordedAt: null
     },
     {
@@ -396,6 +397,8 @@ test('activity day detail keeps every real progress update, excludes status/rese
       title: 'Zeta paper',
       recordedProgress: 0.4,
       status: 'reading',
+      important: false,
+      statusSource: 'manual',
       lastRecordedAt: localTimestamp('2026-07-28', 9)
     }
   ]);
@@ -529,7 +532,6 @@ test('status filters narrow current metrics and retained history together', () =
     reading: 1,
     skimmed: 0,
     read: 0,
-    important: 0
   });
   assert.equal(snapshot.history.coverage.totalPapers, 1);
   assert.equal(snapshot.history.rangeSummary.papersWithProgressActivity, 1);

@@ -15,7 +15,6 @@ const MENU_LABELS = {
   statusReading: 'Mark as Reading',
   statusSkimmed: 'Mark as Skimmed',
   statusRead: 'Mark as Read',
-  statusImportant: 'Mark as Important',
   statusAutomatic: 'Clear Manual Status (Use Automatic)',
   resetProgress: 'Reset tracked PDF positions',
   viewStatistics: 'View Current View Statistics',
@@ -95,7 +94,6 @@ export class ReadingFlowMenuManager {
             this.statusMenu('reading', 'reading-flow-status-reading', MENU_LABELS.statusReading),
             this.statusMenu('skimmed', 'reading-flow-status-skimmed', MENU_LABELS.statusSkimmed),
             this.statusMenu('read', 'reading-flow-status-read', MENU_LABELS.statusRead),
-            this.statusMenu('important', 'reading-flow-status-important', MENU_LABELS.statusImportant),
             {
               menuType: 'menuitem',
               l10nID: 'reading-flow-status-automatic',
@@ -110,6 +108,9 @@ export class ReadingFlowMenuManager {
             {
               menuType: 'separator'
             },
+            this.importanceMenu(true),
+            this.importanceMenu(false),
+            { menuType: 'separator' },
             {
               menuType: 'submenu',
               label: 'Advanced',
@@ -166,6 +167,19 @@ export class ReadingFlowMenuManager {
       }
     }
     this.registeredMenuIDs = [];
+  }
+
+  private importanceMenu(important: boolean) {
+    return {
+      menuType: 'menuitem',
+      l10nID: important ? 'reading-flow-status-important' : 'reading-flow-clear-important',
+      label: important ? 'Mark as Important' : 'Clear Important',
+      onShowing: (_event: Event, context: any) => context.setEnabled(this.getMutationSelection(context).items.length > 0),
+      onCommand: (_event: Event, context: any) => this.updateSelectedItems(
+        item => this.dataStore.setImportant(item, important), context,
+        item => Boolean(this.getCurrentData(item).important) === important
+      )
+    };
   }
 
   private statusMenu(status: ReadingStatus, l10nID: string, label: string) {
@@ -332,7 +346,7 @@ export class ReadingFlowMenuManager {
   private confirmReset(): boolean {
     return (globalThis as any).Services?.prompt?.confirm?.(
       Zotero.getMainWindow?.() ?? null, 'Reset tracked PDF positions',
-      'Clear current and maximum tracked PDF positions for the selected items? Manual status, last PDF activity, and history are preserved. This does not open a PDF at its first page.'
+      'Clear current and maximum tracked PDF positions for the selected items? Manual status, importance, last PDF activity, and history are preserved. This does not open a PDF at its first page.'
     ) === true;
   }
 

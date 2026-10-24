@@ -28,6 +28,55 @@ The command verifies:
 - `manifest.json`, `package.json`, and `updates.json` agree on version and Zotero compatibility.
 - `updates.json` contains the sha256 hash of the built XPI.
 
+## PR3 metadata compatibility and upgrade gate (2026-10-24)
+
+PR1–4 must ship together as the coherent user release authorized in
+`READING_FLOW_AUTHORITY.md`. PR3 source completion alone is not a release.
+PR4, native integration and human acceptance remain pending.
+
+Before enabling independent importance in a synchronized library:
+
+- Upgrade every client that must display or edit the new state to the coherent
+  v3-capable release. A schema version is not an add-on version: the existing
+  v1.3.6 baseline does **not** support independent importance.
+- Inventory other clients with write access, including collaborators on group
+  libraries. Upgrade or disable unknown old Reading Flow writers before using
+  v3. Safe refusal is demonstrated only for v1.3.6 source pinned at
+  `9afa71f5b75872e8e9f4acd490eeba7eb2d94c2f`; do not generalize to ancient
+  releases. A known baseline may retain v3 unchanged by refusing writes, but
+  cannot be used to display, update status or track PDF positions on those
+  records. Old displays may look empty or stale; that does not mean data is lost.
+- Run `node scripts/verify-pr3-compatibility.js` from a checkout retaining that
+  pinned git object (also run by `npm run verify`). It must prove all eight old
+  mutation APIs refuse both v3 flag values without setters/saves or byte changes,
+  with working v2 and guard-sensitivity controls and new-client round trips.
+  A missing pinned source object or failure blocks release; no parser-only
+  replacement is sufficient. See `PR3_VERIFICATION.md`.
+- Never change `v:3` to an earlier version or strip the namespace to enable an
+  old writer. The experiment demonstrates that bypassing the guard loses the
+  independent flag. Rollback to an older add-on leaves v3 read-only to the
+  demonstrated baseline; restore a supported client to edit it.
+
+Release/upgrade notes must explain that legacy `s=important` becomes an
+importance flag with unknown previous manual stage. It never restores Read
+from progress. Automatic Reading is PDF activity based. There is no startup,
+read-time or bulk migration; actual explicit importance changes and manual
+stage changes requiring independent importance perform the versioned transition.
+Until then background PDF updates retain legacy encoding. User tags remain
+untouched. Existing legacy Important new-item defaults become inactive without
+changing the stored preference; users may explicitly choose a supported manual
+stage in Settings. No completion dates or historical reading judgments are
+reconstructed.
+
+Native acceptance must exercise Read + Important, each independent clear,
+importance-only Unassigned, legacy Important with and without PDF evidence,
+Read intersected with Important only (including day detail), read-only and mixed
+bulk selections, keyboard/VoiceOver labels, narrow/200%/dark layouts, reload,
+restart and synchronized new-client/known-baseline refusal. Ordinary fixture
+review does not replace those checks. The older smoke-test wording below is a
+baseline checklist: superseded automatic completion, Restart and reset wording
+must follow the authority and PR1/2/3 verification records for the coherent release.
+
 ## Version Update
 
 For a new release:

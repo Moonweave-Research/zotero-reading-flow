@@ -106,7 +106,7 @@ test('compact and icons render full accessible text while changing only composit
 
 test('composite status icons use the approved eye-free mapping in both densities', async () => {
   const expected = {
-    'to-read': '📙', reading: '📖', skimmed: '📘', read: '📗', important: '⭐'
+    'to-read': '📙', reading: '📖', skimmed: '📘', read: '📗'
   } as const;
   for (const [status, icon] of Object.entries(expected)) {
     const zotero = setupZotero('compact');
@@ -352,4 +352,25 @@ test('manual To Read does not hide an unknown legacy position or invent an activ
   assert.match(cell['aria-label'], /Saved PDF position unknown/);
   assert.match(cell['aria-label'], /PDF activity date unknown/);
   assert.doesNotMatch(cell['aria-label'], /No saved PDF position|never read/);
+});
+
+
+test('all status densities show Read plus Important and importance-only Unassigned accessibly', async () => {
+  for (const status of ['read', null]) {
+    const zotero = setupZotero();
+    const manager = new ColumnManager(dataStoreFor({ ...flow, s: status, p: {}, lastReadAt: null, lastAttachmentId: null, lastPage: null, important: true }));
+    await manager.register();
+    const paper = { id: 9, isRegularItem: () => true };
+    for (const key of ['readingFlowStatus', 'readingFlowDisplay']) {
+      const column = zotero.registrations.find(c => c.dataKey === key);
+      for (const density of ['compact', 'icons']) {
+        (globalThis as any).Zotero.Prefs.get = () => density;
+        const cell = column.renderCell(0, column.dataProvider(paper), {}, false, fakeDocument());
+        assert.match(cell['aria-label'], status ? /Read/ : /Unassigned/);
+        assert.match(cell['aria-label'], /Important/);
+        assert.match(JSON.stringify(cell.children), /⭐/);
+        assert.equal(cell.title, cell['aria-label']);
+      }
+    }
+  }
 });

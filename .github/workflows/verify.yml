@@ -20,6 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
 
       - name: Set up Node
@@ -43,6 +44,7 @@ jobs:
       - name: Checkout released source
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ github.event.release.tag_name }}
 
       - name: Set up Node
