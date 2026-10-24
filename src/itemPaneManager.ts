@@ -1,5 +1,5 @@
 import { DataStore } from './dataStore';
-import { FlowData, formatMaximumPosition, getLastActivityAt, getLocalDayKey, resolveReadingAvailability, resolveReadingStatus, ReadingStatus } from './flowData';
+import { FlowData, formatMaximumPosition, getLastActivityAt, getLocalDayKey, getNormalizedDisplayProgress, resolveDisplayProgress, resolveReadingAvailability, resolveReadingStatus, ReadingStatus } from './flowData';
 import { ResumeReader } from './resumeReader';
 
 export const READING_FLOW_PANE_ID = 'reading-flow-details';
@@ -107,6 +107,21 @@ export class ReadingFlowItemPaneManager {
     if (['select', 'input', 'button'].includes(tag)) element.style.setProperty('font', 'inherit');
     return element;
   }
+  private facts(props: Props, entries: [string, string][]) {
+    const list = this.element(props, 'dl');
+    for (const [key, value] of Object.entries({ display: 'grid', 'grid-template-columns': 'minmax(7em, 0.85fr) minmax(0, 1.15fr)', gap: '0.4em 0.75em', margin: '0.65em 0', 'line-height': '1.4' })) list.style.setProperty(key, value);
+    for (const [name, value] of entries) {
+      const label = this.element(props, 'dt', name), text = this.element(props, 'dd', value);
+      text.style.setProperty('margin', '0'); text.style.setProperty('font-weight', '500');
+      text.style.setProperty('font-variant-numeric', 'tabular-nums');
+      if (name === 'PDF') {
+        for (const [key, value] of Object.entries({ overflow: 'hidden', 'white-space': 'nowrap', 'text-overflow': 'ellipsis' })) text.style.setProperty(key, value);
+        text.setAttribute('title', value);
+      }
+      list.append(label, text);
+    }
+    return list;
+  }
   private render(props: Props) {
     const state = this.state(props); state.generation++;
     props.body.replaceChildren(); props.body.setAttribute('lang', 'en');
@@ -115,45 +130,55 @@ export class ReadingFlowItemPaneManager {
     if (!parent) return;
     this.store.invalidateCache(parent.id);
     const generation = state.generation;
-    const data = this.store.getData(parent), status = resolveReadingStatus(data);
+    const data = this.store.getData(parent);
     const problem = recordProblem(parent, data);
     const writable = props.editable && parent.isEditable?.() !== false && !problem && !state.busy;
     const add = (text: string) => { const p = this.element(props, 'p', text); p.style.setProperty('margin', '0.6em 0'); props.body.append(p); return p; };
-    add(problem || (status.source === 'automatic' ? 'Reading — based on recorded PDF activity; this does not confirm that the item was read.' : status.source === 'manual' ? 'Status set manually.' : 'No reading status assigned.'));
-    if (resolveReadingAvailability(data) === 'no-record') add('No Reading Flow record.');
-    const label = this.element(props, 'label', 'Reading status '), select = this.element(props, 'select');
+    if (problem) add(problem);
+    const controls = this.element(props, 'div');
+    for (const [key, value] of Object.entries({ display: 'flex', 'flex-wrap': 'wrap', gap: '0.75em', 'align-items': 'end' })) controls.style.setProperty(key, value);
+    const label = this.element(props, 'label', 'Status '), select = this.element(props, 'select');
     label.style.setProperty('display', 'block');
+    label.style.setProperty('flex', '1 1 12em');
+    label.style.setProperty('min-width', '0');
     select.style.setProperty('display', 'block');
     select.style.setProperty('max-width', '100%');
     select.style.setProperty('width', '100%');
-    for (const [value, text] of [['', 'Automatic (clear manual status)'], ['to-read', 'To Read'], ['reading', 'Reading'], ['skimmed', 'Skimmed'], ['read', 'Read']]) {
+    const automatic = resolveReadingStatus({ ...data, s: null }).status === 'reading' ? 'Reading' : 'Unassigned';
+    for (const [value, text] of [['', `${automatic} (automatic)`], ['to-read', 'To Read (manual)'], ['reading', 'Reading (manual)'], ['skimmed', 'Skimmed (manual)'], ['read', 'Read (manual)']]) {
       const option = this.element(props, 'option', text); option.value = value; select.append(option);
     }
     if (problem) { const option = this.element(props, 'option', 'Record unavailable'); option.value = 'unavailable'; select.append(option); }
-    select.value = problem ? 'unavailable' : data.s ?? ''; select.disabled = !writable; label.append(select); props.body.append(label);
+    select.value = problem ? 'unavailable' : data.s ?? ''; select.disabled = !writable; label.append(select); controls.append(label);
     select.addEventListener('change', () => { if (!this.current(state, generation, props.item)) return; void this.mutate(state, parent, () => select.value ? this.store.setStatus(parent, select.value as ReadingStatus) : this.store.clearManualStatus(parent), () => this.store.getData(parent).s === (select.value || null)); });
     const importantLabel = this.element(props, 'label', ' Important'), important = this.element(props, 'input');
     importantLabel.style.setProperty('display', 'flex');
     importantLabel.style.setProperty('align-items', 'center');
     importantLabel.style.setProperty('gap', '0.4em');
-    importantLabel.style.setProperty('margin', '0.6em 0');
+    importantLabel.style.setProperty('margin', '0 0 0.3em');
     important.type = 'checkbox'; important.indeterminate = Boolean(problem); important.checked = Boolean(data.important); important.disabled = !writable;
-    importantLabel.prepend(important); props.body.append(importantLabel);
+    importantLabel.prepend(important); controls.append(importantLabel); props.body.append(controls);
     important.addEventListener('change', () => { if (!this.current(state, generation, props.item)) return; void this.mutate(state, parent, () => this.store.setImportant(parent, important.checked), () => Boolean(this.store.getData(parent).important) === important.checked); });
-    if (data.v < 3 && data.important) add('Legacy Important records do not preserve the earlier manual reading status. It cannot be recovered from PDF positions.');
-    if (!props.editable || parent.isEditable?.() === false) add('This item is read-only. You can view its information and open an accessible PDF.');
-    const last = getLastActivityAt(data);
-    add(`Recent PDF activity: ${last === null ? (problem ? 'Record unavailable.' : 'No recorded date.') : new Date(last).toLocaleString()}`);
-    add(`First retained PDF activity: ${firstRecordedPDFActivity(data) ?? (problem ? 'Record unavailable.' : 'No recorded date.')} Earlier activity may be missing.`);
+    if (!props.editable || parent.isEditable?.() === false) add('Read-only item.');
+    const last = getLastActivityAt(data), first = firstRecordedPDFActivity(data);
+    const recent = last === null ? 'Not recorded' : `${getLocalDayKey(last)} ${String(new Date(last).getHours()).padStart(2, '0')}:${String(new Date(last).getMinutes()).padStart(2, '0')}`;
+    props.body.append(this.facts(props, [['Last activity', problem ? 'Unavailable' : recent], ['First recorded', problem ? 'Unavailable' : first ?? 'Not recorded']]));
+    const target = this.element(props, 'div', 'Checking PDF availability…');
+    target.dataset.readingFlowTarget = 'true'; props.body.append(target);
+    const note = add("Positions aren't pages read. Earlier activity may be missing.");
+    note.style.setProperty('font-size', '0.9em'); note.style.setProperty('line-height', '1.4');
     const details = this.element(props, 'details');
-    details.append(this.element(props, 'summary', 'History and position details'), this.element(props, 'p', `Maximum recorded location: ${formatMaximumPosition(data)}. This is a recorded location, not a measure of reading or understanding.`));
+    details.append(this.element(props, 'summary', 'About this record'));
+    if (resolveReadingAvailability(data) === 'no-record') details.append(this.element(props, 'p', 'No Reading Flow record.'));
+    if (data.v < 3 && data.important) details.append(this.element(props, 'p', 'Legacy Important records do not preserve the earlier manual reading status. It cannot be recovered from PDF positions.'));
+    details.append(this.element(props, 'p', 'Automatic Reading is based on recorded PDF activity. Choosing a manual status overrides it; choosing the automatic option clears that override. Neither activity nor a saved position confirms that the item was read.'));
     details.append(this.element(props, 'p', 'The first recorded PDF activity is the earliest surviving record, not the actual reading start. Detailed history retains at most 366 days; earlier or legacy activity may be missing. Status changes and resets are not PDF activity.'));
-    props.body.append(details);
-    add('PDF positions are saved automatically, even after a brief visit. They do not measure pages read. Mark Read yourself when appropriate.');
-    const target = add('Checking PDF availability…'); target.dataset.readingFlowTarget = 'true';
-    const error = add(''); error.setAttribute('role', 'status'); error.dataset.readingFlowError = 'true';
+    details.append(this.element(props, 'p', `Recorded maximum: ${formatMaximumPosition(data)}.`));
     details.append(this.element(props, 'p', 'Position tracking supports PDFs only. Manual status and Important also work for books and items without a PDF; EPUB positions are not tracked.'));
+    props.body.append(details);
+    const error = add(''); error.setAttribute('role', 'status'); error.dataset.readingFlowError = 'true';
   }
+
   private current(state: Instance, generation: number, item: any): boolean {
     return this.instances.get(state.props.body) === state && state.generation === generation && state.props.item === item;
   }
@@ -166,7 +191,12 @@ export class ReadingFlowItemPaneManager {
     try {
       const target = await this.reader.getResumeDisplayTarget(item);
       if (!this.current(state, generation, item)) return;
-      region.textContent = target.reason;
+      const data = this.store.getData(this.parent(item));
+      const saved = target.action === 'resume' ? `Page ${target.lastPage}${target.totalPages ? ` / ${target.totalPages}` : ''}` : (data.availability || data.lastPage !== null || Object.keys(data.p).length > 0) ? 'Unavailable' : target.action === 'none' ? 'No PDF' : 'Not saved';
+      const maximum = resolveDisplayProgress(data).attachmentId === String(target.attachmentId) ? getNormalizedDisplayProgress(data) : null;
+      region.textContent = ''; region.replaceChildren();
+      region.append(this.facts(props, [['Saved position', saved], ['Farthest reached', maximum === null ? (data.availability ? 'Unavailable' : Object.keys(data.p).length ? 'Unknown' : 'Not recorded') : `${Math.round(maximum * 100)}%`], ...(target.filename ? [['PDF', target.filename] as [string, string]] : [])]));
+      if (target.action === 'none' || data.availability || (target.action === 'open' && data.lastPage !== null)) region.append(this.element(props, 'p', target.reason));
       if (target.action !== 'none') {
         const actionLabel = target.action === 'resume' ? `Resume at page ${target.lastPage}${target.totalPages ? ` / ${target.totalPages}` : ''}` : 'Open PDF';
         const button = this.element(props, 'button', actionLabel); button.type = 'button';

@@ -55,7 +55,7 @@ const payload = (updates: any) => FLOW_PREFIX + JSON.stringify({ ...DEFAULT_FLOW
 
 test('official section lifecycle, native menu focus, notifier refresh and reload release resources; viewing writes zero', async () => {
   const f = fixture(); f.manager.register(); await f.view(); await f.view();
-  assert.equal(f.body.attributes.lang, 'en'); assert.match(f.body.text(), /No recorded date/);
+  assert.equal(f.body.attributes.lang, 'en'); assert.match(f.body.text(), /Not recorded/);
   assert.equal(f.body.querySelectorAll('select').length, 1); assert.equal(f.body.querySelectorAll('input').length, 1);
   assert.equal(f.counts().saves, 0); assert.equal(f.counts().setters, 0); assert.equal(f.opens.length, 0);
   const menu = new ReadingFlowMenuManager(f.store, undefined, f.manager); menu.register();
@@ -79,7 +79,7 @@ test('first activity date uses retained activity days and legacy last activity, 
 });
 
 for (const [name, extra, reason] of [
-  ['absent', '', /No recorded date/], ['corrupt', 'ReadingFlow: {bad', /damaged or invalid/],
+  ['absent', '', /Not recorded/], ['corrupt', 'ReadingFlow: {bad', /damaged or invalid/],
   ['unsupported', 'ReadingFlow: {"v":99}', /unsupported version/],
   ['duplicate', payload({}) + '\n' + payload({}), /Multiple Reading Flow records/]
 ] as const) test(`${name} records stay unchanged during pane viewing`, async () => {
@@ -223,6 +223,35 @@ test('native View Reading Flow command localizes its menu label attribute', () =
   assert.deepEqual(f.scrolls, [READING_FLOW_PANE_ID]);
   assert.equal(await f.manager.focus(), true);
   assert.equal(f.pane.collapsed, false);
+  assert.equal(f.counts().saves, 0);
+  f.manager.unregister();
+});
+
+test('compact pane shows resolved automatic state, consistent dates and saved location before optional explanations, without writes', async () => {
+  const at = new Date(2026, 9, 24, 14, 11).getTime();
+  const f = fixture(payload({ v: 2, s: 'important', lastAttachmentId: '2', lastPage: 3,
+    pageCount: { '2': 10 }, p: { '2': 0.9 }, lastReadAt: at }));
+  await f.view();
+  const select = f.body.querySelectorAll('select')[0];
+  assert.equal(select.children.find(e => e.value === '')!.textContent, 'Reading (automatic)');
+  assert.equal(select.children.find(e => e.value === 'read')!.textContent, 'Read (manual)');
+  const visible = f.body.children.filter(e => e.tag !== 'details').map(e => e.text()).join(' ');
+  assert.match(visible, /Last activity.*2026-10-24 14:11/);
+  assert.match(visible, /First recorded.*2026-10-24/);
+  assert.match(visible, /Saved position.*Page 3 \/ 10/);
+  assert.match(visible, /Farthest reached.*90%/);
+  assert.doesNotMatch(visible, /Legacy Important|retains at most|clear manual status|Maximum recorded location/);
+  assert.match(f.body.children.find(e => e.tag === 'details')!.text(), /Legacy Important/);
+  assert.equal(f.counts().saves, 0); assert.equal(f.counts().setters, 0);
+  f.manager.unregister();
+});
+
+test('compact location facts keep ambiguous legacy maxima unknown instead of inventing a percentage', async () => {
+  const f = fixture(payload({ p: { '2': 1 }, lastAttachmentId: '2', lastPage: 1, pageCount: { '2': 10 } }));
+  await f.view();
+  const visible = f.body.children.filter(e => e.tag !== 'details').map(e => e.text()).join(' ');
+  assert.match(visible, /Saved position.*Page 1 \/ 10/);
+  assert.match(visible, /Farthest reached.*Unknown/);
   assert.equal(f.counts().saves, 0);
   f.manager.unregister();
 });
