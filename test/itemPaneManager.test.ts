@@ -239,7 +239,7 @@ test('compact pane shows resolved automatic state, consistent dates and saved lo
   assert.match(visible, /Last activity.*2026-10-24 14:11/);
   assert.match(visible, /First recorded.*2026-10-24/);
   assert.match(visible, /Saved position.*Page 3 \/ 10/);
-  assert.match(visible, /Farthest reached.*90%/);
+  assert.match(visible, /Farthest position.*Page 9 \/ 10/);
   assert.doesNotMatch(visible, /Legacy Important|retains at most|clear manual status|Maximum recorded location/);
   assert.match(f.body.children.find(e => e.tag === 'details')!.text(), /Legacy Important/);
   assert.equal(f.counts().saves, 0); assert.equal(f.counts().setters, 0);
@@ -251,7 +251,46 @@ test('compact location facts keep ambiguous legacy maxima unknown instead of inv
   await f.view();
   const visible = f.body.children.filter(e => e.tag !== 'details').map(e => e.text()).join(' ');
   assert.match(visible, /Saved position.*Page 1 \/ 10/);
-  assert.match(visible, /Farthest reached.*Unknown/);
+  assert.match(visible, /Farthest position.*Unknown/);
   assert.equal(f.counts().saves, 0);
   f.manager.unregister();
+});
+
+
+test('inaccessible PDF is unavailable, not an assertion that no PDF is attached', async () => {
+  const f = fixture(); f.pdf.fileExists = async () => false;
+  await f.view();
+  assert.match(f.body.text(), /Saved position.*PDF unavailable/);
+  assert.doesNotMatch(f.body.text(), /No PDF/);
+  assert.equal(f.counts().saves, 0); f.manager.unregister();
+});
+
+test('alternative PDF never inherits the original maximum in summary or disclosure', async () => {
+  const f = fixture(payload({ lastAttachmentId: '2', lastPage: 37, p: { '2': 0.37 }, pageCount: { '2': 100 } }));
+  f.pdf.deleted = true;
+  const alternative: any = { id: 3, parentID: 1, attachmentFilename: 'alternative.pdf', isPDFAttachment: () => true };
+  f.items.set(3, alternative); f.paper.getBestAttachment = async () => alternative;
+  await f.view();
+  assert.match(f.body.text(), /Farthest position.*Unknown.*PDF.*alternative.pdf/);
+  assert.doesNotMatch(f.body.text(), /37%|Page 37|Recorded maximum/);
+  assert.equal(f.counts().saves, 0); f.manager.unregister();
+});
+
+for (const [count, expected] of [[10, /Farthest position.*Page 10 \/ 10/], [null, /Farthest position.*Unknown/]] as const) {
+  test(`end position with page count ${count} never looks like completion percentage`, async () => {
+    const f = fixture(payload({ v: 3, important: false, lastAttachmentId: '2', lastPage: 10, p: { '2': 1 }, pageCount: count ? { '2': count } : {} }));
+    await f.view();
+    assert.match(f.body.text(), expected); assert.doesNotMatch(f.body.text(), /100%/);
+    assert.equal(f.body.querySelectorAll('select')[0].value, '');
+    assert.match(f.body.text(), /not pages read/);
+    assert.equal(f.counts().saves, 0); f.manager.unregister();
+  });
+}
+
+
+test('unknown page count does not round a fractional PDF location up to 100 percent', async () => {
+  const f = fixture(payload({ lastAttachmentId: '2', lastPage: 99, p: { '2': 0.999 } }));
+  await f.view(); assert.match(f.body.text(), /Farthest position.*About 99% of PDF/);
+  assert.doesNotMatch(f.body.text(), /100%|End of PDF/);
+  assert.equal(f.counts().saves, 0); f.manager.unregister();
 });

@@ -880,3 +880,20 @@ tracking policy, preferences, model or permission changes.
 Scope: src/itemPaneManager.ts, test/itemPaneManager.test.ts, this authority and
 docs/PANE_CLARITY_VERIFICATION.md; generated build/test artifacts are allowed
 only for deterministic observed ORRO verification, not as committed outputs.
+
+
+## Approved PDF location truth follow-up — 2026-10-24
+
+The user authorized correcting unavailable-file wording, eliminating the
+original-file maximum from an alternative PDF disclosure, and removing the
+completion-like 100% value from the item pane, followed by native screenshots,
+PR merge and personal installation while preserving existing data/settings,
+models and permissions. Display known maxima as PDF page positions; ambiguous
+records stay unknown. An unknown page count must not imply the PDF end, and
+fractional positions must not round up to 100%. The selected/resolved PDF is the
+only file whose position can appear in the pane; no second unscoped maximum in
+the disclosure. Inaccessible files say PDF unavailable, not No PDF.
+Scope: src/itemPaneManager.ts, test/itemPaneManager.test.ts, this authority,
+docs/PDF_LOCATION_TRUTH_VERIFICATION.md. No writer, tracker, schema, model or
+permission change; no public release/tag. Generated verification outputs only
+are allowed for deterministic ORRO replay.
