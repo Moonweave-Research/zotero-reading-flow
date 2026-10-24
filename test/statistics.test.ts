@@ -598,3 +598,23 @@ test('cacheable paper selection matches the dashboard dataset and status filters
     [1, 3]
   );
 });
+
+ test('position change compares the first and latest activity in range, with no invented comparison across resets or PDFs', () => {
+  const days: any = {};
+  for (const [day, progress] of [['2026-07-20', 0.02], ['2026-07-22', 0.1], ['2026-07-25', 0.4], ['2026-07-28', 0.9]] as const) {
+    days[day] = { activity: true, lastReadAt: localTimestamp(day), progress: { a: progress }, status: 'reading', reset: false, completed: false };
+  }
+  const item = paper(1, { p: { a: 0.9 }, lastAttachmentId: 'a', lastPage: 9, pageCount: { a: 10 },
+    history: { startedAt: 1, completedAt: null, activeDaysTotal: 3, days } });
+  const delta = () => calculateHistorySnapshot([item], '7d', localTimestamp('2026-07-28')).recentProgress[0].delta;
+  assert.ok(Math.abs(delta()! - 0.8) < 1e-9);
+  const longer = calculateHistorySnapshot([item], '30d', localTimestamp('2026-07-28')).recentProgress[0];
+  assert.ok(Math.abs(longer.delta! - 0.88) < 1e-9);
+  assert.deepEqual(longer.positionChange, { from: 0.02, to: 0.9 });
+  const original = JSON.stringify(item);
+  calculateHistorySnapshot([item], '7d', localTimestamp('2026-07-28'));
+  assert.equal(JSON.stringify(item), original);
+  days['2026-07-25'].reset = true; assert.equal(delta(), null);
+  days['2026-07-25'].reset = false; days['2026-07-25'].progress = { b: 0.4 }; assert.equal(delta(), null);
+  days['2026-07-25'].progress = { a: 0.4, b: 0.2 }; assert.equal(delta(), null);
+});

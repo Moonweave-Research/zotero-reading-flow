@@ -94,13 +94,13 @@ test('compact and icons render full accessible text while changing only composit
   const column = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowDisplay');
   const item = { id: 7, isRegularItem: () => true };
   const compact = column.renderCell(0, column.dataProvider(item), {}, false, fakeDocument());
-  assert.match(compact.getAttribute?.('aria-label') ?? compact['aria-label'], /Reading, manual status, 42 \/ 100 PDF pages, Maximum PDF position 42%, last PDF activity/);
+  assert.match(compact.getAttribute?.('aria-label') ?? compact['aria-label'], /Reading, manual status, Saved at page 42 \/ 100, Maximum PDF position 42%, last PDF activity/);
   assert.match(JSON.stringify(compact), /42%/);
   assert.equal(compact.children.length, 3);
   assert.equal(compact.children[1]['data-progress'], '42');
   (globalThis as any).Zotero.Prefs.get = () => 'icons';
   const icons = column.renderCell(0, column.dataProvider(item), {}, false, fakeDocument());
-  assert.match(icons['aria-label'], /Reading, manual status, 42 \/ 100 PDF pages, Maximum PDF position 42%, last PDF activity/);
+  assert.match(icons['aria-label'], /Reading, manual status, Saved at page 42 \/ 100, Maximum PDF position 42%, last PDF activity/);
   assert.equal(icons.children.length, 1);
 });
 

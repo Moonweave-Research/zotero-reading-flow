@@ -138,6 +138,7 @@ export function renderDashboard(
     formatDashboardState(snapshot, filter, selectedDataset)
   );
 
+  setText(doc, 'dashboard-active-filters', `${DATASET_LABELS[selectedDataset]} · ${filter === 'all' ? 'All statuses' : STATUS_LABELS[filter]}${options.importantOnly ? ' · Important only' : ''}`);
   renderStatusComposition(doc, snapshot, filter);
   renderProgressDistribution(doc, snapshot);
   renderHistory(doc, snapshot, options);
@@ -317,8 +318,13 @@ export class DashboardApp {
       button.textContent = 'Checking PDF…';
       void this.bridge?.getPDFTarget?.(id).then(target => {
         if (!button.isConnected) return;
-        button.textContent = target.fallbackLabel;
-        button.title = target.reason;
+        button.textContent = target.action === 'resume' ? `Resume at page ${target.lastPage}${target.totalPages ? ` / ${target.totalPages}` : ''}` : target.action === 'open' ? 'Open PDF' : 'PDF unavailable';
+        if (target.filename) {
+          const filename = this.doc.createElement('span');
+          filename.className = 'recent-pdf-filename'; filename.textContent = target.filename;
+          button.append(filename);
+        }
+        button.title = `${target.fallbackLabel}. ${target.reason}`;
         button.setAttribute('aria-label', `${target.fallbackLabel}. ${target.reason}`);
         button.disabled = target.action === 'none';
         button.onclick = async () => {
@@ -511,7 +517,7 @@ function renderHistory(doc: Document, snapshot: StatisticsSnapshot, options: Das
     'dashboard-history-footnote',
     history.range === 'all-time'
       ? 'Activity and PDF position detail are limited to retained local-day history.'
-      : 'Activity uses retained local-day history. Status-only and reset-only days do not count as reading activity.'
+      : 'Activity uses retained local-day history; brief page visits count. Status changes and resets alone do not count as PDF activity.'
   );
 
   renderActivityCalendar(doc, history, options);
@@ -550,7 +556,7 @@ function renderRecentProgress(
   const displayed = expanded
     ? history.recentProgress
     : history.recentProgress.slice(0, RECENT_PROGRESS_INITIAL_LIMIT);
-  summary.textContent = `Showing ${displayed.length} of ${total} items with a progress update in this range.`;
+  summary.textContent = `Showing ${displayed.length} of ${total} items with PDF activity in this period.`;
   if (total > RECENT_PROGRESS_INITIAL_LIMIT) {
     toggle.hidden = false;
     toggle.textContent = expanded ? 'Show fewer' : `Show all ${total}`;
@@ -583,12 +589,12 @@ function renderRecentProgress(
 
     const values = [
       entry.positionText ?? formatProgress(entry.currentProgress),
-      formatDelta(entry.delta),
+      entry.positionChange ? `${formatPercent(entry.positionChange.from)} → ${formatPercent(entry.positionChange.to)}` : formatDelta(entry.delta),
       entry.lastProgressDay,
       `${STATUS_LABELS[entry.status]}${entry.statusSource === 'automatic' ? ' (PDF activity based)' : ''}${entry.important ? ' · Important' : ''}`,
       entry.resetCount > 0 ? `${entry.resetCount} reset${entry.resetCount === 1 ? '' : 's'}` : '—'
     ];
-    const labels = ['Saved PDF position', 'Change in range', 'Last update', 'Status', 'Reset'];
+    const labels = ['Last saved position', 'Farthest position change', 'Last activity', 'Status', 'Reset'];
     values.forEach((value, index) => {
       const cell = doc.createElement('td');
       cell.textContent = value;
@@ -620,11 +626,11 @@ function formatRecordedAt(timestamp: number | null): string {
 }
 
 function formatDelta(delta: number | null): string {
-  if (delta === null) return 'New';
-  if (delta > 0 && delta * 100 < 1) return '+<1%';
-  if (delta < 0 && Math.abs(delta) * 100 < 1) return '−<1%';
+  if (delta === null) return '—';
+  if (delta > 0 && delta * 100 < 1) return '+<1 pp';
+  if (delta < 0 && Math.abs(delta) * 100 < 1) return '−<1 pp';
   const percent = Math.round(delta * 100);
-  return `${percent > 0 ? '+' : ''}${percent}%`;
+  return `${percent > 0 ? '+' : ''}${percent} pp`;
 }
 
 function renderActivityCalendar(
@@ -696,7 +702,7 @@ function renderActivityDayDetail(
   }
 
   const total = detail.papers.length;
-  summary.textContent = `Showing ${total} of ${total} items with a progress update on this date.`;
+  summary.textContent = `Showing ${total} of ${total} items with PDF activity on this date.`;
   table.hidden = total === 0;
   empty.hidden = total > 0;
   if (total === 0) {

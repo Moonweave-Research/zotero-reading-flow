@@ -31,6 +31,24 @@
           </select>
         </span>
         <span class="dashboard-control-group">
+          <label for="dashboard-history-range" data-l10n-id="reading-flow-dashboard-history-range">Activity period</label>
+          <select id="dashboard-history-range">
+            <option value="7d" data-l10n-id="reading-flow-dashboard-history-7d">7 days</option>
+            <option value="30d" data-l10n-id="reading-flow-dashboard-history-30d">30 days</option>
+            <option value="90d" data-l10n-id="reading-flow-dashboard-history-90d">90 days</option>
+            <option value="1y" data-l10n-id="reading-flow-dashboard-history-1y">1 year</option>
+            <option value="all-time" data-l10n-id="reading-flow-dashboard-history-all-time">All time</option>
+          </select>
+        </span>
+        <span class="dashboard-refresh-group">
+          <button id="dashboard-refresh" type="button" data-l10n-id="reading-flow-dashboard-refresh">Refresh</button>
+          <span id="dashboard-updated" class="dashboard-updated" aria-live="polite">Not updated</span>
+        </span>
+      </div>
+      <details class="dashboard-more-filters">
+        <summary>Filter items</summary>
+        <div class="dashboard-secondary-controls">
+        <span class="dashboard-control-group">
           <label for="dashboard-dataset" data-l10n-id="reading-flow-dashboard-papers-filter">Items</label>
           <select id="dashboard-dataset">
             <option value="tracked" data-l10n-id="reading-flow-dashboard-tracked-papers">Reading Flow items</option>
@@ -52,31 +70,19 @@
         <span class="dashboard-control-group">
           <label><input id="dashboard-important-only" type="checkbox" /> <span data-l10n-id="reading-flow-important-only">Important only</span></label>
         </span>
-        <span class="dashboard-control-group">
-          <label for="dashboard-history-range" data-l10n-id="reading-flow-dashboard-history-range">History range</label>
-          <select id="dashboard-history-range">
-            <option value="7d" data-l10n-id="reading-flow-dashboard-history-7d">7 days</option>
-            <option value="30d" data-l10n-id="reading-flow-dashboard-history-30d">30 days</option>
-            <option value="90d" data-l10n-id="reading-flow-dashboard-history-90d">90 days</option>
-            <option value="1y" data-l10n-id="reading-flow-dashboard-history-1y">1 year</option>
-            <option value="all-time" data-l10n-id="reading-flow-dashboard-history-all-time">All time</option>
-          </select>
-        </span>
-        <span class="dashboard-refresh-group">
-          <button id="dashboard-refresh" type="button" data-l10n-id="reading-flow-dashboard-refresh">Refresh</button>
-          <span id="dashboard-updated" class="dashboard-updated" aria-live="polite">Not updated</span>
-        </span>
-      </div>
+        </div>
+      </details>
     </header>
 
     <p id="dashboard-error" class="dashboard-error" role="alert" hidden="hidden"></p>
-    <p id="dashboard-filter-note" aria-live="polite" class="dashboard-filter-note">Tracked items · all statuses · selected Zotero scope.</p>
+    <p class="dashboard-position-note">PDF positions are saved automatically, even after a brief visit. They do not measure pages read. Mark Read yourself.</p>
+    <p id="dashboard-active-filters" class="dashboard-filter-note" aria-live="polite"></p>
 
     <section class="summary-grid" aria-labelledby="summary-heading">
       <h2 id="summary-heading" class="visually-hidden" data-l10n-id="reading-flow-dashboard-summary">Summary</h2>
-      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-papers">Items</h3><strong id="dashboard-papers">—</strong></article>
-      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-in-progress">In progress</h3><strong id="dashboard-in-progress">—</strong></article>
-      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-read">Read</h3><strong id="dashboard-read">—</strong></article>
+      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-papers">Items in view</h3><strong id="dashboard-papers">—</strong></article>
+      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-in-progress">Reading</h3><strong id="dashboard-in-progress">—</strong></article>
+      <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-read">Marked Read</h3><strong id="dashboard-read">—</strong></article>
     </section>
 
     <aside id="dashboard-history-onboarding" class="dashboard-onboarding" role="note" hidden="hidden">
@@ -85,18 +91,18 @@
     </aside>
 
     <section id="dashboard-reading-pulse" class="dashboard-panel dashboard-pulse" aria-labelledby="pulse-heading" hidden="hidden">
-      <div class="panel-heading-row"><h2 id="pulse-heading" data-l10n-id="reading-flow-dashboard-pulse">Reading pulse</h2><span id="dashboard-history-range-note" class="dashboard-history-range-note">7 days: loading.</span></div>
-      <p id="dashboard-history-range-empty" class="dashboard-empty" hidden="hidden">No progress updates in this selected range. Retained history is available for this reading set.</p>
+      <div class="panel-heading-row"><h2 id="pulse-heading" data-l10n-id="reading-flow-dashboard-pulse">PDF activity</h2><span id="dashboard-history-range-note" class="dashboard-history-range-note">7 days: loading.</span></div>
+      <p id="dashboard-history-range-empty" class="dashboard-empty" hidden="hidden">No recorded PDF activity in this period. Retained history is available for this reading set.</p>
       <div class="pulse-layout">
         <div class="pulse-metrics">
-          <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-active-days">Days with a progress update</h3><strong id="dashboard-range-active-days">—</strong><span class="summary-detail">in selected range</span></article>
-          <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-papers-progress-activity">Items with a progress update</h3><strong id="dashboard-range-progress-activity">—</strong><span class="summary-detail">in selected range</span></article>
+          <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-active-days">Active days</h3><strong id="dashboard-range-active-days">—</strong><span class="summary-detail">in selected range</span></article>
+          <article class="summary-card"><h3 data-l10n-id="reading-flow-dashboard-papers-progress-activity">Items with activity</h3><strong id="dashboard-range-progress-activity">—</strong><span class="summary-detail">in selected range</span></article>
         </div>
         <div class="pulse-calendar" aria-labelledby="activity-calendar-heading">
           <h3 id="activity-calendar-heading" data-l10n-id="reading-flow-dashboard-activity-calendar">Activity calendar</h3>
           <div id="dashboard-history-calendar"></div>
           <section id="dashboard-activity-day-detail" class="dashboard-activity-day-detail" aria-labelledby="dashboard-activity-day-detail-heading" hidden="hidden">
-            <h3 id="dashboard-activity-day-detail-heading" data-l10n-id="reading-flow-dashboard-activity-day-detail">Progress updates</h3>
+            <h3 id="dashboard-activity-day-detail-heading" data-l10n-id="reading-flow-dashboard-activity-day-detail">PDF activity</h3>
             <p id="dashboard-activity-day-detail-summary" class="dashboard-history-range-note" aria-live="polite"></p>
             <p id="dashboard-activity-day-detail-empty" class="dashboard-empty" hidden="hidden"></p>
             <table id="dashboard-activity-day-detail-table">
@@ -117,13 +123,8 @@
       </div>
     </section>
 
-    <div class="dashboard-panels-grid">
-      <section class="dashboard-panel" aria-labelledby="status-heading"><h2 id="status-heading" data-l10n-id="reading-flow-dashboard-status-composition">Status composition</h2><div id="dashboard-status-composition"></div></section>
-      <section class="dashboard-panel" aria-labelledby="progress-heading"><h2 id="progress-heading" data-l10n-id="reading-flow-dashboard-progress-distribution">Saved PDF position distribution</h2><div id="dashboard-progress-distribution"></div></section>
-    </div>
-
     <section id="dashboard-recent-progress-panel" class="dashboard-panel" aria-labelledby="recent-progress-heading" hidden="hidden">
-      <div class="panel-heading-row"><h2 id="recent-progress-heading" data-l10n-id="reading-flow-dashboard-recent-progress">Recent progress</h2><span class="dashboard-history-range-note">retained history</span></div>
+      <div class="panel-heading-row"><h2 id="recent-progress-heading" data-l10n-id="reading-flow-dashboard-recent-progress">Recently viewed PDFs</h2><span class="dashboard-history-range-note">retained history</span></div>
       <div class="recent-progress-meta">
         <p id="dashboard-recent-progress-summary" class="dashboard-history-range-note"></p>
         <button id="dashboard-recent-progress-toggle" type="button" hidden="hidden">Show all</button>
@@ -134,9 +135,9 @@
         <thead>
           <tr>
             <th scope="col">Item</th>
-            <th scope="col">Saved PDF position</th>
-            <th scope="col">Change in range</th>
-            <th scope="col">Last update</th>
+            <th scope="col">Last saved position</th>
+            <th scope="col">Farthest position change</th>
+            <th scope="col">Last activity</th>
             <th scope="col">Status</th>
             <th scope="col">Reset</th>
           </tr>
@@ -146,6 +147,19 @@
       <p id="dashboard-recent-progress-action-status" class="dashboard-action-status" aria-live="polite"></p>
     </section>
 
+    <details class="dashboard-breakdown">
+      <summary>Status and saved positions</summary>
+    <div class="dashboard-panels-grid">
+      <section class="dashboard-panel" aria-labelledby="status-heading"><h2 id="status-heading" data-l10n-id="reading-flow-dashboard-status-composition">Status composition</h2><div id="dashboard-status-composition"></div></section>
+      <section class="dashboard-panel" aria-labelledby="progress-heading"><h2 id="progress-heading" data-l10n-id="reading-flow-dashboard-progress-distribution">Saved PDF position distribution</h2><div id="dashboard-progress-distribution"></div></section>
+    </div>
+
+    </details>
+    <details class="dashboard-method">
+      <summary>About these numbers</summary>
+      <p id="dashboard-filter-note" class="dashboard-filter-note">Loading scope details…</p>
+      <p>Activity means a recorded PDF page change, including brief visits. Current counts use the selected view and filters; the period applies only to activity. Farthest position change compares the first and last recorded activity days in that period for the same PDF (first → latest recorded maximum position). One recorded day, a reset or mixed PDFs is shown as —.</p>
+    </details>
     <p id="dashboard-history-footnote" class="dashboard-history-footnote" hidden="hidden"></p>
   </main>
   <script src="dashboard.js"></script>
