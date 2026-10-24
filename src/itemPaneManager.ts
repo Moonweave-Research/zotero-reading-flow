@@ -108,16 +108,20 @@ export class ReadingFlowItemPaneManager {
   }
   private facts(props: Props, entries: [string, string][]) {
     const list = this.element(props, 'dl');
-    for (const [key, value] of Object.entries({ display: 'grid', 'grid-template-columns': 'minmax(7em, 0.85fr) minmax(0, 1.15fr)', gap: '0.4em 0.75em', margin: '0.65em 0', 'line-height': '1.4' })) list.style.setProperty(key, value);
+    for (const [key, value] of Object.entries({ display: 'grid', gap: '0.4em', margin: '0.65em 0', 'line-height': '1.4' })) list.style.setProperty(key, value);
     for (const [name, value] of entries) {
+      const row = this.element(props, 'div');
+      for (const [key, value] of Object.entries({ display: 'flex', 'flex-wrap': 'wrap', gap: '0.15em 0.75em' })) row.style.setProperty(key, value);
       const label = this.element(props, 'dt', name), text = this.element(props, 'dd', value);
+      label.style.setProperty('flex', '1 1 8em');
+      text.style.setProperty('flex', '1.35 1 11em'); text.style.setProperty('min-width', '0');
       text.style.setProperty('margin', '0'); text.style.setProperty('font-weight', '500');
       text.style.setProperty('font-variant-numeric', 'tabular-nums');
       if (name === 'PDF') {
         for (const [key, value] of Object.entries({ overflow: 'hidden', 'white-space': 'nowrap', 'text-overflow': 'ellipsis' })) text.style.setProperty(key, value);
         text.setAttribute('title', value);
       }
-      list.append(label, text);
+      row.append(label, text); list.append(row);
     }
     return list;
   }
