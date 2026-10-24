@@ -5,6 +5,10 @@ import { Logger } from './Logger';
 type ZoteroItem = {
   id: number;
   parentID?: number | null;
+  deleted?: boolean;
+  fileExists?: () => Promise<boolean>;
+  attachmentFilename?: string;
+  getField?: (field: string) => any;
   isPDFAttachment?: () => boolean;
   isRegularItem?: () => boolean;
   getBestAttachment?: () => Promise<ZoteroItem | null | undefined> | ZoteroItem | null | undefined;
@@ -19,6 +23,10 @@ type ResumeTarget = {
 };
 
 export type ResumeDisplayTarget = {
+  action: 'resume' | 'open' | 'none';
+  sourceId: number;
+  reason: string;
+  filename?: string;
   canResume: boolean;
   attachmentId?: number;
   lastPage?: number | null;
@@ -40,19 +48,25 @@ export class ResumeReader {
   public async getResumeDisplayTarget(item: ZoteroItem): Promise<ResumeDisplayTarget> {
     const target = await this.resolveTargetSafely(item);
     if (!target) {
-      return { canResume: false, fallbackLabel: 'Resume Reading' };
+      return { action: 'none', sourceId: item.id, reason: 'No accessible PDF attachment is available.', canResume: false, fallbackLabel: 'PDF unavailable' };
     }
 
-    const canResume = this.isPositiveInteger(target.lastPage);
+    const canResume = this.isPositiveInteger(target.lastPage)
+      && (!target.totalPages || target.lastPage <= target.totalPages);
     const lastPage = canResume ? target.lastPage : null;
     const totalPages = canResume ? target.totalPages : null;
-    const fallbackLabel = this.getFallbackLabel(lastPage, totalPages);
+    const filename = target.attachment.attachmentFilename || target.attachment.getField?.('title') || `PDF ${target.attachment.id}`;
+    const fallbackLabel = `${lastPage ? this.getFallbackLabel(lastPage, totalPages) : 'Open PDF'} — ${filename}`;
     const l10nArgs = this.getL10nArgs(lastPage, totalPages);
 
     return {
+      action: canResume ? 'resume' : 'open',
+      sourceId: item.id,
+      filename,
+      reason: canResume ? `Saved position for ${filename}.` : `No saved page for ${filename}; Zotero chooses the opening position.`,
       canResume,
       attachmentId: target.attachment.id,
-      lastPage: target.lastPage,
+      lastPage,
       totalPages,
       l10nArgs,
       fallbackLabel
@@ -60,16 +74,27 @@ export class ResumeReader {
   }
 
   public async resume(item: ZoteroItem): Promise<boolean> {
-    const target = await this.resolveTargetSafely(item);
-    if (!target) return false;
+    return this.executeTarget(await this.getResumeDisplayTarget(item));
+  }
 
-    const location = this.getLocation(target.lastPage);
-    return this.openAttachment(target.attachment.id, location);
+  public async executeTarget(target: ResumeDisplayTarget, isCurrent: () => boolean = () => true): Promise<boolean> {
+    if (target.action === 'none' || !isCurrent()) return false;
+    const source = (globalThis as any).Zotero?.Items?.get?.(target.sourceId);
+    if (!source || source.deleted) return false;
+    const fresh = await this.getResumeDisplayTarget(source);
+    if (!isCurrent() || fresh.action !== target.action || fresh.attachmentId !== target.attachmentId
+      || fresh.lastPage !== target.lastPage) return false;
+    const attachment = (globalThis as any).Zotero?.Items?.get?.(target.attachmentId);
+    if (!this.isPdfAttachment(attachment) || source.deleted
+      || (!source.isPDFAttachment?.() && !this.idsEqual(attachment.parentID, source.id))) return false;
+    return this.openAttachment(attachment.id, this.getLocation(target.lastPage ?? null));
   }
 
   private async resolveTargetSafely(item: ZoteroItem): Promise<ResumeTarget | null> {
     try {
-      return await this.resolveTarget(item);
+      const target = await this.resolveTarget(item);
+      if (target?.attachment.fileExists && !await target.attachment.fileExists()) return null;
+      return target;
     } catch (error) {
       Logger.warn(`ResumeReader: failed to resolve target: ${this.getErrorMessage(error)}`);
       return null;
@@ -77,6 +102,7 @@ export class ResumeReader {
   }
 
   private async resolveTarget(item: ZoteroItem): Promise<ResumeTarget | null> {
+    if (item.deleted) return null;
     if (this.isPdfAttachment(item)) {
       const parentData = this.getParentData(item);
       return {
@@ -103,7 +129,7 @@ export class ResumeReader {
     }
 
     const bestAttachment = await item.getBestAttachment?.();
-    if (!bestAttachment || !this.isPdfAttachment(bestAttachment)) return null;
+    if (!bestAttachment || !this.isPdfAttachment(bestAttachment) || !this.idsEqual(bestAttachment.parentID, item.id)) return null;
     return {
       attachment: bestAttachment,
       lastPage: null,
@@ -230,8 +256,8 @@ export class ResumeReader {
       await this.callOpen(attachmentId, location);
       return true;
     } catch (error) {
-      Logger.warn(`ResumeReader: opening ${attachmentId} at saved page failed; retrying without location`);
-      return this.openWithoutLocation(attachmentId);
+      Logger.warn(`ResumeReader: opening ${attachmentId} at saved page failed; no unspecified opening attempted`);
+      return false;
     }
   }
 
@@ -279,7 +305,7 @@ export class ResumeReader {
   }
 
   private isPdfAttachment(item: ZoteroItem | null | undefined): boolean {
-    return Boolean(item?.id && item.isPDFAttachment?.());
+    return Boolean(item?.id && !item.deleted && item.isPDFAttachment?.());
   }
 
   private parsePositiveId(value: string | null): number | null {

@@ -207,15 +207,14 @@ export class DataStore {
       const saved = await this.executeTransition(item, (current) => {
         const hasResumeState = Object.keys(current.p).length > 0
           || current.lastAttachmentId !== null
-          || current.lastPage !== null
-          || current.lastReadAt !== null;
+          || current.lastPage !== null;
         if (!hasResumeState && (!markToRead || current.s === 'to-read')) return current;
         const next = mergeFlowData(current, {
           p: {},
           s: markToRead ? 'to-read' : current.s,
           lastAttachmentId: null,
           lastPage: null,
-          lastReadAt: null
+          lastReadAt: current.lastReadAt
         }, timestamp);
         return normalizeFlowData({
           ...next,

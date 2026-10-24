@@ -8,6 +8,9 @@ import type { HistoricalSnapshot, StatisticsDataset, StatisticsSnapshot } from '
 
 class FakeElement {
   public textContent = '';
+  public isConnected = true;
+  public onclick?: () => Promise<void>;
+  getAttribute(name: string) { return this.attributes[name] ?? null; }
   public className = '';
   public hidden = false;
   public disabled = false;
@@ -44,6 +47,16 @@ class FakeElement {
 class FakeDocument {
   public readonly elements = new Map<string, FakeElement>();
   public documentElement: FakeElement | null = null;
+
+  querySelectorAll() {
+    const matches = new Set<FakeElement>();
+    const visit = (element: FakeElement) => {
+      if (element.attributes['data-pdf-item']) matches.add(element);
+      element.children.forEach(visit);
+    };
+    this.elements.forEach(visit);
+    return [...matches];
+  }
 
   getElementById(id: string) {
     return this.elements.get(id) ?? null;
@@ -472,7 +485,7 @@ test('the packaged dashboard bundle loads an activity detail, clears it, and rel
   assert.equal(rows.length, 2);
   assert.equal(rows[0].children[0].children[0].textContent, 'Selected paper');
   assert.equal(rows[1].children[1].textContent, 'Unknown');
-  assert.deepEqual(rows[0].children[0].children[1].children.map((button) => button.textContent), ['Show in Zotero', 'Resume']);
+  assert.deepEqual(rows[0].children[0].children[1].children.map((button) => button.textContent), ['Show in Zotero', 'Open PDF']);
   assert.equal(snapshotRequests, 1);
   assert.deepEqual(focuses, []);
   assert.deepEqual(resumes, []);
@@ -959,4 +972,29 @@ test('filtered summary discloses original T = K + U and uses K for status percen
   assert.equal(findBar(doc, 'dashboard-status-composition', 'Read')?.children[2]?.textContent, '1 (33%)');
   const xhtml = readFileSync('addon/dashboard.xhtml', 'utf8');
   assert.doesNotMatch(xhtml, /dashboard-remaining-pages|dashboard-range-completions|dashboard-completion-trend/);
+});
+
+
+test('PR2 dashboard displays shared file-specific Open action and only executes displayed target on activation', async () => {
+  const doc = documentFixture();
+  const target = { action: 'open' as const, sourceId: 42, attachmentId: 10, lastPage: null,
+    canResume: false, fallbackLabel: 'Open PDF — supplement.pdf', filename: 'supplement.pdf', reason: 'No saved page for supplement.pdf.' };
+  const executions: unknown[] = [];
+  const app = new DashboardApp(doc as any, {
+    async getSnapshot() { return snapshot({ history: history({ recentProgress: [{
+      id: 42, title: 'Chosen item', status: 'reading', currentProgress: 0.5,
+      delta: 0, lastProgressDay: '2026-07-28', resetCount: 0
+    }] }) }); },
+    async getPDFTarget() { return target; },
+    async executePDFTarget(value) { executions.push(value); return true; }
+  }, () => 0);
+  app.start();
+  await flush();
+  const button = doc.querySelectorAll()[0];
+  assert.equal(button.textContent, target.fallbackLabel);
+  assert.equal(button.disabled, false);
+  assert.match(button.getAttribute('aria-label')!, /No saved page/);
+  assert.deepEqual(executions, []);
+  await button.onclick!();
+  assert.deepEqual(executions, [target]);
 });

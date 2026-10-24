@@ -188,7 +188,7 @@ function setupMenu(
     submenu,
     unregisteredMenuIDs,
     menuByL10nID(l10nID: string) {
-      return submenu.menus.find((menu: any) => (menu.l10nID ?? menu.l10nId) === l10nID);
+      return submenu.menus.flatMap((menu: any) => [menu, ...(menu.menus ?? [])]).find((menu: any) => (menu.l10nID ?? menu.l10nId) === l10nID);
     }
   };
 }
@@ -230,8 +230,8 @@ test('menus include direct labels as a fallback for nested native menu rendering
   assert.equal(menuByL10nID('reading-flow-status-read').label, 'Mark as Read');
   assert.equal(menuByL10nID('reading-flow-status-important').label, 'Mark as Important');
   assert.equal(menuByL10nID('reading-flow-status-automatic').label, 'Clear Manual Status (Use Automatic)');
-  assert.equal(menuByL10nID('reading-flow-reset-progress').label, 'Reset Progress (Keep Manual Status)');
-  assert.equal(menuByL10nID('reading-flow-restart-to-read').label, 'Restart as To Read');
+  assert.equal(menuByL10nID('reading-flow-reset-progress').label, 'Reset tracked PDF positions');
+  assert.equal(menuByL10nID('reading-flow-restart-to-read'), undefined);
 });
 
 test('dashboard menu keeps the submenu available without an item selection and opens modeless UI', async () => {
@@ -309,7 +309,7 @@ test('resume menu updates dynamic label and l10n args for resumable page state',
 
   assert.equal(context.enabled, true);
   assert.equal(context.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 7 }));
-  assert.equal(context.menuElem.label, 'Resume at Page 4 / 7');
+  assert.equal(context.menuElem.label, 'Resume at Page 4 / 7 — PDF 10');
 });
 
 test('resume menu updates dynamic label through setLabel when menuElem is unavailable', async () => {
@@ -324,7 +324,7 @@ test('resume menu updates dynamic label through setLabel when menuElem is unavai
 
   assert.equal(context.enabled, true);
   assert.equal(context.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 7 }));
-  assert.equal(context.label, 'Resume at Page 4 / 7');
+  assert.equal(context.label, 'Resume at Page 4 / 7 — PDF 10');
 });
 
 test('resume menu keeps fallback label when resume is not available', async () => {
@@ -337,9 +337,9 @@ test('resume menu keeps fallback label when resume is not available', async () =
   const context = enabledContext();
   await menuByL10nID('reading-flow-resume-reading').onShowing(new Event('showing'), context);
 
-  assert.equal(context.enabled, false);
+  assert.equal(context.enabled, true);
   assert.equal(context.l10nArgs, '{}');
-  assert.equal(context.menuElem.label, 'Resume Reading');
+  assert.equal(context.menuElem.label, 'Open PDF — PDF 10');
 });
 
 test('resume menu clears stale args when selection is not resumable', async () => {
@@ -361,8 +361,8 @@ test('resume menu clears stale args when selection is not resumable', async () =
   await getNoPageResumeMenu('reading-flow-resume-reading').onShowing(new Event('showing'), context);
 
   assert.equal(context.l10nArgs, '{}');
-  assert.equal(context.menuElem.label, 'Resume Reading');
-  assert.equal(context.enabled, false);
+  assert.equal(context.menuElem.label, 'Open PDF — PDF 10');
+  assert.equal(context.enabled, true);
 });
 
 test('submenu is enabled for exactly one resumable PDF attachment', async () => {
@@ -449,8 +449,9 @@ test('status, automatic, reset, and restart commands use command context', async
 
   await menuByL10nID('reading-flow-status-reading').onCommand(new Event('command'), commandContext);
   await menuByL10nID('reading-flow-status-automatic').onCommand(new Event('command'), commandContext);
+  (globalThis as any).Services = { prompt: { confirm: () => true } };
   await menuByL10nID('reading-flow-reset-progress').onCommand(new Event('command'), commandContext);
-  await menuByL10nID('reading-flow-restart-to-read').onCommand(new Event('command'), commandContext);
+
 
   assert.deepEqual(mutationCalls, [
     'setStatus',
@@ -462,9 +463,7 @@ test('status, automatic, reset, and restart commands use command context', async
     'resetProgress',
     'refreshColumns',
     'notifier',
-    'restartAsToRead',
-    'refreshColumns',
-    'notifier'
+
   ]);
 });
 
@@ -546,7 +545,7 @@ test('resume menu command logs outer resumeSelectedItem errors without rejecting
   Logger.error = (...args: any[]) => {
     errors.push(args);
   };
-  (manager as any).resumeReader.resume = async () => {
+  (manager as any).resumeReader.executeTarget = async () => {
     throw new Error('outer resume failed');
   };
 
@@ -586,12 +585,46 @@ test('resume menu command catches reader failures through ResumeReader warnings'
     await assert.doesNotReject(menuByL10nID('reading-flow-resume-reading').onCommand());
 
     assert.equal(errors.length, 0);
-    assert.equal(warnings.length, 2);
-    assert.match(warnings[0], /opening 10 at saved page failed; retrying without location/);
-    assert.match(warnings[1], /failed to open attachment 10/);
-    assert.match(warnings[1], /reader failed/);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /opening 10 at saved page failed/);
+
   } finally {
     Logger.warn = originalWarn;
     Logger.error = originalError;
   }
+});
+
+test('PR2 displayed target cannot be replaced by a different command selection', async () => {
+  const parent = makeRegularItem(20);
+  const other = makeRegularItem(21);
+  const attachment = makePdfAttachment(10, 20);
+  const { menuByL10nID, openCalls } = setupMenu([parent], {
+    20: flowData({ lastAttachmentId: '10', lastPage: 4 })
+  }, [parent, other, attachment]);
+  const menu = menuByL10nID('reading-flow-resume-reading');
+  await menu.onShowing(new Event('showing'), enabledContext());
+  await menu.onCommand(new Event('command'), { items: [other] });
+  assert.deepEqual(openCalls, []);
+});
+
+test('PR2 readonly PDF remains Open while status mutations are disabled', async () => {
+  const parent = makeRegularItem(20);
+  (parent as any).isEditable = () => false;
+  const attachment = makePdfAttachment(10, 20);
+  const { menuByL10nID, mutationCalls, openCalls } = setupMenu([parent], {
+    20: flowData({ lastAttachmentId: '10' })
+  }, [parent, attachment]);
+  const viewContext = enabledContext();
+  const menu = menuByL10nID('reading-flow-resume-reading');
+  await menu.onShowing(new Event('showing'), viewContext);
+  assert.equal(viewContext.enabled, true);
+  assert.match(viewContext.menuElem.label, /Open PDF/);
+  await menu.onCommand();
+  assert.deepEqual(openCalls, [[10, undefined]]);
+  const mutationContext = enabledContext();
+  const status = menuByL10nID('reading-flow-status-read');
+  status.onShowing(new Event('showing'), mutationContext);
+  assert.equal(mutationContext.enabled, false);
+  await status.onCommand();
+  assert.deepEqual(mutationCalls, []);
 });
