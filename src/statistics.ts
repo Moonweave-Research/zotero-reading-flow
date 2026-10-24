@@ -1,6 +1,8 @@
 import {
   FlowData,
   formatPDFPosition,
+  formatPDFLocation,
+  getLastActivityAt,
   DisplayReadingStatus,
   ReadingHistory,
   getLocalDayKey,
@@ -79,6 +81,8 @@ export interface RecentProgressSnapshot {
   positionText?: string;
   delta: number | null;
   positionChange?: { from: number; to: number };
+  positionChangeText?: string;
+  lastActivityAt?: number | null;
   lastProgressDay: string;
   resetCount: number;
 }
@@ -87,6 +91,7 @@ export interface ActivityDayDetailPaper {
   itemID: number | string;
   title: string;
   recordedProgress: number | null;
+  recordedPositionText?: string;
   status: DisplayReadingStatus;
   important?: boolean;
   statusSource?: ReadingStatusSource;
@@ -333,6 +338,8 @@ export function calculateActivityDayDetail(
         itemID: paper.id,
         title: paper.title?.trim() || `Paper ${paper.id}`,
         recordedProgress: normalizeRecordedDayProgress(paper.flowData, rollup),
+        recordedPositionText: Object.keys(rollup.progress).length === 1
+          ? formatPDFLocation(normalizeRecordedDayProgress(paper.flowData, rollup), validPageCount(paper.flowData.pageCount?.[Object.keys(rollup.progress)[0]])) : 'Unknown',
         status: resolveReadingStatus(paper.flowData).status,
         important: paper.flowData.important === true,
         statusSource: resolveReadingStatus(paper.flowData).source,
@@ -370,7 +377,8 @@ function buildRecentProgressSnapshot(
     .filter(([day, rollup]) => isInWindow(day, window) && rollup.reset)
     .length;
 
-  const positionChange = recordedPositionChange(history, progressDays.map(entry => entry.day), resetCount);
+  const positionChange = recordedPositionChange(paper.flowData, progressDays.map(entry => entry.day), resetCount);
+  const comparisonPageCount = positionChange ? validPageCount(paper.flowData.pageCount?.[Object.keys(history.days[progressDays[0].day].progress)[0]]) : null;
   return {
     id: paper.id,
     title: paper.title?.trim() || `Paper ${paper.id}`,
@@ -380,7 +388,8 @@ function buildRecentProgressSnapshot(
     currentProgress: display.normalizedProgress,
     positionText: formatPDFPosition(paper.flowData),
     delta: positionChange ? positionChange.to - positionChange.from : null,
-    ...(positionChange ? { positionChange } : {}),
+    ...(positionChange ? { positionChange, positionChangeText: `${formatPDFLocation(positionChange.from, comparisonPageCount)} → ${formatPDFLocation(positionChange.to, comparisonPageCount)}` } : {}),
+    lastActivityAt: getLastActivityAt(paper.flowData),
     lastProgressDay: latest.day,
     resetCount
   };
@@ -532,11 +541,13 @@ function emptyProgressDistribution(): Record<ProgressBucket, number> {
   };
 }
 
-function recordedPositionChange(history: ReadingHistory, days: string[], resetCount: number): { from: number; to: number } | null {
+function recordedPositionChange(data: FlowData, days: string[], resetCount: number): { from: number; to: number } | null {
   if (days.length < 2 || resetCount > 0) return null;
-  const positions = days.map(day => Object.entries(history.days[day].progress));
+  const positions = days.map(day => Object.entries(data.history!.days[day].progress));
   const attachmentID = positions[0][0]?.[0];
   if (!attachmentID || positions.some(entries => entries.length !== 1 || entries[0][0] !== attachmentID
-    || !Number.isFinite(entries[0][1]) || entries[0][1] <= 0 || entries[0][1] > 1)) return null;
-  return { from: positions[0][0][1], to: positions[positions.length - 1][0][1] };
+    || !Number.isFinite(entries[0][1]) || entries[0][1] <= 0)) return null;
+  const values = days.map(day => normalizeRecordedDayProgress(data, data.history!.days[day]));
+  if (values.some(value => value === null)) return null;
+  return { from: values[0]!, to: values[values.length - 1]! };
 }

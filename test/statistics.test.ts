@@ -387,6 +387,7 @@ test('activity day detail keeps every real progress update, excludes status/rese
       itemID: 2,
       title: 'Alpha paper',
       recordedProgress: null,
+      recordedPositionText: 'Unknown',
       status: 'skimmed',
       important: false,
       statusSource: 'manual',
@@ -396,6 +397,7 @@ test('activity day detail keeps every real progress update, excludes status/rese
       itemID: 1,
       title: 'Zeta paper',
       recordedProgress: 0.4,
+      recordedPositionText: 'Page 40 / 100',
       status: 'reading',
       important: false,
       statusSource: 'manual',
@@ -617,4 +619,34 @@ test('cacheable paper selection matches the dashboard dataset and status filters
   days['2026-07-25'].reset = true; assert.equal(delta(), null);
   days['2026-07-25'].reset = false; days['2026-07-25'].progress = { b: 0.4 }; assert.equal(delta(), null);
   days['2026-07-25'].progress = { a: 0.4, b: 0.2 }; assert.equal(delta(), null);
+});
+
+
+test('ambiguous legacy one stays unknown in both daily details and period endpoints', () => {
+  const item = paper(1, { v: 2, p: { a: 7 }, pageCount: { a: 7 }, lastAttachmentId: 'a', lastPage: 7,
+    lastReadAt: localTimestamp('2026-07-28', 14), history: { startedAt: 1, completedAt: null, activeDaysTotal: 2, days: {
+      '2026-07-27': { activity: true, lastReadAt: localTimestamp('2026-07-27'), progress: { a: 5 / 7 }, status: 'reading', reset: false, completed: false },
+      '2026-07-28': { activity: true, lastReadAt: localTimestamp('2026-07-28', 14), progress: { a: 1 }, status: 'reading', reset: false, completed: false }
+    } } });
+  const before = JSON.stringify(item);
+  const recent = calculateHistorySnapshot([item], '7d', localTimestamp('2026-07-28', 15)).recentProgress[0];
+  assert.equal(recent.positionChange, undefined);
+  assert.equal(recent.delta, null);
+  assert.equal(calculateActivityDayDetail([item], '2026-07-28')[0].recordedProgress, null);
+  assert.equal(JSON.stringify(item), before);
+});
+
+
+test('daily endpoint pages and current activity timestamp keep their separate meanings', () => {
+  const at = localTimestamp('2026-07-28', 14);
+  const item = paper(1, { p: { a: 0.9 }, pageCount: { a: 10 }, lastAttachmentId: 'a', lastPage: 3, lastReadAt: at,
+    history: { startedAt: 1, completedAt: null, activeDaysTotal: 2, days: {
+      '2026-07-27': { activity: true, lastReadAt: localTimestamp('2026-07-27'), progress: { a: 0.9 }, status: 'reading', reset: false, completed: false },
+      '2026-07-28': { activity: true, lastReadAt: at, progress: { a: 0.4 }, status: 'reading', reset: false, completed: false }
+    } } });
+  const recent = calculateHistorySnapshot([item], '7d', at).recentProgress[0];
+  assert.equal(recent.positionText, 'Saved at page 3 / 10');
+  assert.equal(recent.positionChangeText, 'Page 9 / 10 → Page 4 / 10');
+  assert.equal(recent.lastActivityAt, at);
+  assert.equal(calculateActivityDayDetail([item], '2026-07-28')[0].recordedPositionText, 'Page 4 / 10');
 });

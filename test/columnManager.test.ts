@@ -94,13 +94,13 @@ test('compact and icons render full accessible text while changing only composit
   const column = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowDisplay');
   const item = { id: 7, isRegularItem: () => true };
   const compact = column.renderCell(0, column.dataProvider(item), {}, false, fakeDocument());
-  assert.match(compact.getAttribute?.('aria-label') ?? compact['aria-label'], /Reading, manual status, Saved at page 42 \/ 100, Maximum PDF position 42%, last PDF activity/);
+  assert.match(compact.getAttribute?.('aria-label') ?? compact['aria-label'], /Reading, manual status, Saved at page 42 \/ 100, Farthest PDF position: Page 42 \/ 100, last PDF activity/);
   assert.match(JSON.stringify(compact), /42%/);
   assert.equal(compact.children.length, 3);
   assert.equal(compact.children[1]['data-progress'], '42');
   (globalThis as any).Zotero.Prefs.get = () => 'icons';
   const icons = column.renderCell(0, column.dataProvider(item), {}, false, fakeDocument());
-  assert.match(icons['aria-label'], /Reading, manual status, Saved at page 42 \/ 100, Maximum PDF position 42%, last PDF activity/);
+  assert.match(icons['aria-label'], /Reading, manual status, Saved at page 42 \/ 100, Farthest PDF position: Page 42 \/ 100, last PDF activity/);
   assert.equal(icons.children.length, 1);
 });
 
@@ -149,8 +149,8 @@ test('untouched papers render an empty status surface with an accessible unassig
   assert.equal(status.renderCell(0, status.dataProvider(item), {}, false, fakeDocument()).children.length, 0);
   const cell = composite.renderCell(0, composite.dataProvider(item), {}, false, fakeDocument());
   assert.equal(cell.children.length, 0);
-  assert.equal(cell['aria-label'], 'Unassigned, no status assigned, No saved PDF position, Maximum PDF position unknown, no PDF activity recorded');
-  assert.equal(cell.title, 'Unassigned, no status assigned, No saved PDF position, Maximum PDF position unknown, no PDF activity recorded');
+  assert.equal(cell['aria-label'], 'Unassigned, no status assigned, No saved PDF position, Farthest PDF position: Unknown, no PDF activity recorded');
+  assert.equal(cell.title, 'Unassigned, no status assigned, No saved PDF position, Farthest PDF position: Unknown, no PDF activity recorded');
 });
 
 test('non-regular rows use a deterministic unassigned composite without reading item metadata', async () => {
@@ -195,7 +195,7 @@ test('preserves Detailed renderer presentation independently of composite densit
   const progress = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowProgress');
   const lastRead = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowLastRead');
   const statusCell = status.renderCell(0, 'reading', {}, false, fakeDocument());
-  const progressCell = progress.renderCell(0, '0.42|42 / 100 PDF pages|Maximum PDF position 42%', {}, false, fakeDocument());
+  const progressCell = progress.renderCell(0, '0.42|42 / 100 PDF pages|Farthest PDF position: Page 42 / 100', {}, false, fakeDocument());
   const completedProgressCell = progress.renderCell(0, '0.95|95 / 100 PDF pages|Maximum PDF position 95%', {}, false, fakeDocument());
   const lastReadCell = lastRead.renderCell(0, '1700000000000', {}, false, fakeDocument());
   assert.match(statusCell.children[0].style.cssText, /#2563eb/);
@@ -233,7 +233,7 @@ test('other absent-progress states use plain non-technical wording without dupli
   await manager.register();
   const column = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowDisplay');
   const cell = column.renderCell(0, column.dataProvider({ id: 9, isRegularItem: () => true }), {}, false, fakeDocument());
-  assert.match(cell['aria-label'], /^Reading, manual status, No saved PDF position, Maximum PDF position unknown, last PDF activity /);
+  assert.match(cell['aria-label'], /^Reading, manual status, No saved PDF position, Farthest PDF position: Unknown, last PDF activity /);
   assert.equal(cell.children.filter((child: any) => /No saved PDF position/.test(child.textContent)).length, 1);
   assert.doesNotMatch(JSON.stringify(cell), /never read|% read/i);
 });

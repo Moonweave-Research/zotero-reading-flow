@@ -198,9 +198,23 @@ export function formatPDFPosition(data: FlowData): string {
   return display.pageCount !== null ? `Saved at page ${page} / ${display.pageCount}` : `PDF page ${page} (page count unknown)`;
 }
 
+/** A PDF location, never a reading/completion percentage. */
+export function formatPDFLocation(progress: number | null, pageCount: number | null): string {
+  if (progress === null || !Number.isFinite(progress) || progress <= 0 || progress > 1) return 'Unknown';
+  if (pageCount === null) return progress === 1 ? 'Unknown' : progress < 0.01 ? '<1% of PDF' : `About ${Math.floor(progress * 100)}% of PDF`;
+  const page = progress * pageCount;
+  return `${Math.abs(page - Math.round(page)) < 0.000001 ? 'Page' : 'About page'} ${Math.max(1, Math.round(page))} / ${pageCount}`;
+}
+
 export function formatMaximumPosition(data: FlowData): string {
-  const maximum = getNormalizedDisplayProgress(data);
-  return maximum === null ? 'Maximum PDF position unknown' : `Maximum PDF position ${Math.round(maximum * 100)}%`;
+  const display = resolveDisplayProgress(data);
+  return `Farthest PDF position: ${formatPDFLocation(display.normalizedProgress, display.pageCount)}`;
+}
+
+export function formatActivityTimestamp(timestamp: number | null): string {
+  if (timestamp === null || !Number.isFinite(timestamp) || timestamp <= 0) return 'Not recorded';
+  const date = new Date(timestamp);
+  return `${getLocalDayKey(timestamp)} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
 export function normalizeProgressValue(
