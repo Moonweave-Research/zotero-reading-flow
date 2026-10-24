@@ -285,9 +285,9 @@ test('populated history renders the reading pulse and one semantic Recent Progre
   assert.equal(table?.hidden, false);
   assert.equal(row?.tagName, 'tr');
   assert.deepEqual(row?.children.map((cell) => cell.tagName), ['td', 'td', 'td', 'td', 'td', 'td']);
-  assert.deepEqual(row?.children.map((cell) => cell.attributes['data-label']), ['Paper', 'Saved PDF position', 'Change in range', 'Last update', 'Status', 'Reset']);
+  assert.deepEqual(row?.children.map((cell) => cell.attributes['data-label']), ['Paper', 'Last saved position', 'Farthest position change', 'Last activity', 'Status', 'Reset']);
   assert.match(row?.children[4]?.className ?? '', /status-reading/);
-  assert.equal(doc.getElementById('dashboard-recent-progress-summary')?.textContent, 'Showing 1 of 1 items with a progress update in this range.');
+  assert.equal(doc.getElementById('dashboard-recent-progress-summary')?.textContent, 'Showing 1 of 1 items with PDF activity in this period.');
 });
 
 test('Recent Progress makes its displayed subset explicit, can expand, and returns only a user-chosen paper to Zotero', () => {
@@ -312,7 +312,7 @@ test('Recent Progress makes its displayed subset explicit, can expand, and retur
 
   render(false);
   assert.equal(doc.getElementById('dashboard-recent-progress-body')?.children.length, 8);
-  assert.equal(doc.getElementById('dashboard-recent-progress-summary')?.textContent, 'Showing 8 of 9 items with a progress update in this range.');
+  assert.equal(doc.getElementById('dashboard-recent-progress-summary')?.textContent, 'Showing 8 of 9 items with PDF activity in this period.');
   assert.equal(doc.getElementById('dashboard-recent-progress-toggle')?.textContent, 'Show all 9');
   doc.getElementById('dashboard-recent-progress-toggle')!.listeners.click[0]();
   assert.equal(doc.getElementById('dashboard-recent-progress-body')?.children.length, 9);
@@ -414,7 +414,7 @@ test('calendar selection projects only its cached day, can clear, and does not r
   assert.deepEqual(resumes, []);
   assert.equal(doc.getElementById('dashboard-activity-day-detail')?.hidden, false);
   assert.equal(doc.getElementById('dashboard-activity-day-detail-heading')?.textContent, 'Progress updates on 2026-07-27');
-  assert.equal(doc.getElementById('dashboard-activity-day-detail-summary')?.textContent, 'Showing 2 of 2 items with a progress update on this date.');
+  assert.equal(doc.getElementById('dashboard-activity-day-detail-summary')?.textContent, 'Showing 2 of 2 items with PDF activity on this date.');
   assert.equal(doc.getElementById('dashboard-activity-day-detail-body')?.children.length, 2);
   assert.equal(doc.getElementById('dashboard-activity-day-detail-body')?.children[0].children[1].textContent, 'Unknown');
 
@@ -480,7 +480,7 @@ test('the packaged dashboard bundle loads an activity detail, clears it, and rel
 
   assert.deepEqual(detailRequests, [['packaged-snapshot', '2026-07-27']]);
   assert.equal(first.doc.getElementById('dashboard-activity-day-detail-heading')?.textContent, 'Progress updates on 2026-07-27');
-  assert.equal(first.doc.getElementById('dashboard-activity-day-detail-summary')?.textContent, 'Showing 2 of 2 items with a progress update on this date.');
+  assert.equal(first.doc.getElementById('dashboard-activity-day-detail-summary')?.textContent, 'Showing 2 of 2 items with PDF activity on this date.');
   const rows = first.doc.getElementById('dashboard-activity-day-detail-body')!.children;
   assert.equal(rows.length, 2);
   assert.equal(rows[0].children[0].children[0].textContent, 'Selected paper');
@@ -723,7 +723,7 @@ test('positive percentages below one percent render as less than one instead of 
   assert.equal(findBar(doc, 'dashboard-progress-distribution', '1–24%')?.children[2]?.textContent, '1 (<1%)');
   const cells = doc.getElementById('dashboard-recent-progress-body')?.children[0]?.children;
   assert.equal(cells?.[1].textContent, '<1%');
-  assert.equal(cells?.[2].textContent, '+<1%');
+  assert.equal(cells?.[2].textContent, '+<1 pp');
 });
 
 test('status and measured progress surfaces render independently from the supplied snapshot', () => {
@@ -937,9 +937,9 @@ test('XHTML and CSS preserve native control order, table semantics, visible focu
   const rangeIndex = xhtml.indexOf('id="dashboard-history-range"');
   const refreshIndex = xhtml.indexOf('id="dashboard-refresh"');
 
-  assert.ok(scopeIndex < datasetIndex && datasetIndex < statusIndex && statusIndex < rangeIndex && rangeIndex < refreshIndex);
+  assert.ok(scopeIndex < rangeIndex && rangeIndex < refreshIndex && refreshIndex < datasetIndex && datasetIndex < statusIndex);
   assert.match(xhtml, /<label for="dashboard-dataset"/);
-  assert.match(xhtml, /<table id="dashboard-recent-progress">[\s\S]*<thead>[\s\S]*<th scope="col">Item<\/th>[\s\S]*<th scope="col">Saved PDF position<\/th>[\s\S]*<tbody id="dashboard-recent-progress-body">/);
+  assert.match(xhtml, /<table id="dashboard-recent-progress">[\s\S]*<thead>[\s\S]*<th scope="col">Item<\/th>[\s\S]*<th scope="col">Last saved position<\/th>[\s\S]*<tbody id="dashboard-recent-progress-body">/);
   assert.match(xhtml, /<section id="dashboard-activity-day-detail"[\s\S]*aria-labelledby="dashboard-activity-day-detail-heading"[\s\S]*<table id="dashboard-activity-day-detail-table">[\s\S]*<tbody id="dashboard-activity-day-detail-body">/);
   assert.match(xhtml, /id="dashboard-recent-progress-toggle"/);
   assert.match(xhtml, /id="dashboard-history-range-empty"/);
@@ -991,7 +991,9 @@ test('PR2 dashboard displays shared file-specific Open action and only executes 
   app.start();
   await flush();
   const button = doc.querySelectorAll()[0];
-  assert.equal(button.textContent, target.fallbackLabel);
+  assert.equal(button.textContent, 'Open PDF');
+  assert.equal(button.children[0].textContent, 'supplement.pdf');
+  assert.match(button.title, /supplement.pdf/);
   assert.equal(button.disabled, false);
   assert.match(button.getAttribute('aria-label')!, /No saved page/);
   assert.deepEqual(executions, []);
@@ -1030,4 +1032,16 @@ test('recent progress explicitly labels automatic Reading and its independent im
   const row = doc.getElementById('dashboard-recent-progress-body')!.children[0];
   assert.match(JSON.stringify(row), /Reading \(PDF activity based\) · Important/);
   assert.doesNotMatch(JSON.stringify(row), /restored|completed/);
+});
+
+test('recent activity uses first-to-latest maximum endpoints without presenting them as pages read', () => {
+  const doc = documentFixture();
+  renderDashboard(doc as any, snapshot({ history: history({ recentProgress: [{
+    id: 1, title: 'Paper', status: 'reading', currentProgress: 0.3,
+    positionText: 'Saved at page 3 / 10', delta: 0.8, positionChange: { from: 0.1, to: 0.9 },
+    lastProgressDay: '2026-07-28', resetCount: 0
+  }] }) }));
+  const cells = doc.getElementById('dashboard-recent-progress-body')!.children[0].children;
+  assert.equal(cells[1].textContent, 'Saved at page 3 / 10');
+  assert.equal(cells[2].textContent, '10% → 90%');
 });

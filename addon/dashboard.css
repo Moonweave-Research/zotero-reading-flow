@@ -75,7 +75,7 @@ h1 {
 
 .dashboard-controls {
   display: grid;
-  grid-template-columns: repeat(4, minmax(8.5rem, 1fr)) minmax(8.5rem, auto);
+  grid-template-columns: minmax(10rem, 1fr) minmax(9rem, 1fr) auto;
   gap: 0.65rem;
   align-items: end;
 }
@@ -153,7 +153,7 @@ button:focus-visible {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
   margin-bottom: 1rem;
 }
@@ -161,10 +161,7 @@ button:focus-visible {
 .summary-card,
 .dashboard-panel {
   min-width: 0;
-  border: 1px solid var(--panel-border);
-  border-radius: 0.55rem;
   background: var(--surface-background);
-  box-shadow: var(--panel-shadow);
 }
 
 .summary-card {
@@ -241,15 +238,15 @@ button:focus-visible {
 
 .pulse-layout {
   display: grid;
-  grid-template-columns: minmax(17rem, 0.9fr) minmax(0, 1.4fr);
+  grid-template-columns: minmax(14rem, 0.7fr) minmax(0, 1.4fr);
   gap: 1rem;
   align-items: start;
 }
 
 .pulse-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
 .pulse-metrics .summary-card {
@@ -368,8 +365,12 @@ button:focus-visible {
 .recent-progress-focus,
 .recent-progress-resume {
   padding: 0.25rem 0.4rem;
-  color: Highlight;
-  font-size: 0.75rem;
+  color: inherit;
+  font-size: 0.8rem;
+  max-width: 100%;
+  min-width: 0;
+  height: auto;
+  white-space: normal;
 }
 
 .dashboard-action-status {
@@ -517,21 +518,19 @@ button:focus-visible {
   color: var(--muted-text);
   font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  line-height: 1.35;
 }
 
 #dashboard-activity-day-detail-table th {
   color: var(--muted-text);
   font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  line-height: 1.35;
 }
 
 #dashboard-recent-progress th:first-child,
 #dashboard-recent-progress td:first-child {
-  width: 32%;
+  width: 40%;
 }
 
 #dashboard-activity-day-detail-table th:first-child,
@@ -588,15 +587,15 @@ button:focus-visible {
 
 @media (max-width: 58rem) {
   .dashboard-controls {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   }
 
   .dashboard-refresh-group {
-    grid-column: span 2;
+    grid-column: auto;
   }
 
   .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -616,11 +615,11 @@ button:focus-visible {
   }
 
   .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .pulse-metrics {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .panel-heading-row {
@@ -730,4 +729,42 @@ button:focus-visible {
   #dashboard-activity-day-detail-table td:first-child {
     grid-column: auto;
   }
+}
+
+/* Native controls remain the primary interaction; secondary explanations stay optional. */
+.dashboard-secondary-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: end;
+  padding-block: 0.75rem;
+}
+.dashboard-more-filters { margin-block: 0.5rem; }
+summary { cursor: pointer; font-weight: 500; padding-block: 0.4rem; }
+.dashboard-position-note { line-height: 1.45; margin-block: 0.75rem; max-width: 75ch; }
+.dashboard-filter-note:empty { display: none; }
+.dashboard-panel { border-top: 1px solid var(--panel-border); border-radius: 0; padding-inline: 0; padding-top: 1rem; }
+.summary-grid { border-block: 1px solid var(--panel-border); gap: 0; }
+.summary-card { padding: 0.75rem 0.5rem; }
+.summary-card + .summary-card { border-inline-start: 1px solid var(--panel-border); }
+.pulse-metrics .summary-card { border: 0; padding: 0; }
+.dashboard-refresh-group { align-self: end; }
+.dashboard-updated { font-size: 0.75rem; text-align: left; }
+.dashboard-method, .dashboard-breakdown { border-top: 1px solid var(--panel-border); padding-block: 0.5rem; }
+.dashboard-method p { max-width: 75ch; line-height: 1.5; }
+.recent-progress-resume { text-align: left; }
+.recent-pdf-filename { display: block; max-width: 22rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; color: var(--muted-text); margin-top: 0.2rem; }
+.recent-progress-focus:hover:not(:disabled), .recent-progress-resume:hover:not(:disabled), #dashboard-recent-progress-toggle:hover:not(:disabled) { background: var(--meter-background); }
+button:disabled { opacity: 0.6; }
+@media (max-width: 42rem) {
+  .dashboard-secondary-controls { grid-template-columns: 1fr; }
+  .recent-pdf-filename { max-width: min(22rem, 65vw); }
+}
+
+.recent-progress-status.status-read { color: #166534; }
+@media (prefers-color-scheme: dark) {
+  .recent-progress-status.status-to-read { color: var(--muted-text); }
+  .recent-progress-status.status-reading { color: #93c5fd; }
+  .recent-progress-status.status-skimmed { color: #c4b5fd; }
+  .recent-progress-status.status-read { color: #86efac; }
 }

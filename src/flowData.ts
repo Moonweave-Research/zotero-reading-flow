@@ -195,7 +195,7 @@ export function formatPDFPosition(data: FlowData): string {
   const display = resolveDisplayProgress(data);
   const page = data.lastAttachmentId === display.attachmentId ? data.lastPage ?? null : null;
   if (page === null) return Object.keys(data.p).length ? 'Saved PDF position unknown' : 'No saved PDF position';
-  return display.pageCount !== null ? `${page} / ${display.pageCount} PDF pages` : `PDF page ${page} (page count unknown)`;
+  return display.pageCount !== null ? `Saved at page ${page} / ${display.pageCount}` : `PDF page ${page} (page count unknown)`;
 }
 
 export function formatMaximumPosition(data: FlowData): string {

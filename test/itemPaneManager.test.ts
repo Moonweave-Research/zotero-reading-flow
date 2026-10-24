@@ -33,7 +33,8 @@ function fixture(extra = '', editable = true) {
     getBestAttachment: async () => pdf };
   const pdf: any = { id: 2, parentID: 1, attachmentFilename: 'chosen.pdf', isPDFAttachment: () => true, fileExists: async () => true };
   let selection = [paper]; const opens: any[] = [], scrolls: string[] = [], menus: any[] = [];
-  const win = { ZoteroPane: { getSelectedItems: () => selection }, document: { querySelector: () => ({ scrollToPane: async (id: string) => { scrolls.push(id); } }) } };
+  const pane = { collapsed: true }; const details = { render: async () => {}, scrollToPane: async (id: string) => { if (pane.collapsed) return null; scrolls.push(id); return true; } };
+  const win = { ZoteroPane: { itemPane: pane, toggleItemPane: () => { pane.collapsed = !pane.collapsed; }, getSelectedItems: () => selection }, document: { querySelector: () => details } };
   const items = new Map([[1, paper], [2, pdf]]); let observer: any;
   (globalThis as any).Zotero = { Items: { get: (id: number) => items.get(id) }, getMainWindow: () => win,
     getActiveZoteroPane: () => win.ZoteroPane, Reader: { open: async (...args: any[]) => { opens.push(args); } },
@@ -47,7 +48,7 @@ function fixture(extra = '', editable = true) {
   async function view(item = paper) { props.item = item; hooks.onItemChange({ ...props }); hooks.onRender({ ...props }); await hooks.onAsyncRender({ ...props }); }
   hooks.onInit(props);
   return { store, reader, manager, paper, pdf, props, body, items, view, menus, opens, scrolls,
-    hooks: () => hooks, select: (items: any[]) => { selection = items; }, notify: () => observer.notify('modify', 'item', [1]),
+    pane, details, hooks: () => hooks, select: (items: any[]) => { selection = items; }, notify: () => observer.notify('modify', 'item', [1]),
     counts: () => ({ saves, setters, registers, unregisters, observed, removed, refreshes }) };
 }
 const payload = (updates: any) => FLOW_PREFIX + JSON.stringify({ ...DEFAULT_FLOW_DATA, ...updates });
@@ -141,7 +142,7 @@ test('multiple/deleted PDFs never transfer a saved page; changed targets and fai
   const replacement: any = { id: 3, parentID: 1, attachmentFilename: 'alternative.pdf', isPDFAttachment: () => true };
   f.items.set(3, replacement); f.paper.getBestAttachment = async () => replacement;
   await button.listeners.click(); assert.equal(f.opens.length, 0); assert.match(f.body.text(), /no longer available/);
-  await f.view(); assert.match(f.body.text(), /Open PDF — alternative.pdf/); assert.doesNotMatch(f.body.text(), /Resume at Page 37/);
+  await f.view(); assert.match(f.body.text(), /alternative.pdf/); assert.match(f.body.text(), /Open PDF/); assert.doesNotMatch(f.body.text(), /Resume at Page 37/);
   f.store.setStatus = async () => { throw new Error('disk'); };
   const select = f.body.querySelectorAll('select')[0]; select.value = 'read'; select.listeners.change(); await tick();
   assert.match(f.body.text(), /could not be saved/); assert.equal(f.body.querySelectorAll('select')[0].disabled, false);
@@ -163,7 +164,8 @@ test('menu, dashboard and pane expose the same file/page action; dashboard filte
   const entry = f.menus[0].menus[0].menus.find((e: any) => e.l10nID === 'reading-flow-resume-reading');
   let label = ''; const context = { items: [f.paper], setEnabled() {}, menuElem: { setAttribute: (key: string, value: string) => { if (key === 'label') label = value; }, removeAttribute() {} } };
   await entry.onShowing(undefined, context);
-  assert.equal(label, target.fallbackLabel); assert.equal(f.body.querySelectorAll('button')[0].textContent, label);
+  assert.equal(label, target.fallbackLabel); assert.equal(f.body.querySelectorAll('button')[0].attributes['aria-label'], label);
+  assert.equal(f.body.querySelectorAll('button')[0].textContent, 'Resume at page 12 / 30');
   const snapshot = await bridge.getSnapshot('current-view', 'all-time', 'read', 'tracked', true);
   assert.equal(snapshot.statusCounts.read, 1); assert.equal(f.counts().saves, 0); assert.equal(f.opens.length, 0);
   const check = f.body.querySelectorAll('input')[0]; check.checked = false; check.listeners.change(); await tick();
@@ -212,4 +214,15 @@ test('an already-achieved native command is not reported as a failed save', asyn
 test('native View Reading Flow command localizes its menu label attribute', () => {
  const ftl=readFileSync('addon/locale/en-US/reading-flow.ftl','utf8');
  assert.match(ftl,/reading-flow-view-pane =\n\s+\.label = View Reading Flow/);
+});
+
+ test('View Reading Flow expands a collapsed native item pane before scrolling and does not toggle an open pane closed', async () => {
+  const f = fixture(); await f.view();
+  assert.equal(await f.manager.focus(), true);
+  assert.equal(f.pane.collapsed, false);
+  assert.deepEqual(f.scrolls, [READING_FLOW_PANE_ID]);
+  assert.equal(await f.manager.focus(), true);
+  assert.equal(f.pane.collapsed, false);
+  assert.equal(f.counts().saves, 0);
+  f.manager.unregister();
 });

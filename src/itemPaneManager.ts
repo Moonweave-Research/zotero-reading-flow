@@ -67,8 +67,10 @@ export class ReadingFlowItemPaneManager {
     if (!this.canFocus(selected)) return false;
     const details = win.document.querySelector('item-details');
     if (!details?.scrollToPane) return false;
-    await details.scrollToPane(this.paneID);
-    return true;
+    const pane = win.ZoteroPane;
+    if (pane?.itemPane?.collapsed) pane.toggleItemPane();
+    await details.render?.();
+    return await details.scrollToPane(this.paneID) === true;
   }
 
   private parent(item: any): any {
@@ -147,6 +149,7 @@ export class ReadingFlowItemPaneManager {
     details.append(this.element(props, 'summary', 'History and position details'), this.element(props, 'p', `Maximum recorded location: ${formatMaximumPosition(data)}. This is a recorded location, not a measure of reading or understanding.`));
     details.append(this.element(props, 'p', 'The first recorded PDF activity is the earliest surviving record, not the actual reading start. Detailed history retains at most 366 days; earlier or legacy activity may be missing. Status changes and resets are not PDF activity.'));
     props.body.append(details);
+    add('PDF positions are saved automatically, even after a brief visit. They do not measure pages read. Mark Read yourself when appropriate.');
     const target = add('Checking PDF availability…'); target.dataset.readingFlowTarget = 'true';
     const error = add(''); error.setAttribute('role', 'status'); error.dataset.readingFlowError = 'true';
     details.append(this.element(props, 'p', 'Position tracking supports PDFs only. Manual status and Important also work for books and items without a PDF; EPUB positions are not tracked.'));
@@ -165,7 +168,9 @@ export class ReadingFlowItemPaneManager {
       if (!this.current(state, generation, item)) return;
       region.textContent = target.reason;
       if (target.action !== 'none') {
-        const button = this.element(props, 'button', target.fallbackLabel); button.type = 'button';
+        const actionLabel = target.action === 'resume' ? `Resume at page ${target.lastPage}${target.totalPages ? ` / ${target.totalPages}` : ''}` : 'Open PDF';
+        const button = this.element(props, 'button', actionLabel); button.type = 'button';
+        button.setAttribute('aria-label', target.fallbackLabel); button.setAttribute('title', target.fallbackLabel);
         for (const [key, value] of Object.entries({ height: 'auto', 'min-height': '2em', 'white-space': 'normal', 'max-width': '100%', 'overflow-wrap': 'anywhere', padding: '0.4em' })) button.style.setProperty(key, value);
         region.append(button);
         button.addEventListener('click', async () => {

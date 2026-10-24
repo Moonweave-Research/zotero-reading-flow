@@ -832,3 +832,30 @@ package hash. Integration checks passed 272 tests. The native tracker, labels
 and layout findings were fixed. Personal data/model/permissions unchanged.
 Broader sync/accessibility/human gates remain before public release; approved
 PR1–4 can merge as one unreleased change set.
+
+## Approved native follow-up — statistics clarity and pane entry (2026-10-24)
+
+The user authorized correcting the observed statistics/wording/layout findings,
+verifying actual Zotero, then PR merge and installation into the personal
+profile while preserving library data, preferences, models and permissions.
+This focused follow-up supersedes prior completion notes for these findings.
+
+- View Reading Flow explicitly expands a collapsed native item pane before
+  rendering and scrolling; repeated entry must leave an open pane open.
+- Current PDF position says Saved at page. A brief page visit is automatically
+  recorded; it does not establish pages read, attention or understanding.
+- Farthest position change uses first/latest retained activity days inside the
+  selected period for one PDF, shown as endpoints. One day, resets, mixed PDFs
+  or non-normalized legacy values yield no comparison. Viewing writes nothing.
+- Keep native controls, scope/dataset/status/importance filters, calendar and
+  actions. Put activity and recent PDFs before optional distributions. Disclose
+  detailed filters and denominator explanations on demand; keep active filters
+  and the automatic-position qualification visible. Preserve full file identity
+  and target revalidation while shortening visible action labels.
+- No persistence/schema/default-preference/tracker policy changes. Actual cloud
+  sync/accessibility certification and public release remain separate gates.
+
+Approved scope: src/{itemPaneManager,flowData,statistics,dashboard}.ts;
+addon/dashboard.{xhtml,css}; English locale; their regression tests; this
+contract and docs/STATISTICS_CLARITY_VERIFICATION.md. Build outputs are declared
+for observed deterministic ORRO execution, not committed release artifacts.

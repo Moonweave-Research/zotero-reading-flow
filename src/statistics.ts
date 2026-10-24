@@ -78,6 +78,7 @@ export interface RecentProgressSnapshot {
   currentProgress: number | null;
   positionText?: string;
   delta: number | null;
+  positionChange?: { from: number; to: number };
   lastProgressDay: string;
   resetCount: number;
 }
@@ -364,12 +365,12 @@ function buildRecentProgressSnapshot(
   if (progressDays.length === 0) return null;
 
   const latest = progressDays[progressDays.length - 1];
-  const previous = progressDays.length > 1 ? progressDays[progressDays.length - 2] : null;
   const display = getDisplayState(paper.flowData);
   const resetCount = Object.entries(history.days)
     .filter(([day, rollup]) => isInWindow(day, window) && rollup.reset)
     .length;
 
+  const positionChange = recordedPositionChange(history, progressDays.map(entry => entry.day), resetCount);
   return {
     id: paper.id,
     title: paper.title?.trim() || `Paper ${paper.id}`,
@@ -378,7 +379,8 @@ function buildRecentProgressSnapshot(
     statusSource: resolveReadingStatus(paper.flowData).source,
     currentProgress: display.normalizedProgress,
     positionText: formatPDFPosition(paper.flowData),
-    delta: previous ? latest.progress - previous.progress : null,
+    delta: positionChange ? positionChange.to - positionChange.from : null,
+    ...(positionChange ? { positionChange } : {}),
     lastProgressDay: latest.day,
     resetCount
   };
@@ -528,4 +530,13 @@ function emptyProgressDistribution(): Record<ProgressBucket, number> {
     '100': 0,
     unknown: 0
   };
+}
+
+function recordedPositionChange(history: ReadingHistory, days: string[], resetCount: number): { from: number; to: number } | null {
+  if (days.length < 2 || resetCount > 0) return null;
+  const positions = days.map(day => Object.entries(history.days[day].progress));
+  const attachmentID = positions[0][0]?.[0];
+  if (!attachmentID || positions.some(entries => entries.length !== 1 || entries[0][0] !== attachmentID
+    || !Number.isFinite(entries[0][1]) || entries[0][1] <= 0 || entries[0][1] > 1)) return null;
+  return { from: positions[0][0][1], to: positions[positions.length - 1][0][1] };
 }
