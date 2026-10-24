@@ -45,8 +45,7 @@ export class ReadingFlowItemPaneManager {
         const state = this.state(props); state.generation++; state.busy = false; state.mutation = undefined;
         props.setEnabled(Boolean(this.parent(props.item)));
       },
-      onRender: (props: Props) => this.render(props),
-      onAsyncRender: (props: Props) => this.renderTarget(props)
+      onRender: (props: Props) => this.render(props)
     });
     if (!id) throw new Error('Reading Flow could not register its item pane section.');
     this.paneID = id;
@@ -176,6 +175,7 @@ export class ReadingFlowItemPaneManager {
     details.append(this.element(props, 'p', 'Position tracking supports PDFs only. Manual status and Important also work for books and items without a PDF; EPUB positions are not tracked.'));
     props.body.append(details);
     const error = add(''); error.setAttribute('role', 'status'); error.dataset.readingFlowError = 'true';
+    return this.renderTarget(props);
   }
 
   private current(state: Instance, generation: number, item: any): boolean {
@@ -232,9 +232,9 @@ export class ReadingFlowItemPaneManager {
       if (state.mutation === mutation) {
         state.busy = false; state.mutation = undefined;
         if (this.instances.get(state.props.body) === state && state.props.item === item) {
-          this.render(state.props);
+          const rendering = this.render(state.props);
           const generation = state.generation;
-          await this.renderTarget(state.props);
+          await rendering;
           if (message && this.current(state, generation, item)) this.error(state, message);
         }
       }

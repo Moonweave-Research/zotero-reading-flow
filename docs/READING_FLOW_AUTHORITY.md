@@ -914,3 +914,17 @@ locale, this authority and docs/SURFACE_CONSISTENCY_VERIFICATION.md. No writer,
 tracker, schema, preference, model or permission changes. Verify native captures,
 PR merge and personal add-on update under the existing installation contract.
 Generated build/test outputs are allowed only for observed ORRO verification.
+
+
+## Approved pane refresh fix — 2026-10-24
+
+The user authorized fixing the native pane that remains at Checking PDF
+availability after sidenav navigation until an extra scroll. Every rebuilt
+Reading Flow body must resolve its PDF facts without depending on another
+visibility callback. Preserve selection/generation invalidation, write queues,
+status/position/date semantics and read-only rendering. Scope:
+src/itemPaneManager.ts, test/itemPaneManager.test.ts, this authority and
+verification documentation. Run RED/GREEN, full verification, deterministic
+ORRO replay and native test-profile captures, then PR/CI merge and the exact
+verified XPI update in personal Zotero. Preserve data/settings/models/permissions;
+no public release or tag. Generated build/test outputs only for verification.
