@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> **Screenshots show 1.3.8.** The latest published release is **1.3.6** as of October 25, 2026. For **Bookmark here** and the workflow below, [build the current source](#build-from-source) until a 1.3.8+ release is available.
+> **Screenshots show Reading Flow 1.3.8**, the latest release published on October 25, 2026.
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read with Important, and independent Unassigned states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
@@ -23,7 +23,7 @@ Reading Flow helps you return to the page you meant to keep. Leave a **reading b
 
 ## Install
 
-1. Download **`zotero-reading-flow.xpi`** from the [latest published release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest), or [build the current source](#build-from-source).
+1. Download **`zotero-reading-flow.xpi`** from the [latest published release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest), or [build from source](#build-from-source).
 2. In Zotero, open **Tools → Plugins**.
 3. Open the gear menu, choose **Install Plugin From File…**, and select the `.xpi`.
 4. Restart Zotero after installing or updating.
@@ -133,7 +133,7 @@ PDF files are not modified. Reading Flow keeps its data in one `ReadingFlow:` li
 
 The Extra record follows Zotero's metadata sync. Bookmarks identify attachments by Zotero key, so they do not depend on the same local numeric item ID. The PDF must also be available on the other device.
 
-Use **1.3.7 or newer on every device that needs to read or edit bookmark records**. The tested previous client refuses changes to the new record format rather than discarding its bookmark. Actual device-to-device delivery has **not yet been verified**; attachment-key resolution, supported-client round trips, and previous-writer refusal have been tested.
+Use **1.3.8 or newer on every device that needs to read or edit bookmark records**. The tested previous client refuses changes to the new record format rather than discarding its bookmark. Actual device-to-device delivery has **not yet been verified**; attachment-key resolution, supported-client round trips, and previous-writer refusal have been tested.
 
 ### What if a paper has several PDFs, or a file is missing?
 
@@ -145,7 +145,7 @@ A bookmark belongs to its specific PDF. The panel distinguishes that file from t
 
 ### Where is Bookmark here? Why are my columns missing?
 
-**Bookmark here** appears inside the PDF reader, not the library toolbar. Check that **1.3.7 or newer** is installed and restart after updating. For hidden columns, use the library's native column chooser. The optional combined **Reading Flow** column must be enabled manually.
+**Bookmark here** appears inside the PDF reader, not the library toolbar. Check that **1.3.8 or newer** is installed and restart after updating. For hidden columns, use the library's native column chooser. The optional combined **Reading Flow** column must be enabled manually.
 
 Position tracking supports **PDFs**. Manual status and Important also work for items without a PDF; EPUB positions are not tracked. For other problems, see [Troubleshooting](docs/TROUBLESHOOTING.md) or [report an issue](https://github.com/Moonweave-Research/zotero-reading-flow/issues).
 

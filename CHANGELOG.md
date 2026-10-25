@@ -1,13 +1,6 @@
 # Changelog
 
-## 1.3.8 — source candidate
-
-### Fixed
-
-- Refresh library status rows immediately after a manual status or Important change in the Reading Flow pane.
-- Shorten bookmark and last-viewed labels in list columns while preserving full text in tooltips and accessibility labels.
-
-## 1.3.7 — source candidate
+## 1.3.8 - 2026-10-25
 
 ### Added
 
@@ -21,8 +14,13 @@
 - Clarify retained history and manual Marked Read statistics; keep detailed position history optional.
 - Refresh the Reading Flow section after navigation and improve narrow/enlarged-text layouts.
 - Replace outdated documentation and screenshots with an English visual feature guide.
+- Shorten bookmark and last-viewed labels in list columns while preserving full text in tooltips and accessibility labels.
 
-This source has not been published as a release. Real delivery between two devices remains unverified; use compatible bookmark clients on all editing devices.
+### Fixed
+
+- Refresh library status rows immediately after a manual status or Important change in the Reading Flow pane.
+
+Real delivery between two devices remains unverified. Use compatible bookmark clients on all editing devices.
 
 # 1.3.6 - 2026-08-28
 
