@@ -181,9 +181,11 @@ test('updateData retries a temporarily dirty item instead of losing the update',
   };
   const store = new DataStore();
 
-  assert.equal(await store.updateData(item, { s: 'reading' }), true);
+  assert.equal(await store.updateData(item, { s: 'reading', ts: 100 }), true);
   assert.equal(saves, 1);
   assert.equal(store.getData(item).s, 'reading');
+  assert.equal(store.getData(item).v, 5);
+  assert.equal(store.getData(item).readingStartedAt, 100);
 });
 
 test('recordProgress writes v2 history in one save and preserves unrelated Extra lines', async () => {
@@ -516,6 +518,62 @@ test('setStatus records a manual label without inventing completion or activity'
   assert.equal(day.activity, false);
   assert.equal(day.status, 'read');
   assert.equal(day.completed, false);
+});
+
+test('setStatus records the latest explicit Reading transition without inferring dates', async () => {
+  const item = memoryItem(501, `Custom: keep\n${FLOW_PREFIX}{"v":4,"important":false,"p":{},"s":"to-read","c":null,"ts":10,"lastAttachmentId":null,"lastPage":null,"lastReadAt":null,"bookmark":{"attachmentKey":"ABCD2345","page":3,"pageCount":10,"at":10}}`);
+  const store = new DataStore();
+
+  assert.equal(store.getData(item).readingStartedAt, undefined);
+  assert.equal(await store.setStatus(item, 'reading', 100), true);
+  const first = readFlowLine(item.getExtra());
+  assert.equal(first.v, 5);
+  assert.equal(first.readingStartedAt, 100);
+  assert.equal(first.bookmark.page, 3);
+  assert.match(item.getExtra(), /^Custom: keep/m);
+
+  assert.equal(await store.clearManualStatus(item), true);
+  assert.equal(readFlowLine(item.getExtra()).readingStartedAt, 100);
+  assert.equal(await store.setStatus(item, 'reading', 300), true);
+  assert.equal(readFlowLine(item.getExtra()).readingStartedAt, 300);
+  await store.recordProgress(item, { attachmentId: '9', progress: 0.4, pageCount: 10, lastPage: 4, at: 350 });
+  assert.equal(await store.resetProgress(item, 400), true);
+  const reset = readFlowLine(item.getExtra());
+  assert.equal(reset.readingStartedAt, 300);
+  assert.equal(reset.bookmark.page, 3);
+});
+
+test('an existing Reading status is not backfilled when it is viewed or selected unchanged', async () => {
+  const item = memoryItem(502, `${FLOW_PREFIX}{"v":4,"important":false,"p":{},"s":"reading","c":null,"ts":10,"lastAttachmentId":null,"lastPage":null,"lastReadAt":null}`);
+  const store = new DataStore();
+
+  assert.equal(store.getData(item).readingStartedAt, undefined);
+  assert.equal(await store.setStatus(item, 'reading', 100), false);
+  assert.equal(readFlowLine(item.getExtra()).readingStartedAt, undefined);
+  assert.equal(item.getSaveCount(), 0);
+});
+
+test('v4 records cannot smuggle a v5 start date into a record older writers can edit', async () => {
+  const original = `${FLOW_PREFIX}{"v":4,"important":false,"p":{},"s":"reading","c":null,"ts":10,"lastAttachmentId":null,"lastPage":null,"lastReadAt":null,"readingStartedAt":100}`;
+  const item = memoryItem(503, original);
+  const store = new DataStore();
+
+  assert.equal(store.getData(item).availability, 'unavailable');
+  assert.equal(await store.setStatus(item, 'read', 200), false);
+  assert.equal(item.getExtra(), original);
+  assert.equal(item.getSaveCount(), 0);
+});
+
+test('configured Reading default records its assignment time as the reading start', async () => {
+  const item = memoryItem(504, 'Custom: keep');
+  const store = new DataStore();
+
+  assert.equal(await store.initializeStatusIfUnowned(item, 'reading', 100), true);
+  const saved = readFlowLine(item.getExtra());
+  assert.equal(saved.v, 5);
+  assert.equal(saved.s, 'reading');
+  assert.equal(saved.readingStartedAt, 100);
+  assert.match(item.getExtra(), /^Custom: keep\n/);
 });
 
 test('setting the current manual status again is idempotent', async () => {

@@ -13,7 +13,7 @@ Run npm ci and npm run verify from a full-history checkout with Node.js 22. CI r
 | Native menus, settings, sidebar search | menuManager, preferences, sidebarSearchManager tests |
 | Package integrity and old-writer refusal | build/releaseProfileContract tests, verify-xpi.js, verify-bookmark-compatibility.js |
 
-The pinned previous writer is tested through real mutation methods against v4 records, with unchanged bytes, zero saves, and a writable v3 positive control. Supported-client round trips preserve bookmarks. These checks are not proof of real Zotero cloud delivery. The older v3 transition can be checked separately with scripts/verify-pr3-compatibility.js.
+The pinned v1.3.6 writer is tested through real mutation methods against v4 records, with unchanged bytes, zero saves, and a writable v3 positive control. The released v1.3.8 writer is also tested against v5 records and refuses six mutation methods with exact byte retention; its v4 positive control remains writable. The current v5 writer round-trips both the explicit start timestamp and bookmark. The unreleased reading-start patch passed `npm run verify` locally: typecheck, 309 tests, XPI validation, and compatibility checks. These checks are not proof of real Zotero cloud delivery. The older v3 transition can be checked separately with scripts/verify-pr3-compatibility.js.
 
 ## Observed native behavior
 

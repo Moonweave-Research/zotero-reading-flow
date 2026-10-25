@@ -33,13 +33,13 @@ Reading bookmarks and automatic locations are separate. Check the displayed PDF 
 
 ## Reset did not remove my bookmark or dates
 
-That is expected. Advanced → Reset tracked PDF positions clears automatic positions while preserving the bookmark, status, Important, last activity, and history. Use Remove bookmark for the deliberate bookmark.
+That is expected. Advanced → Reset tracked PDF positions clears automatic positions while preserving the bookmark, status, Important, reading start date, last PDF activity, and history. Use Remove bookmark for the deliberate bookmark.
 
 ## Data and sync
 
 Metadata lives in a ReadingFlow: JSON line in the parent item's Extra field. Do not edit it manually for routine use. Unrelated Extra content, PDFs, and annotations are preserved; uninstalling does not remove this metadata.
 
-Use compatible clients (1.3.8 or newer) for bookmark records on every editing device. The PDF must be available there too. Actual device-to-device delivery has not been verified. Never lower a record's schema version to make an old writer accept it.
+Use compatible clients (1.3.8 or newer) for bookmark records on every editing device. Records with the new Reading started date use v5 and require this patch or a later v5-compatible release on every device. Version 1.3.8 safely preserves v5 records but shows them as unsupported, without their details or editing controls. The PDF must be available there too. Actual device-to-device delivery has not been verified. Never lower a record's schema version to make an old writer accept it.
 
 ## An update still shows an old version
 

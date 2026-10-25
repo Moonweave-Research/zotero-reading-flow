@@ -600,7 +600,7 @@ function renderRecentProgress(
       entry.lastActivityAt ? formatActivityTimestamp(entry.lastActivityAt) : entry.lastProgressDay,
       `${STATUS_LABELS[entry.status]}${entry.statusSource === 'automatic' ? ' (automatic)' : entry.statusSource === 'manual' ? ' (manual)' : ''}${entry.important ? ' · Important' : ''}`
     ];
-    const labels = ['Reading bookmark', 'Last viewed (automatic)', 'Last activity', 'Status'];
+    const labels = ['Reading bookmark', 'Last viewed (automatic)', 'Last PDF activity', 'Status'];
     values.forEach((value, index) => {
       const cell = doc.createElement('td');
       cell.textContent = value;

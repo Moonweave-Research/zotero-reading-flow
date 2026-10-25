@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> **Screenshots show Reading Flow 1.3.8**, the latest release published on October 25, 2026.
+> **Screenshots show Reading Flow 1.3.8**, the latest release published on October 25, 2026. This source may contain unreleased changes that are not in that download.
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read with Important, and independent Unassigned states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
@@ -117,7 +117,7 @@ The dashboard brings together **reading bookmarks, automatic positions, last PDF
 - **Treat Marked Read as your judgment.** It counts papers explicitly marked **Read**, not papers that reached the last page.
 - **Expand details when needed.** **Position history** contains available daily farthest-position comparisons and reset counts. **Status and saved positions** contains the optional breakdowns.
 
-**Last activity** means recorded PDF activity, not a bookmark edit. **First recorded** is the earliest surviving activity date, not necessarily the day you started reading. Detailed daily history retains at most **366 days**; older or legacy activity may be missing.
+**Reading started** is recorded when an item's status changes to **Reading**, including a configured default for new items. Starting Reading again updates the date. Existing records are not backfilled. **Last PDF activity** is the latest saved PDF page position; a brief visit can update it, and it does not prove that you read the page. Detailed daily history retains at most **366 days**; older or legacy activity may be missing.
 
 ## Questions
 
@@ -133,7 +133,7 @@ PDF files are not modified. Reading Flow keeps its data in one `ReadingFlow:` li
 
 The Extra record follows Zotero's metadata sync. Bookmarks identify attachments by Zotero key, so they do not depend on the same local numeric item ID. The PDF must also be available on the other device.
 
-Use **1.3.8 or newer on every device that needs to read or edit bookmark records**. The tested previous client refuses changes to the new record format rather than discarding its bookmark. Actual device-to-device delivery has **not yet been verified**; attachment-key resolution, supported-client round trips, and previous-writer refusal have been tested.
+Use **1.3.8 or newer on every device that needs to read or edit bookmark records**. This source also writes v5 records when it records a start date; those require this patch or a later v5-compatible release on every device. Version 1.3.8 preserves v5 records but shows them as unsupported, without their details or editing controls. Actual device-to-device delivery has **not yet been verified**; attachment-key resolution, supported-client round trips, and previous-writer refusal have been tested.
 
 ### What if a paper has several PDFs, or a file is missing?
 
@@ -141,7 +141,7 @@ A bookmark belongs to its specific PDF. The panel distinguishes that file from t
 
 ### What does Reset tracked PDF positions clear?
 
-**Reading Flow → Advanced → Reset tracked PDF positions** clears automatic current and maximum positions. It preserves the reading bookmark, manual status, Important flag, last PDF activity, and retained history. To clear the bookmark, use **Remove bookmark** in the panel.
+**Reading Flow → Advanced → Reset tracked PDF positions** clears automatic current and maximum positions. It preserves the reading bookmark, manual status, Important flag, reading start date, last PDF activity, and retained history. To clear the bookmark, use **Remove bookmark** in the panel.
 
 ### Where is Bookmark here? Why are my columns missing?
 
