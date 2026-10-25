@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> **Screenshots show Reading Flow 1.3.8**, the latest release published on October 25, 2026. This source may contain unreleased changes that are not in that download.
+> **Most screenshots show Reading Flow 1.3.8.** The dedicated Reading started example uses the 1.3.9 QA source, which is now available in the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read with Important, and independent Unassigned states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
@@ -118,6 +118,10 @@ The dashboard brings together **reading bookmarks, automatic positions, last PDF
 - **Expand details when needed.** **Position history** contains available daily farthest-position comparisons and reset counts. **Status and saved positions** contains the optional breakdowns.
 
 **Reading started** is recorded when an item's status changes to **Reading**, including a configured default for new items. Starting Reading again updates the date. Existing records are not backfilled. **Last PDF activity** is the latest saved PDF page position; a brief visit can update it, and it does not prove that you read the page. Detailed daily history retains at most **366 days**; older or legacy activity may be missing.
+
+![Reading Flow item pane showing Reading started separately from Last PDF activity, bookmark, and automatic last-viewed position](docs/assets/reading-started-qa-v1.3.9.png)
+
+*This isolated QA item has no PDF attachment: the manual Reading start is recorded, while PDF activity and page positions remain unrecorded. Reading Flow labels are in English; the Zotero host app in this capture uses a Korean locale.*
 
 ## Questions
 
