@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> **Screenshots show 1.3.7; current source is 1.3.8.** The latest published release is **1.3.6** as of October 25, 2026. For **Bookmark here** and the workflow below, [build the current source](#build-from-source) until a 1.3.8+ release is available.
+> **Screenshots show 1.3.8.** The latest published release is **1.3.6** as of October 25, 2026. For **Bookmark here** and the workflow below, [build the current source](#build-from-source) until a 1.3.8+ release is available.
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read with Important, and independent Unassigned states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
