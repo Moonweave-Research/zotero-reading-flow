@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This guide describes the 1.3.8 source. Bookmark controls are unavailable in the published 1.3.6 package. Check the version notice in the [README](../README.md) first.
+This guide covers Reading Flow 1.3.8. To use bookmark controls, install 1.3.8 or newer from the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest) and restart Zotero. Check the installed add-on version first.
 
 ## Find the controls
 
@@ -39,7 +39,7 @@ That is expected. Advanced → Reset tracked PDF positions clears automatic posi
 
 Metadata lives in a ReadingFlow: JSON line in the parent item's Extra field. Do not edit it manually for routine use. Unrelated Extra content, PDFs, and annotations are preserved; uninstalling does not remove this metadata.
 
-Use compatible clients (1.3.7 or newer) for bookmark records on every editing device. The PDF must be available there too. Actual device-to-device delivery has not been verified. Never lower a record's schema version to make an old writer accept it.
+Use compatible clients (1.3.8 or newer) for bookmark records on every editing device. The PDF must be available there too. Actual device-to-device delivery has not been verified. Never lower a record's schema version to make an old writer accept it.
 
 ## An update still shows an old version
 

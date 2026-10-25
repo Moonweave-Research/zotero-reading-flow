@@ -1,6 +1,6 @@
 # Product contract
 
-Current source: **1.3.8**. Latest published release as of October 25, 2026: **1.3.6**. Source, passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. This contract describes the current source; it is not a release announcement.
+Current source and published release: **1.3.8** (October 25, 2026). Passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. Real device-to-device sync remains unverified.
 
 ## Reading meaning
 
@@ -30,7 +30,7 @@ Detailed daily history retains at most 366 days. Brief page visits count as acti
 
 One ReadingFlow: JSON line in the parent item's Extra field holds plugin metadata. PDFs, annotations, user tags, and unrelated Extra lines are preserved. Unsupported, malformed, or duplicate namespaces must not be silently overwritten.
 
-The current writer supports v4 bookmark records and reads earlier supported formats. No bulk startup migration or inferred completion dates. Bookmarks require compatible clients (1.3.7 or newer); a previous writer's safe refusal does not mean it displays new data correctly. Keep the pinned previous-writer checks and their positive controls. Do not lower schema versions to work around refusal.
+The current writer supports v4 bookmark records and reads earlier supported formats. No bulk startup migration or inferred completion dates. Bookmarks require compatible clients (1.3.8 or newer); a previous writer's safe refusal does not mean it displays new data correctly. Keep the pinned previous-writer checks and their positive controls. Do not lower schema versions to work around refusal.
 
 Actual delivery between two devices remains unverified. Metadata sync transport belongs to Zotero. Every editing client must support the stored format; do not generalize tested refusal to arbitrary old releases.
 
