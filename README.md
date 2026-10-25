@@ -8,7 +8,7 @@
 
 [![Latest release](https://img.shields.io/github/v/release/Moonweave-Research/zotero-reading-flow?label=release)](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest) [![Verify](https://github.com/Moonweave-Research/zotero-reading-flow/actions/workflows/verify.yml/badge.svg)](https://github.com/Moonweave-Research/zotero-reading-flow/actions/workflows/verify.yml) [![Zotero](https://img.shields.io/badge/Zotero-9%20%7C%2010-blue)](https://www.zotero.org/download/) [![MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-[Install](#install) · [Try it](#try-it) · [Reading statistics](#reading-statistics) · [Questions](#questions) · [Build from source](#build-from-source)
+[Install](#install) · [How it works](#a-simple-reading-workflow) · [Reading statistics](#reading-statistics) · [Questions](#questions) · [Build from source](#build-from-source)
 
 </div>
 
