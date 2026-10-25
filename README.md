@@ -56,6 +56,7 @@ Select a paper and set its **Status** in the Reading Flow panel or context menu.
 <tr>
 <td><img src="docs/assets/detail-status-stages.png" alt="Enlarged Status column showing Read with a star, To Read, Unassigned with a star, Reading, and Skimmed" width="168"></td>
 <td>
+<img src="docs/assets/detail-reading-icons.svg" alt="Enlarged icon key illustration: orange closed book for To Read changes to an open book for Reading" width="420">
 <p><strong>📙 To Read</strong> — saved for later</p>
 <p><strong>📖 Reading</strong> — currently reading</p>
 <p><strong>📘 Skimmed</strong> — skimmed, with the stage chosen by you</p>

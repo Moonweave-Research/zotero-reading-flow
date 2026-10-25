@@ -16,6 +16,8 @@ The 1.3.8 captures are original, unedited images of English Zotero 10.0.6 for ma
 
 These PNGs are rectangular crops of the original English 1.3.8 screenshots above. Their controls and labels have not been redrawn or relabeled. The README displays them at readable widths; they are existing capture details, not new runtime verification. The book-symbol key beside the Status crop is a written legend verified against `src/columnManager.ts`, not a screenshot of the combined column.
 
+`detail-reading-icons.svg` enlarges the same Unicode book symbols used by the combined column (`📙` for To Read and `📖` for Reading). It is an explanatory illustration; its caption and SVG description identify it as an icon key rather than a Zotero capture. Emoji artwork depends on the viewer's operating system.
+
 Crop coordinates use the original image's top-left origin, in pixels (`x, y, width, height`). Original full-window images remain available.
 
 | Detail | Original | Crop rectangle |
