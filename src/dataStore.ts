@@ -1,3 +1,4 @@
+import { isReadingBookmark, ReadingBookmark } from './flowData';
 import { LRUCache } from './lruCache';
 import { Logger } from './Logger';
 import {
@@ -149,6 +150,15 @@ export class DataStore {
     };
   }
 
+  public async setReadingBookmark(item: any, bookmark: ReadingBookmark | null, expected?: ReadingBookmark | null): Promise<boolean> {
+    if (bookmark !== null && !isReadingBookmark(bookmark)) return false;
+    return this.transition(item, current => {
+      if (expected !== undefined && JSON.stringify(current.bookmark ?? null) !== JSON.stringify(expected)) return current;
+      if (JSON.stringify(current.bookmark ?? null) === JSON.stringify(bookmark)) return current;
+      return mergeFlowData(current, { v: 4, important: Boolean(current.important), bookmark: bookmark ?? undefined });
+    });
+  }
+
   public async setStatus(item: any, status: ReadingStatus, at = Date.now()): Promise<boolean> {
     const timestamp = this.normalizeTimestamp(at);
     return this.transition(item, (current) => {
@@ -197,7 +207,7 @@ export class DataStore {
       if (!current) return false;
       if (current.s === null) return false;
 
-      const next = normalizeFlowData({ ...current, s: null, ...(current.important !== undefined ? { v: 3 } : {}) });
+      const next = normalizeFlowData({ ...current, s: null });
       if (!this.hasMeaningfulData(next)) {
         return this.removeData(item, originalExtra);
       }
@@ -369,7 +379,7 @@ export class DataStore {
 
   private composeExtra(extra: string, data: FlowData | null): string {
     const lines = extra.split('\n').filter((line: string) => !line.trimStart().startsWith('ReadingFlow:'));
-    if (data) lines.push(`${FLOW_PREFIX}${JSON.stringify(data.v !== 3 && data.important ? { ...data, s: 'important', important: undefined } : data)}`);
+    if (data) lines.push(`${FLOW_PREFIX}${JSON.stringify(data.v < 3 && data.important ? { ...data, s: 'important', important: undefined } : data)}`);
     return lines.join('\n');
   }
 
@@ -432,9 +442,10 @@ export class DataStore {
     try {
       const parsed = JSON.parse(line.trimStart().substring('ReadingFlow:'.length));
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-      if (parsed.v !== 1 && parsed.v !== 2 && parsed.v !== 3) return null;
-      if ((parsed.v === 3 && (typeof parsed.important !== 'boolean' || parsed.s === 'important'))
-        || (parsed.v !== 3 && parsed.important !== undefined)) return null;
+      if (parsed.v !== 1 && parsed.v !== 2 && parsed.v !== 3 && parsed.v !== 4) return null;
+      if ((parsed.v >= 3 && (typeof parsed.important !== 'boolean' || parsed.s === 'important'))
+        || (parsed.v < 3 && parsed.important !== undefined)) return null;
+      if (parsed.bookmark !== undefined && (parsed.v !== 4 || !isReadingBookmark(parsed.bookmark))) return null;
       if ((parsed.s != null && !['to-read', 'reading', 'skimmed', 'read', 'important'].includes(parsed.s))
         || (parsed.p != null && (typeof parsed.p !== 'object' || Array.isArray(parsed.p)
           || Object.values(parsed.p).some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0)))
@@ -528,7 +539,7 @@ export class DataStore {
   }
 
   private hasMeaningfulData(data: FlowData): boolean {
-    if (data.important || data.s !== null || data.c !== null || Object.keys(data.p).length > 0) return true;
+    if (data.bookmark || data.important || data.s !== null || data.c !== null || Object.keys(data.p).length > 0) return true;
     if (data.lastAttachmentId !== null || data.lastPage !== null || data.lastReadAt !== null) return true;
     if (!data.history) return false;
     if (data.history.completedAt !== null || data.history.activeDaysTotal > 0) return true;

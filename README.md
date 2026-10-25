@@ -23,6 +23,7 @@ Best for **literature researchers, thesis students, and anyone who manages many 
 ## Table of Contents
 
 - [Why Reading Flow](#why-reading-flow)
+- [Reading bookmarks](#reading-bookmarks)
 - [New in 1.3.6](#new-in-136)
 - [Quick demo](#quick-demo)
 - [Install (30 seconds)](#install-30-seconds)
@@ -46,6 +47,16 @@ Best for **literature researchers, thesis students, and anyone who manages many 
 - **Review your reading history.** Open **Tools → Reading Statistics** to see current-scope status, progress, remaining pages, activity days, first completions, and retained per-paper changes.
 - **Inspect an active day.** Select a highlighted calendar date to see every paper with a recorded progress update that day; each action remains your choice.
 - **Return from the dashboard.** Choose a paper in `Recent Progress` and click `Resume` to use the same saved-page Reader path; the dashboard shows the eight most recent rows first and can expand to all matching papers.
+
+## Reading bookmarks
+
+**Reading bookmark** is a position you deliberately keep. In an open PDF, choose **Bookmark here**. Browsing other pages does not move it. Use **Undo** to reverse your latest bookmark change, or remove it from the Reading Flow item pane.
+
+**Last viewed (automatic)** records the most recently displayed PDF page, including brief visits. Continue Reading prioritizes your bookmark; without one, it uses the automatic position. The item pane also lets you open the last viewed position explicitly. PDF page numbers count from the first page of the file.
+
+Neither position measures pages read or marks a paper Read. Your status, Important flag, dates, and historical positions remain independent. Resetting tracked PDF positions preserves your reading bookmark. Existing positions are never converted into bookmarks.
+
+Bookmarks use Zotero attachment keys so the marked PDF can be identified on another client. Clients need this version or newer to edit a record once a bookmark has been saved: older Reading Flow versions preserve the new record unchanged rather than dropping its bookmark. Undo is available during the current app session. Actual device-to-device delivery still depends on Zotero sync and file availability.
 
 ## New in 1.3.6
 

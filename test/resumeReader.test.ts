@@ -120,7 +120,7 @@ test('getResumeDisplayTarget provides dynamic menu metadata for page and total',
   assert.equal(target.lastPage, 4);
   assert.equal(target.totalPages, 5);
   assert.equal(target.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 5 }));
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 5 — PDF 10');
+  assert.equal(target.fallbackLabel, 'Last viewed: page 4 / 5 — PDF 10');
 });
 
 test('getResumeDisplayTarget disables resume when no last page is known', async () => {
@@ -433,7 +433,7 @@ test('getResumeDisplayTarget for direct PDF attachment uses cached total pages f
   assert.equal(target.canResume, true);
   assert.equal(target.totalPages, 7);
   assert.equal(target.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 7 }));
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 7 — PDF 10');
+  assert.equal(target.fallbackLabel, 'Last viewed: page 4 / 7 — PDF 10');
 });
 
 test('direct PDF attachment falls back to PDF metadata when parent cache page count is unavailable', async () => {
@@ -463,7 +463,7 @@ test('direct PDF attachment falls back to PDF metadata when parent cache page co
   const target = await reader.getResumeDisplayTarget(attachment);
   assert.equal(target.canResume, true);
   assert.equal(target.totalPages, 12);
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 12 — PDF 10');
+  assert.equal(target.fallbackLabel, 'Last viewed: page 4 / 12 — PDF 10');
   assert.equal(target.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 12 }));
 });
 
@@ -511,7 +511,7 @@ test('direct PDF attachment uses live reader page count when metadata and cache 
   const target = await reader.getResumeDisplayTarget(attachment);
   assert.equal(target.canResume, true);
   assert.equal(target.totalPages, 9);
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 9 — PDF 10');
+  assert.equal(target.fallbackLabel, 'Last viewed: page 4 / 9 — PDF 10');
 });
 
 test('direct PDF attachment prefers cached pageCount string when reader is unavailable', async () => {
@@ -541,7 +541,7 @@ test('direct PDF attachment prefers cached pageCount string when reader is unava
   const target = await reader.getResumeDisplayTarget(attachment);
   assert.equal(target.canResume, true);
   assert.equal(target.totalPages, 12);
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 12 — PDF 10');
+  assert.equal(target.fallbackLabel, 'Last viewed: page 4 / 12 — PDF 10');
 });
 
 test('direct PDF attachment prefers cached page count when live reader count conflicts', async () => {
@@ -588,7 +588,7 @@ test('direct PDF attachment prefers cached page count when live reader count con
   const target = await reader.getResumeDisplayTarget(attachment);
   assert.equal(target.canResume, true);
   assert.equal(target.totalPages, 5);
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 5 — PDF 10');
+  assert.equal(target.fallbackLabel, 'Last viewed: page 4 / 5 — PDF 10');
 });
 
 test('direct PDF attachment prefers live reader page count when cached page count conflicts', async () => {
@@ -635,7 +635,7 @@ test('direct PDF attachment prefers live reader page count when cached page coun
   const target = await reader.getResumeDisplayTarget(attachment);
   assert.equal(target.canResume, true);
   assert.equal(target.totalPages, 5);
-  assert.equal(target.fallbackLabel, 'Resume at Page 4 / 5 — PDF 10');
+  assert.equal(target.fallbackLabel, 'Last viewed: page 4 / 5 — PDF 10');
 });
 
 test('resume opens without location when no positive lastPage is available', async () => {

@@ -1,6 +1,7 @@
 import {
   FlowData,
   formatPDFPosition,
+  formatReadingBookmark,
   formatPDFLocation,
   getLastActivityAt,
   DisplayReadingStatus,
@@ -79,6 +80,7 @@ export interface RecentProgressSnapshot {
   statusSource?: ReadingStatusSource;
   currentProgress: number | null;
   positionText?: string;
+  bookmarkText?: string;
   delta: number | null;
   positionChange?: { from: number; to: number };
   positionChangeText?: string;
@@ -387,6 +389,7 @@ function buildRecentProgressSnapshot(
     statusSource: resolveReadingStatus(paper.flowData).source,
     currentProgress: display.normalizedProgress,
     positionText: formatPDFPosition(paper.flowData),
+    bookmarkText: formatReadingBookmark(paper.flowData),
     delta: positionChange ? positionChange.to - positionChange.from : null,
     ...(positionChange ? { positionChange, positionChangeText: `${formatPDFLocation(positionChange.from, comparisonPageCount)} → ${formatPDFLocation(positionChange.to, comparisonPageCount)}` } : {}),
     lastActivityAt: getLastActivityAt(paper.flowData),

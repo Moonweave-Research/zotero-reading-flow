@@ -313,7 +313,7 @@ test('resume menu updates dynamic label and l10n args for resumable page state',
 
   assert.equal(context.enabled, true);
   assert.equal(context.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 7 }));
-  assert.equal(context.menuElem.label, 'Resume at Page 4 / 7 — PDF 10');
+  assert.equal(context.menuElem.label, 'Last viewed: page 4 / 7 — PDF 10');
 });
 
 test('resume menu updates dynamic label through setLabel when menuElem is unavailable', async () => {
@@ -328,7 +328,7 @@ test('resume menu updates dynamic label through setLabel when menuElem is unavai
 
   assert.equal(context.enabled, true);
   assert.equal(context.l10nArgs, JSON.stringify({ mode: 'page-total', page: 4, total: 7 }));
-  assert.equal(context.label, 'Resume at Page 4 / 7 — PDF 10');
+  assert.equal(context.label, 'Last viewed: page 4 / 7 — PDF 10');
 });
 
 test('resume menu keeps fallback label when resume is not available', async () => {

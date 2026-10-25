@@ -5,6 +5,8 @@ import { Logger } from './Logger';
 type ZoteroItem = {
   id: number;
   parentID?: number | null;
+  libraryID?: number;
+  key?: string;
   deleted?: boolean;
   fileExists?: () => Promise<boolean>;
   attachmentFilename?: string;
@@ -25,6 +27,7 @@ type ResumeTarget = {
 export type ResumeDisplayTarget = {
   action: 'resume' | 'open' | 'none';
   sourceId: number;
+  positionKind?: 'bookmark' | 'last-viewed';
   reason: string;
   filename?: string;
   canResume: boolean;
@@ -34,6 +37,12 @@ export type ResumeDisplayTarget = {
   l10nArgs?: string;
   fallbackLabel: string;
 };
+
+export function resumeActionLabel(target: ResumeDisplayTarget): string {
+  return target.action === 'resume'
+    ? `${target.positionKind === 'bookmark' ? 'Continue from bookmark' : 'Continue from last viewed'} · page ${target.lastPage}`
+    : target.action === 'open' ? 'Open PDF' : 'PDF unavailable';
+}
 
 export class ResumeReader {
   private static readonly MAX_REASONABLE_PAGE_COUNT = 100000;
@@ -45,8 +54,31 @@ export class ResumeReader {
     return target.canResume;
   }
 
-  public async getResumeDisplayTarget(item: ZoteroItem): Promise<ResumeDisplayTarget> {
-    const target = await this.resolveTargetSafely(item);
+  public async getResumeDisplayTarget(item: ZoteroItem, positionKind: 'bookmark' | 'last-viewed' = 'bookmark'): Promise<ResumeDisplayTarget> {
+    try { return await this.buildResumeDisplayTarget(item, positionKind); }
+    catch (error) {
+      Logger.warn(`ResumeReader: failed to resolve target: ${this.getErrorMessage(error)}`);
+      return { action: 'none', sourceId: item.id, positionKind, reason: 'PDF information could not be loaded.', canResume: false, fallbackLabel: 'PDF unavailable' };
+    }
+  }
+
+  private async buildResumeDisplayTarget(item: ZoteroItem, positionKind: 'bookmark' | 'last-viewed'): Promise<ResumeDisplayTarget> {
+    const record = item.isPDFAttachment?.() ? this.getParentData(item)
+      : item.isRegularItem?.() ? this.dataStore.getData(item) : undefined;
+    const bookmark = positionKind === 'bookmark' ? record?.bookmark : undefined;
+    const parent = item.isPDFAttachment?.() ? (globalThis as any).Zotero?.Items?.get?.(item.parentID) : item;
+    const markedPDF = bookmark ? (globalThis as any).Zotero?.Items?.getByLibraryAndKey?.(parent?.libraryID, bookmark.attachmentKey) : null;
+    const usesBookmark = Boolean(bookmark && this.isPdfAttachment(markedPDF) && this.idsEqual(markedPDF.parentID, parent?.id)
+      && (!item.isPDFAttachment?.() || this.idsEqual(markedPDF.id, item.id)));
+    if (bookmark && !usesBookmark && !item.isPDFAttachment?.()) {
+      return { action: 'none', sourceId: item.id, positionKind, reason: 'The bookmarked PDF is unavailable. Remove the bookmark or open the last viewed position.', canResume: false, fallbackLabel: 'Bookmarked PDF unavailable' };
+    }
+    const target = usesBookmark
+      ? { attachment: markedPDF, lastPage: bookmark!.page, totalPages: bookmark!.pageCount }
+      : await this.resolveTargetSafely(item);
+    if (usesBookmark && target?.attachment.fileExists && !await target.attachment.fileExists()) {
+      return { action: 'none', sourceId: item.id, positionKind, reason: 'The bookmarked PDF file is unavailable on this device.', canResume: false, fallbackLabel: 'Bookmarked PDF unavailable' };
+    }
     if (!target) {
       return { action: 'none', sourceId: item.id, reason: 'No accessible PDF attachment is available.', canResume: false, fallbackLabel: 'PDF unavailable' };
     }
@@ -56,16 +88,15 @@ export class ResumeReader {
     const lastPage = canResume ? target.lastPage : null;
     const totalPages = canResume ? target.totalPages : null;
     const filename = target.attachment.attachmentFilename || target.attachment.getField?.('title') || `PDF ${target.attachment.id}`;
-    const record = item.isPDFAttachment?.() ? this.getParentData(item)
-      : item.isRegularItem?.() ? this.dataStore.getData(item) : undefined;
-    const fallbackLabel = `${lastPage ? this.getFallbackLabel(lastPage, totalPages) : 'Open PDF'} — ${filename}`;
+    const fallbackLabel = `${lastPage ? `${usesBookmark ? 'Reading bookmark' : 'Last viewed'}: page ${lastPage}${totalPages ? ` / ${totalPages}` : ''}` : 'Open PDF'} — ${filename}`;
     const l10nArgs = this.getL10nArgs(lastPage, totalPages);
 
     return {
       action: canResume ? 'resume' : 'open',
       sourceId: item.id,
+      positionKind: usesBookmark ? 'bookmark' : 'last-viewed',
       filename,
-      reason: canResume ? `Saved position for ${filename}.`
+      reason: canResume ? `${usesBookmark ? 'Reading bookmark' : 'Last viewed position'} for ${filename}.`
         : record?.availability ? `The saved page for ${filename} cannot be read from this Reading Flow record; Zotero chooses the opening position.`
           : `No saved page for ${filename}; Zotero chooses the opening position.`,
       canResume,
@@ -85,7 +116,7 @@ export class ResumeReader {
     if (target.action === 'none' || !isCurrent()) return false;
     const source = (globalThis as any).Zotero?.Items?.get?.(target.sourceId);
     if (!source || source.deleted) return false;
-    const fresh = await this.getResumeDisplayTarget(source);
+    const fresh = await this.getResumeDisplayTarget(source, target.positionKind);
     if (!isCurrent() || fresh.action !== target.action || fresh.attachmentId !== target.attachmentId
       || fresh.lastPage !== target.lastPage) return false;
     const attachment = (globalThis as any).Zotero?.Items?.get?.(target.attachmentId);

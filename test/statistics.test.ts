@@ -645,7 +645,7 @@ test('daily endpoint pages and current activity timestamp keep their separate me
       '2026-07-28': { activity: true, lastReadAt: at, progress: { a: 0.4 }, status: 'reading', reset: false, completed: false }
     } } });
   const recent = calculateHistorySnapshot([item], '7d', at).recentProgress[0];
-  assert.equal(recent.positionText, 'Saved at page 3 / 10');
+  assert.equal(recent.positionText, 'Last viewed: page 3 / 10');
   assert.equal(recent.positionChangeText, 'Page 9 / 10 → Page 4 / 10');
   assert.equal(recent.lastActivityAt, at);
   assert.equal(calculateActivityDayDetail([item], '2026-07-28')[0].recordedPositionText, 'Page 4 / 10');

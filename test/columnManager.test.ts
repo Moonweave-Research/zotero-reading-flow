@@ -94,13 +94,13 @@ test('compact and icons render full accessible text while changing only composit
   const column = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowDisplay');
   const item = { id: 7, isRegularItem: () => true };
   const compact = column.renderCell(0, column.dataProvider(item), {}, false, fakeDocument());
-  assert.match(compact.getAttribute?.('aria-label') ?? compact['aria-label'], /Reading, manual status, Saved at page 42 \/ 100, Farthest PDF position: Page 42 \/ 100, last PDF activity/);
-  assert.match(JSON.stringify(compact), /42%/);
-  assert.equal(compact.children.length, 3);
-  assert.equal(compact.children[1]['data-progress'], '42');
+  assert.match(compact.getAttribute?.('aria-label') ?? compact['aria-label'], /Reading, manual status, Last viewed: page 42 \/ 100, No reading bookmark, last PDF activity/);
+  assert.doesNotMatch(JSON.stringify(compact), /42%/);
+  assert.equal(compact.children.length, 2);
+  assert.equal(compact.children[1]['data-progress'], undefined);
   (globalThis as any).Zotero.Prefs.get = () => 'icons';
   const icons = column.renderCell(0, column.dataProvider(item), {}, false, fakeDocument());
-  assert.match(icons['aria-label'], /Reading, manual status, Saved at page 42 \/ 100, Farthest PDF position: Page 42 \/ 100, last PDF activity/);
+  assert.match(icons['aria-label'], /Reading, manual status, Last viewed: page 42 \/ 100, No reading bookmark, last PDF activity/);
   assert.equal(icons.children.length, 1);
 });
 
@@ -130,10 +130,10 @@ test('compact never-read To Read state renders one Not started phrase without un
   await manager.register();
   const column = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowDisplay');
   const cell = column.renderCell(0, column.dataProvider({ id: 8, isRegularItem: () => true }), {}, false, fakeDocument());
-  assert.equal(cell.children.length, 3);
+  assert.equal(cell.children.length, 2);
   assert.equal(cell.children.filter((child: any) => child.textContent === 'No PDF activity recorded').length, 1);
-  assert.equal(cell['aria-label'], 'To Read, manual status, No saved PDF position, no PDF activity recorded');
-  assert.equal(cell.title, 'To Read, manual status, No saved PDF position, no PDF activity recorded');
+  assert.equal(cell['aria-label'], 'To Read, manual status, No last viewed position, no PDF activity recorded');
+  assert.equal(cell.title, 'To Read, manual status, No last viewed position, no PDF activity recorded');
   assert.doesNotMatch(JSON.stringify(cell), /never read|% read/i);
 });
 
@@ -149,8 +149,8 @@ test('untouched papers render an empty status surface with an accessible unassig
   assert.equal(status.renderCell(0, status.dataProvider(item), {}, false, fakeDocument()).children.length, 0);
   const cell = composite.renderCell(0, composite.dataProvider(item), {}, false, fakeDocument());
   assert.equal(cell.children.length, 0);
-  assert.equal(cell['aria-label'], 'Unassigned, no status assigned, No saved PDF position, Farthest PDF position: Unknown, no PDF activity recorded');
-  assert.equal(cell.title, 'Unassigned, no status assigned, No saved PDF position, Farthest PDF position: Unknown, no PDF activity recorded');
+  assert.equal(cell['aria-label'], 'Unassigned, no status assigned, No last viewed position, No reading bookmark, no PDF activity recorded');
+  assert.equal(cell.title, 'Unassigned, no status assigned, No last viewed position, No reading bookmark, no PDF activity recorded');
 });
 
 test('non-regular rows use a deterministic unassigned composite without reading item metadata', async () => {
@@ -233,8 +233,8 @@ test('other absent-progress states use plain non-technical wording without dupli
   await manager.register();
   const column = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowDisplay');
   const cell = column.renderCell(0, column.dataProvider({ id: 9, isRegularItem: () => true }), {}, false, fakeDocument());
-  assert.match(cell['aria-label'], /^Reading, manual status, No saved PDF position, Farthest PDF position: Unknown, last PDF activity /);
-  assert.equal(cell.children.filter((child: any) => /No saved PDF position/.test(child.textContent)).length, 1);
+  assert.match(cell['aria-label'], /^Reading, manual status, No last viewed position, No reading bookmark, last PDF activity /);
+  assert.equal(cell.children.filter((child: any) => /No last viewed position/.test(child.textContent)).length, 1);
   assert.doesNotMatch(JSON.stringify(cell), /never read|% read/i);
 });
 
@@ -338,8 +338,8 @@ test('page one without a total has no percentage bar or completion implication',
   await manager.register();
   const column = zotero.registrations.find(entry => entry.dataKey === 'readingFlowDisplay');
   const cell = column.renderCell(0, column.dataProvider({ id: 1, isRegularItem: () => true }), {}, false, fakeDocument());
-  assert.equal(cell.children[1]['data-progress'], 'none');
-  assert.match(cell['aria-label'], /PDF page 1 \(page count unknown\)/);
+  assert.equal(cell.children[1]['data-progress'], undefined);
+  assert.match(cell['aria-label'], /Last viewed: page 1 \(page count unknown\)/);
   assert.doesNotMatch(cell['aria-label'], /100%|% read|Read,/);
 });
 
@@ -349,9 +349,9 @@ test('manual To Read does not hide an unknown legacy position or invent an activ
   await manager.register();
   const column = zotero.registrations.find(entry => entry.dataKey === 'readingFlowDisplay');
   const cell = column.renderCell(0, column.dataProvider({ id: 1, isRegularItem: () => true }), {}, false, fakeDocument());
-  assert.match(cell['aria-label'], /Saved PDF position unknown/);
+  assert.match(cell['aria-label'], /Last viewed position unknown/);
   assert.match(cell['aria-label'], /PDF activity date unknown/);
-  assert.doesNotMatch(cell['aria-label'], /No saved PDF position|never read/);
+  assert.doesNotMatch(cell['aria-label'], /No last viewed position|never read/);
 });
 
 
