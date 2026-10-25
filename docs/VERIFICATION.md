@@ -17,7 +17,7 @@ The pinned v1.3.6 writer is tested through real mutation methods against v4 reco
 
 ## Observed native behavior
 
-In a separate Zotero 10.0.6 test profile on macOS, changing the QA paper from **Read** to **Skimmed** refreshed its selected-library row immediately; the test then restored **Read**. The row showed the shorter `Bookmark 4/10 · Last 4/10` value, while the column header and item pane preserved the full distinction between the explicit bookmark and automatic last-viewed location. The 1.3.7 captures document the prior bookmark workflows; current English screenshots and their scope are listed in [assets/README.md](assets/README.md).
+In a separate Zotero 10.0.6 test profile on macOS, changing the QA paper from **Read** to **Skimmed** refreshed its selected-library row immediately; the test then restored **Read**. The row showed the shorter `Bookmark 4/10 · Last 4/10` value, while the column header and item pane preserved the full distinction between the explicit bookmark and automatic last-viewed location. In a separate QA item with no PDF attachment, setting **Reading** displayed a recorded **Reading started** timestamp while **Last PDF activity**, **Reading bookmark**, and **Last viewed (automatic)** remained unrecorded. This verifies the native item-pane distinction, not PDF tracking, statistics, or cross-device sync. The 1.3.7 captures document the prior bookmark workflows; current captures and their scope are listed in [assets/README.md](assets/README.md).
 
 Do not claim real multi-device sync, VoiceOver certification, or universal Zotero/platform coverage from these bounded observations. VoiceOver settings are outside this workflow. [Release acceptance](RELEASE.md) remains separate from unit checks and screenshots.
 
