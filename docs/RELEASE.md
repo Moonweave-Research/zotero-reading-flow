@@ -1,208 +1,46 @@
-# Release Process
+# Release process
 
-This document describes the release process for Zotero Reading Flow.
+The source version is 1.3.7. The latest published release remains 1.3.6 as of October 25, 2026. Merging a PR does not publish a release or update installed clients.
 
-## Release Gate
+## Verify the candidate
 
-Run the full local verification command before creating or updating a release:
-
-```bash
-npm ci
-npm run verify
-```
-
-Expected final output:
-
-```text
-verify-xpi: OK (12 files)
-```
-
-The command verifies:
-
-- TypeScript compiles with `tsc --noEmit`.
-- Unit tests pass.
-- `zotero-reading-flow.xpi` is rebuilt.
-- `updates.json` is regenerated.
-- The XPI contains required files.
-- The XPI does not contain source files, `node_modules`, macOS metadata, or removed Zotero APIs.
-- `manifest.json`, `package.json`, and `updates.json` agree on version and Zotero compatibility.
-- `updates.json` contains the sha256 hash of the built XPI.
-
-## PR3 metadata compatibility and upgrade gate (2026-10-24)
-
-PR1–4 must ship together as the coherent user release authorized in
-`READING_FLOW_AUTHORITY.md`. PR3 source completion alone is not a release.
-PR4, native integration and human acceptance remain pending.
-
-Before enabling independent importance in a synchronized library:
-
-- Upgrade every client that must display or edit the new state to the coherent
-  v3-capable release. A schema version is not an add-on version: the existing
-  v1.3.6 baseline does **not** support independent importance.
-- Inventory other clients with write access, including collaborators on group
-  libraries. Upgrade or disable unknown old Reading Flow writers before using
-  v3. Safe refusal is demonstrated only for v1.3.6 source pinned at
-  `9afa71f5b75872e8e9f4acd490eeba7eb2d94c2f`; do not generalize to ancient
-  releases. A known baseline may retain v3 unchanged by refusing writes, but
-  cannot be used to display, update status or track PDF positions on those
-  records. Old displays may look empty or stale; that does not mean data is lost.
-- Run `node scripts/verify-pr3-compatibility.js` from a checkout retaining that
-  pinned git object (also run by `npm run verify`). It must prove all eight old
-  mutation APIs refuse both v3 flag values without setters/saves or byte changes,
-  with working v2 and guard-sensitivity controls and new-client round trips.
-  A missing pinned source object or failure blocks release; no parser-only
-  replacement is sufficient. See `PR3_VERIFICATION.md`.
-- Never change `v:3` to an earlier version or strip the namespace to enable an
-  old writer. The experiment demonstrates that bypassing the guard loses the
-  independent flag. Rollback to an older add-on leaves v3 read-only to the
-  demonstrated baseline; restore a supported client to edit it.
-
-Release/upgrade notes must explain that legacy `s=important` becomes an
-importance flag with unknown previous manual stage. It never restores Read
-from progress. Automatic Reading is PDF activity based. There is no startup,
-read-time or bulk migration; actual explicit importance changes and manual
-stage changes requiring independent importance perform the versioned transition.
-Until then background PDF updates retain legacy encoding. User tags remain
-untouched. Existing legacy Important new-item defaults become inactive without
-changing the stored preference; users may explicitly choose a supported manual
-stage in Settings. No completion dates or historical reading judgments are
-reconstructed.
-
-Native acceptance must exercise Read + Important, each independent clear,
-importance-only Unassigned, legacy Important with and without PDF evidence,
-Read intersected with Important only (including day detail), read-only and mixed
-bulk selections, keyboard/VoiceOver labels, narrow/200%/dark layouts, reload,
-restart and synchronized new-client/known-baseline refusal. Ordinary fixture
-review does not replace those checks. The older smoke-test wording below is a
-baseline checklist: superseded automatic completion, Restart and reset wording
-must follow the authority and PR1/2/3 verification records for the coherent release.
-
-## Version Update
-
-For a new release:
-
-1. Update `package.json`.
-2. Update the root and package entries in `package-lock.json` (normally with `npm version <version> --no-git-tag-version`).
-3. Update `addon/manifest.json`.
-4. Update `CHANGELOG.md` and release-facing README content.
-5. Run `npm ci` and `npm run verify`.
-6. Confirm the packed manifest and `updates.json` agree with the source version, URL, and XPI hash.
-
-The expected update link format is:
-
-```text
-https://github.com/Moonweave-Research/zotero-reading-flow/releases/download/v<version>/zotero-reading-flow.xpi
-```
-
-## GitHub Release
-
-Before creating a release, confirm that the exact merge commit's GitHub **Verify** check has passed. Create the release as a draft first, then:
-
-1. Create a GitHub release named `v<version>`.
-2. Upload `zotero-reading-flow.xpi`.
-3. Upload `updates.json`.
-4. Publish the release.
-
-Both files must be release assets. Do not rely on source archives for plugin installation.
-
-Publishing triggers the `verify-public-release-assets` job. It rebuilds the tagged source and compares the public XPI and update metadata with that exact build. Treat the release as complete only after this job passes.
-
-## Post-Release URL Checks
-
-After publishing the release, verify the exact public artifacts (not only their HTTP status):
-
-```bash
-npm run verify:release-assets -- --tag v<version>
-```
-
-This checks the public XPI hash, the update metadata hash and link, the add-on version, and the Zotero compatibility range against the tagged source build.
-
-## Manual Zotero Smoke Test
-
-Use a clean or disposable Zotero profile when possible.
-
-1. Install `zotero-reading-flow.xpi`.
-2. Restart Zotero.
-3. Confirm the add-on appears as enabled.
-4. Confirm the existing `Progress`, `Status`, and `Last Read` layout remains unchanged.
-5. Use Zotero's native column chooser to enable the optional `Reading Flow` column, then show and hide it again without changing the existing columns.
-6. In **Settings → Zotero Reading Flow**, switch **Reading Flow column density** between **Compact** and **Icons** and confirm only that column's contents change.
-7. Confirm Compact shows the correct status icon with progress/date, Icons shows only the icon, and an untouched item is visually blank with an accessible `Unassigned` meaning.
-8. Confirm tooltip/accessibility text retains status, progress, and last-read meaning, and the optional column sorts recently read items first with never-read items last.
-9. Open a PDF attachment.
-10. Change pages and wait at least 5 seconds.
-11. Return to the library item tree and confirm progress appears.
-12. Right-click a regular item and confirm the `Reading Flow` menu appears.
-13. Set a manual status, choose **Clear Manual Status (Use Automatic)**, and confirm a status-only item returns to no Reading Flow metadata while a progressed item keeps progress and derives its status automatically. Confirm the Status/Reading Flow tooltip identifies manual versus automatic state.
-14. Confirm **Reset Progress (Keep Manual Status)** preserves the current manual status, does nothing on an item with no progress/resume position, and **Restart as To Read** clears progress while explicitly setting `To Read`.
-15. Multi-select regular items and PDF attachments, including one read-only item, and confirm parent deduplication plus the changed/not-changed/skipped/failed summary. Cancel a 100-item operation at its confirmation and verify no writes occur.
-16. Keep **Status for newly added papers** at `Unassigned` and confirm a new paper receives no Reading Flow metadata. Then opt into one status and confirm only papers added after activation are initialized; historical sync items, attachments, read-only items, and every pre-existing Reading Flow namespace must remain unchanged. Confirm initialization does not change `dateModified` or create history.
-17. In Settings, confirm the sidebar card immediately reports whether the selected library has the list. Add **Reading Flow — Tracked Papers**, confirm one native Saved Search appears under **Saved Searches** in that library's left sidebar, click Add again to confirm no duplicate, create a separate list in a second editable library, and confirm removal affects only the currently selected library. Confirm read-only libraries are rejected and no tags or status-specific folders are created.
-18. Open **Tools → Reading Statistics** and confirm `Current View`, `Selected Library`, `Reading Flow items`, `All papers (inventory)`, `Unassigned`, status, history range, and Refresh work.
-19. Open the dashboard from the item context menu and confirm it focuses the same window; close it and confirm it can reopen.
-20. Select an active calendar date and confirm its detail lists only matching papers from the displayed scope, dataset, status filter, and range; clear it by selecting the same date again.
-21. Select a Recent Progress or calendar-detail row and confirm `Show in Zotero` selects it while `Resume` opens that paper through the saved-page Reader path.
-22. Change PDF pages and immediately quit Zotero or disable the plugin without waiting five seconds. Reopen Zotero and confirm the last pending page was persisted and no Reading Flow bootstrap error appears in the debug log.
-
-For local automation, run:
-
-```bash
-ZOTERO_TEST_PROFILE="/path/to/profile-dir" \
-ZOTERO_DATA_DIR="/path/to/zotero-data-dir" \
-npm run check:release-profile -- \
-  --itemKey "<item-key>" \
-  --attachmentKey "<attachment-key>" \
-  --attachmentPath "/path/to/zotero-data-dir/<pdf-file-path>" \
-  --json
-```
-
-## Current Release Notes
-
-For `v1.3.6`, the release should be described as compatible with Zotero `9.0.x` and `10.0.*`, with explicit unassigned/default-status control, safer bulk status operations, shutdown progress flushing, Zotero 10 selected-library fixes, and an opt-in tracked-papers Saved Search in the left sidebar.
-
-### v1.3.6 summary
-
-- Untouched papers remain unassigned instead of appearing as `To Read`; users can clear a manual status back to automatic behavior or restart explicitly as `To Read`.
-- A prospective default status can be chosen for newly added eligible papers without rewriting existing or synced items.
-- Large multi-item status changes confirm scope and report changed, unchanged, skipped, and failed items.
-- Settings can add `Reading Flow — Tracked Papers` under the selected library's Saved Searches and report whether it exists; plugin-owned legacy searches are renamed automatically.
-- Zotero 10 selected-library statistics, PDF progress normalization, concurrent Extra-field writes, and immediate-shutdown progress persistence are hardened.
-
-### v1.3.6 local release checks
-
-- `npm run verify`
-- Install the generated XPI into the target Zotero profile and confirm the installed version is `1.3.6`.
-- Confirm a tracked legacy `Reading Flow Metadata` Saved Search becomes `Reading Flow — Tracked Papers` without changing its conditions.
-- Complete the manual acceptance checklist above before publication.
-
-Attach these generated release assets to GitHub release `v1.3.6`:
-
-- `zotero-reading-flow.xpi`
-- `updates.json`
-
-The sections below retain the prior `v1.3.5` release record.
-
-For `v1.3.5`, the release was described as compatible with Zotero `9.0.x` and `10.0.*`, with safer Reader API degradation and public release-asset verification.
-
-### v1.3.5 summary
-
-- Safely skips progress tracking when a Reader registry is unavailable.
-- Limits automatic tracking to PDFs, avoiding ambiguous EPUB or snapshot page values.
-- Verifies published XPI and update metadata against the exact tagged build after release.
-- Does not change the stored Reading Flow schema or modify PDF or annotation content.
-
-### v1.3.5 local release checks
+Use Node.js 22, npm, Git with full history, zip, and unzip:
 
 ```bash
 npm ci
 npm run verify
 git diff --check
-npm audit --omit=dev
-sha256sum zotero-reading-flow.xpi updates.json docs/assets/reading-flow-display-modes.png
-unzip -t zotero-reading-flow.xpi
 ```
 
-Attach these generated release assets to GitHub release `v1.3.5`:
+Verification runs TypeScript checks, unit tests, the XPI build, package/update-manifest validation, and a pinned previous-writer compatibility check. Missing baseline Git objects are failures; do not substitute a parser-only test. See [verification](VERIFICATION.md).
 
-- `zotero-reading-flow.xpi`
-- `updates.json`
+Generated files (`addon/bootstrap.js`, `addon/dashboard.js`, `updates.json`, the XPI, and tmp/) stay out of Git. Never commit profile databases, personal screenshots, debug logs, credentials, or local paths.
+
+## Check in a disposable Zotero profile
+
+1. Install the XPI with Tools → Plugins → gear menu → Install Plugin From File…, then restart. Confirm the active version.
+2. Show Bookmark / Last Viewed, Status, and Last PDF Activity through the native column chooser. Confirm the optional combined column and its Compact/Icons modes.
+3. Choose each manual stage; check Important independently. Clear the manual stage and verify the automatic/Unassigned fallback. Status changes must not fabricate activity or completion.
+4. Bookmark page 4, browse to page 8, and confirm the bookmark stays at 4 in the list, pane, and statistics. Continue from bookmark must open page 4 in the correct PDF. Remove and Undo must update the visible controls and preserve unrelated fields.
+5. Reset tracked PDF positions. Confirm the bookmark, manual stage, Important, activity date, and history survive. Test missing/multiple PDFs and read-only records.
+6. Open Reading Statistics from the item menu. Check scope, filters, calendar detail, manual Marked Read counts, shared dates, and displayed page targets. Reopen an existing window without losing filters.
+7. Check narrow, enlarged-text, and dark layouts. Check keyboard labels without changing system accessibility preferences.
+8. Verify bookmark persistence after restart and pending automatic-position persistence on immediate shutdown.
+9. Check the prospective new-item default and the library-scoped sidebar list without changing pre-existing data.
+
+Real synchronization across two devices is a separate acceptance step. Report it as unverified until observed; local round trips do not prove delivery. Use compatible clients on every device. The previous writer tested against v4 refuses edits; arbitrary old versions are not certified safe. Never strip metadata or downgrade its schema to enable an older writer.
+
+## Prepare a release
+
+1. Update package.json, both version entries in package-lock.json, addon/manifest.json, CHANGELOG.md, and the README version notice together.
+2. Run verification and scan for secrets. Open an English PR; wait for checks on its exact head, review scope, and merge.
+3. Build the exact merged revision and verify its GitHub Verify check.
+4. Create a draft release, attach zotero-reading-flow.xpi and updates.json, and check their hashes, version, compatibility range, and download URLs.
+5. Publish only when release publication is authorized and the acceptance limitations are disclosed.
+6. Run the public asset check and require the release-triggered verify-public-release-assets job to pass:
+
+```bash
+npm run verify:release-assets -- --tag v<version>
+```
+
+The release check rebuilds the tagged source and compares the actual public XPI and update metadata. An HTTP 200 alone is not sufficient. Historical release notes belong in [CHANGELOG.md](../CHANGELOG.md).

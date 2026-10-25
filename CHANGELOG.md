@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased — 1.3.7 source
+
+### Added
+
+- Explicit reading bookmarks with Bookmark here, Continue from bookmark, Remove bookmark, and session-scoped Undo.
+- Attachment-key bookmark identity and previous-writer refusal checks for the v4 record format.
+
+### Changed
+
+- Separate manual reading status, independent Important, automatic last viewed, and deliberately saved reading bookmarks.
+- Present page locations and activity dates consistently across the list, panel, and statistics; reaching the last page does not mark Read.
+- Clarify retained history and manual Marked Read statistics; keep detailed position history optional.
+- Refresh the Reading Flow section after navigation and improve narrow/enlarged-text layouts.
+- Replace outdated documentation and screenshots with an English visual feature guide.
+
+This source has not been published as a release. Real delivery between two devices remains unverified; use compatible bookmark clients on all editing devices.
+
 # 1.3.6 - 2026-08-28
 
 ### Added

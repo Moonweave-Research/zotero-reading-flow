@@ -17,9 +17,9 @@ Reading Flow helps you return to the page you meant to keep. Leave a **reading b
 > [!IMPORTANT]
 > **Screenshots show 1.3.7, currently available from source.** The latest published release is **1.3.6** as of October 25, 2026. For **Bookmark here** and the workflow below, [build the current source](#build-from-source) until a 1.3.7+ release is available.
 
-![Actual Zotero Reading Statistics window showing a reading bookmark at page 4 of 10, last viewed at page 8 of 10, and an independently chosen Read status](docs/assets/reading-bookmarks-statistics.jpg)
+![Actual English Zotero library showing To Read, Reading, Skimmed, Read with Important, and independent Unassigned states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
-*You marked page 4, then looked at page 8. Your bookmark stays at page 4. Screenshots use a separate test library; click an image to inspect it at full size.*
+*See each reading stage in the library, with Important kept separate. This capture follows a return to bookmark page 4; the panel/statistics examples below were captured while last viewed was page 8. All images are real English Zotero screens from a separate test library; click to view full size.*
 
 ## Install
 
@@ -29,6 +29,17 @@ Reading Flow helps you return to the page you meant to keep. Leave a **reading b
 4. Restart Zotero after installing or updating.
 
 Supports **Zotero 9 and 10**. The latest screenshots were verified on **Zotero 10.0.6 for macOS**. Use Zotero's plugin installer when updating so both the package and its registered version are updated.
+
+## What you can do
+
+| Feature | Where to find it |
+| --- | --- |
+| Choose To Read, Reading, Skimmed, or Read; flag Important independently | Library Status column, item menu, and Reading Flow panel — shown above |
+| Keep a deliberate bookmark while browsing freely | Bookmark here in the PDF toolbar — [try it](#try-it) |
+| Resume the bookmark or the automatic last viewed page | Two separate actions in the [Reading Flow panel](#3-continue-from-your-bookmark) |
+| Review PDF activity, manual Read counts, and current positions | [Reading statistics](#reading-statistics) |
+| Keep tracked papers in the left sidebar | [Reading list and settings](#reading-list-and-settings) |
+| Choose Compact/Icons and a prospective new-item default | [Reading Flow settings](#reading-list-and-settings) |
 
 ## Try it
 
@@ -76,7 +87,26 @@ Choose **Continue from bookmark** to return to your marked page. **Open last vie
 - **Create a reading list:** **Settings → Zotero Reading Flow → Add to Left Sidebar** creates one native **Reading Flow — Tracked Papers** Saved Search per selected editable library.
 - **Set a default for new items:** **Status for newly added papers** starts at **Unassigned**. Choosing a default affects eligible items added afterward; it does not rewrite the existing library.
 
+## Reading list and settings
+
+Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Papers**, choose the optional combined column's density, or set a default for future eligible additions. The default **Unassigned** leaves new items untouched. Existing items keep their current data.
+
+![Actual English Zotero Reading Flow settings with sidebar-list controls, Compact density, and Unassigned new-item default](docs/assets/reading-flow-settings.jpg)
+
+<details>
+<summary>See the tracked-papers list in Zotero</summary>
+
+![Actual English Zotero library with the Reading Flow tracked-papers Saved Search selected and papers in multiple reading stages](docs/assets/reading-list-sidebar.jpg)
+
+*The selected Saved Search includes papers with Reading Flow metadata. It is not a folder for one status. Untouched, unassigned papers stay outside it; an unassigned paper with Important metadata can appear.*
+
+</details>
+
 ## Reading statistics
+
+![Actual English Zotero Reading Statistics showing bookmark page 4, automatic page 8, activity dates, and manually chosen Read with Important](docs/assets/reading-bookmarks-statistics.jpg)
+
+*You marked page 4, then looked at page 8. The bookmark stays at page 4; Marked Read remains a manual judgment.*
 
 Open **Tools → Reading Statistics**, or right-click a paper and choose **Reading Flow → View Current View Statistics**.
 
@@ -132,4 +162,4 @@ npm run verify
 
 Install the resulting **`zotero-reading-flow.xpi`** through **Tools → Plugins → Install Plugin From File…**, then restart Zotero. Verification runs TypeScript checks, unit tests, the XPI build, package/update-manifest checks, and previous-writer compatibility checks. Generated artifacts are ignored by Git.
 
-For maintainers: [release process](docs/RELEASE.md) · [release notes](CHANGELOG.md) · [test-profile checker](scripts/check-release-profile.js). Reading Flow has no separate reading-data upload service; plugin updates use its declared GitHub release channel. Zotero's own sync and network behavior are separate.
+For maintainers: [documentation index](docs/README.md) · [release process](docs/RELEASE.md) · [release notes](CHANGELOG.md) · [test-profile checker](scripts/check-release-profile.js). Reading Flow has no separate reading-data upload service; plugin updates use its declared GitHub release channel. Zotero's own sync and network behavior are separate.
