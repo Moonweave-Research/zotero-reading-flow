@@ -15,11 +15,11 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> **Most workflow screenshots show Reading Flow 1.3.8.** The new **Reading started** example shows the 1.3.9 QA build, now available in the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest). The captions call out where older screenshots use earlier date labels.
+> Screenshots use **English Zotero 10.0.6** with Reading Flow **1.3.8 or 1.3.9**. The start-date, settings, statistics, and [additional visual workflows](docs/VISUAL_GUIDE.md) show **1.3.9**, available in the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest). Earlier date labels are identified in the older panel capture.
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read with Important, and independent Unassigned states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
-*See each reading stage in the library, with Important kept separate. These English workflow captures use a separate test library; the Reading started example below has a Korean Zotero host UI. Click a full-window image to inspect it, or use the detail views below.*
+*See each reading stage in the library, with Important kept separate. All captures use separate test libraries with synthetic papers. Click a full-window image to inspect it, or use the detail views below.*
 
 ## Install
 
@@ -74,7 +74,7 @@ Select a paper and set its **Status** in the Reading Flow panel or context menu.
 
 ![Reading Flow showing Reading started separately from Last PDF activity, bookmark, and automatic last-viewed position](docs/assets/reading-started-qa-v1.3.9.png)
 
-*This isolated QA item has no PDF attached. The start date is present while PDF activity and page positions are not. Reading Flow labels are in English; the host Zotero app uses a Korean locale in this capture.*
+*This English 1.3.9 capture shows an item without a PDF. Its manually recorded start date is present while PDF activity and page positions are not.*
 
 ### 2. Save the page you want to return to
 
@@ -139,6 +139,23 @@ Choose **Continue from bookmark** to return to your marked page. **Open last vie
 
 ## Reading list and settings
 
+For the smaller controls and less frequent tasks, see the **[visual guide](docs/VISUAL_GUIDE.md)**: [batch status changes](docs/VISUAL_GUIDE.md#change-several-papers-together), [Compact vs Icons](docs/VISUAL_GUIDE.md#compare-compact-and-icons), [bookmark Undo](docs/VISUAL_GUIDE.md#undo-a-bookmark-change), [automatic status](docs/VISUAL_GUIDE.md#return-to-automatic-status), [statistics filters](docs/VISUAL_GUIDE.md#explore-the-statistics-filters), and [multiple or missing PDFs](docs/VISUAL_GUIDE.md#several-pdfs-or-an-unavailable-attachment).
+
+<details>
+<summary>Compare the actual Compact and Icons columns</summary>
+
+**Compact — stage, saved positions, and activity date:**
+
+<img src="docs/assets/workflows/density-compact-detail.png" alt="Actual English Zotero Compact column showing bookmark 4/10, last viewed 8/10, book symbols, and activity date" width="700">
+
+**Icons — stage and Important symbols; hover for details:**
+
+<img src="docs/assets/workflows/density-icons-detail.png" alt="The same English Zotero rows in Icons mode showing books and the independent Important star" width="700">
+
+*Both captures use Reading Flow 1.3.9. The same saved data is shown in two display modes; the separate Status column is unchanged.*
+
+</details>
+
 Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Papers**, choose the optional combined column's density, or set a default for future eligible additions. The default **Unassigned** leaves new items untouched. Existing items keep their current data.
 
 ![Actual English Zotero Reading Flow settings with sidebar-list controls, Compact density, and Unassigned new-item default](docs/assets/reading-flow-settings.jpg)
@@ -154,9 +171,9 @@ Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Pape
 
 ## Reading statistics
 
-![Actual English Zotero Reading Statistics showing bookmark page 4, automatic page 8, activity dates, and manually chosen Read with Important](docs/assets/reading-bookmarks-statistics.jpg)
+![Actual English Zotero Reading Statistics showing bookmark page 4, automatic page 8, Last PDF activity, and Reading automatic with Important](docs/assets/reading-bookmarks-statistics.jpg)
 
-*You marked page 4, then looked at page 8. The bookmark stays at page 4; Marked Read remains a manual judgment. This 1.3.8 capture says **Last activity**; 1.3.9 calls it **Last PDF activity**.*
+*In this 1.3.9 capture, you bookmarked page 4 and looked at page 8. The item is **Reading (automatic) · Important** and **Marked Read** is 0. Neither reaching a page nor setting a bookmark marks a paper Read.*
 
 Open **Tools → Reading Statistics**, or right-click a paper and choose **Reading Flow → View Current View Statistics**.
 
@@ -168,6 +185,21 @@ The dashboard brings together **reading bookmarks, automatic positions, last PDF
 - **Expand details when needed.** **Position history** contains available daily farthest-position comparisons and reset counts. **Status and saved positions** contains the optional breakdowns.
 
 Detailed PDF activity history retains at most **366 days**; older or legacy activity may be missing. A brief visit can update the last PDF position, but that does not prove the page was read.
+
+<details>
+<summary>See the filters and a selected activity day</summary>
+
+Choose a scope, expand **Filter items**, then combine a stage with **Important only**:
+
+<img src="docs/assets/workflows/statistics-filters-detail.png" alt="Actual English statistics controls: Selected Library, 7 days, Reading Flow items, Reading, and Important only" width="770">
+
+Click an active calendar day to see its matching paper and recorded position. The PDF action still identifies the saved bookmark separately:
+
+<img src="docs/assets/workflows/statistics-day-detail.png" alt="Actual selected activity day showing recorded page 8, Reading automatic with Important, and a separate continue-from-bookmark page 4 action" width="714">
+
+*This sample has one matching paper. Recorded location is the PDF position on the selected day; Current status describes the paper now. [More filter examples and full-window captures](docs/VISUAL_GUIDE.md#explore-the-statistics-filters).*
+
+</details>
 
 ## Questions
 

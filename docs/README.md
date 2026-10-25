@@ -4,6 +4,7 @@ Start with the [user guide](../README.md) for installation and a visual feature 
 
 | Document | Purpose |
 | --- | --- |
+| [Additional visual workflows](VISUAL_GUIDE.md) | Batch actions, density comparisons, bookmark Undo, automatic status, and statistics controls |
 | [Troubleshooting](TROUBLESHOOTING.md) | Find controls and diagnose common behavior safely |
 | [Product contract](READING_FLOW_AUTHORITY.md) | Current reading, bookmark, date, and compatibility semantics |
 | [Verification](VERIFICATION.md) | Repeatable checks, native evidence, and unverified limits |
