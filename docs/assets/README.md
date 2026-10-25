@@ -6,8 +6,8 @@ The 1.3.8 captures are original, unedited images of English Zotero 10.0.6 for ma
 | --- | --- | --- |
 | reading-status-library.jpg | Four manual stages, unassigned + Important, compact positions, and the item panel | QA sample library; bookmark 4/10; last viewed 8/10; Read + Important |
 | reading-bookmark-button.jpg | Bookmark here in the upper-right PDF toolbar | QA PDF reader at page 4/10 |
-| reading-bookmark-panel.jpg | Distinct bookmark and automatic-position actions, status, dates | Bookmark 4/10; last viewed 8/10 |
-| reading-bookmarks-statistics.jpg | Activity calendar, manual Marked Read, separate position columns | Bookmark 4/10; last viewed 8/10; manually Read and Important |
+| reading-bookmark-panel.jpg | Distinct bookmark and automatic-position actions, status, dates | 1.3.8 labels: First recorded and Last activity; bookmark 4/10; last viewed 8/10 |
+| reading-bookmarks-statistics.jpg | Activity calendar, manual Marked Read, separate position columns | 1.3.8 label: Last activity; bookmark 4/10; last viewed 8/10; manually Read and Important |
 | reading-flow-settings.jpg | Sidebar controls, column density, prospective new-item default | Compact and Unassigned shown; test-profile settings only |
 | reading-list-sidebar.jpg | Native, selected tracked-papers Saved Search and concise positions | QA sample library; five items with status metadata |
 | reading-started-qa-v1.3.9.png | Manual Reading status, explicit Reading started date, separate Last PDF activity, bookmark, and automatic last-viewed fields | 1.3.9 QA source in an isolated profile; no PDF attached, so PDF activity and positions are not recorded |
