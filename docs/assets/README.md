@@ -1,6 +1,6 @@
 # Screenshot provenance
 
-The 1.3.8 captures are original, unedited images of English Zotero 10.0.6 for macOS running the released 1.3.8 build in a separate test profile. The 1.3.9 reading-start capture is an original, unedited image of the same Zotero version with a Korean host-app locale and the unreleased 1.3.9 candidate. None are generated mockups or contain personal library records. Window layout changes and sample status choices were confined to isolated test profiles. The matching 1.3.8 build is available from the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest); 1.3.9 remains a PR candidate.
+The 1.3.8 captures are original, unedited images of English Zotero 10.0.6 for macOS running the released 1.3.8 build in a separate test profile. The 1.3.9 reading-start capture is an original, unedited image of Zotero 10.0.6 with a Korean host-app locale and the 1.3.9 QA source from the exact tree now tagged and released as 1.3.9. None are generated mockups or contain personal library records. Window layout changes and sample status choices were confined to isolated test profiles. Version 1.3.9 is available from the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
 
 | File | Feature shown | Capture context |
 | --- | --- | --- |
@@ -10,9 +10,9 @@ The 1.3.8 captures are original, unedited images of English Zotero 10.0.6 for ma
 | reading-bookmarks-statistics.jpg | Activity calendar, manual Marked Read, separate position columns | Bookmark 4/10; last viewed 8/10; manually Read and Important |
 | reading-flow-settings.jpg | Sidebar controls, column density, prospective new-item default | Compact and Unassigned shown; test-profile settings only |
 | reading-list-sidebar.jpg | Native, selected tracked-papers Saved Search and concise positions | QA sample library; five items with status metadata |
-| reading-started-qa-v1.3.9.png | Manual Reading status, explicit Reading started date, separate Last PDF activity, bookmark, and automatic last-viewed fields | Unreleased 1.3.9 candidate in an isolated QA profile; no PDF attached, so PDF activity and positions are not recorded |
+| reading-started-qa-v1.3.9.png | Manual Reading status, explicit Reading started date, separate Last PDF activity, bookmark, and automatic last-viewed fields | 1.3.9 QA source in an isolated profile; no PDF attached, so PDF activity and positions are not recorded |
 
-Screens represent separate moments in their sample workflows, not one simultaneous snapshot. The reader toolbar capture shows page 4; the library, panel, and statistics captures show bookmark page 4 and automatic last viewed page 8. Those captures use the published 1.3.8 build. The 1.3.9 candidate capture is separate and demonstrates the explicit start date without implying PDF reading activity or pages read.
+Screens represent separate moments in their sample workflows, not one simultaneous snapshot. The reader toolbar capture shows page 4; the library, panel, and statistics captures show bookmark page 4 and automatic last viewed page 8. Those captures use the published 1.3.8 build. The 1.3.9 QA-source capture demonstrates the explicit start date without implying PDF reading activity or pages read; its source tree is the one published in the 1.3.9 release.
 
 The sample titled QA — Unsupported record retains a legacy Important record after earlier compatibility testing; the title is a fixture label, not a current parser-error diagnosis. Its Unassigned + Important display demonstrates that the flag does not imply a reading stage.
 
