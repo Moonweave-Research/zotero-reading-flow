@@ -19,7 +19,7 @@ Reading Flow helps you return to the page you meant to keep. Leave a **reading b
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read with Important, and independent Unassigned states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
-*See each reading stage in the library, with Important kept separate. This capture follows a return to bookmark page 4; the panel/statistics examples below were captured while last viewed was page 8. All images are real English Zotero screens from a separate test library; click to view full size.*
+*See each reading stage in the library, with Important kept separate. These English workflow captures use a separate test library; the Reading started example below has a Korean Zotero host UI. Click a full-window image to inspect it, or use the detail views below.*
 
 ## Install
 
@@ -49,6 +49,28 @@ Supports **Zotero 9 and 10**. The latest screenshots were verified on **Zotero 1
 
 Select a paper and set its **Status** in the Reading Flow panel or context menu. Choose **Reading** when you start; the panel records **Reading started**. The date updates if you start Reading again. Existing items are not backfilled because their earlier start date cannot be inferred reliably.
 
+**Look for the open book.** In the optional combined **Reading Flow** column, changing **To Read → Reading** changes the orange closed-book symbol to an open book: **📙 → 📖**. The separate **Status** column spells out the stage, as shown in this close-up:
+
+<table>
+<tr><th>Status column — actual screenshot detail</th><th>Combined Reading Flow column — icon key</th></tr>
+<tr>
+<td><img src="docs/assets/detail-status-stages.png" alt="Enlarged Status column showing Read with a star, To Read, Unassigned with a star, Reading, and Skimmed" width="168"></td>
+<td>
+<p><strong>📙 To Read</strong> — saved for later</p>
+<p><strong>📖 Reading</strong> — currently reading</p>
+<p><strong>📘 Skimmed</strong> — skimmed, with the stage chosen by you</p>
+<p><strong>📗 Read</strong> — marked Read by you</p>
+<p><strong>⭐ Important</strong> — an independent flag that can accompany any stage</p>
+</td>
+</tr>
+</table>
+
+*The icon key explains the current symbols; it is not a second screenshot. Enable the optional **Reading Flow** column with Zotero's native column chooser to see the books. The separate **Status** column uses text labels. Zotero's item-type icon beside the paper title stays the same. Book emoji artwork varies by operating system.*
+
+**Unassigned** means no stage has been chosen or inferred. **Reading (automatic)** can appear after PDF activity or a bookmark when no manual stage is set; the open book alone does not tell you whether the stage was set manually. Check the panel's Status label for that distinction. Reaching the last page never changes the book to **Read**.
+
+**A start date is separate from PDF activity:**
+
 ![Reading Flow showing Reading started separately from Last PDF activity, bookmark, and automatic last-viewed position](docs/assets/reading-started-qa-v1.3.9.png)
 
 *This isolated QA item has no PDF attached. The start date is present while PDF activity and page positions are not. Reading Flow labels are in English; the host Zotero app uses a Korean locale in this capture.*
@@ -57,7 +79,16 @@ Select a paper and set its **Status** in the Reading Flow panel or context menu.
 
 Open a PDF and choose **Bookmark here** in the **upper-right PDF toolbar, near Aa**. This saves a reading bookmark at the current page. No reading mode or timer needs to be switched on.
 
+<img src="docs/assets/detail-bookmark-button.png" alt="Enlarged actual PDF toolbar: Bookmark here immediately to the left of Aa" width="370">
+
+*This is the button to look for inside the PDF reader.*
+
+<details>
+<summary>Locate it in the full PDF reader window</summary>
+
 ![Actual Zotero PDF reader with the Bookmark here button in the upper-right toolbar and the PDF open at page 4](docs/assets/reading-bookmark-button.jpg)
+
+</details>
 
 ### 3. Browse freely
 
@@ -75,7 +106,15 @@ Jump to the references, inspect a figure, or look at another page. Reading Flow 
 
 Return to the library, select the paper, and click the **book-shaped Reading Flow icon** on the right. You can also right-click the paper and choose **Reading Flow → View Reading Flow**.
 
+<img src="docs/assets/detail-panel-shortcut.png" alt="Actual book-shaped Reading Flow shortcut on Zotero's right-hand sidebar" width="72">
+
+*This sidebar shortcut opens the panel. The changing book symbols described above appear in the combined library column.*
+
 Choose **Continue from bookmark** to return to your marked page. **Open last viewed** takes you to the automatic position instead. Without a bookmark, the primary action continues from the last viewed position, or opens the PDF when no saved position is available.
+
+<img src="docs/assets/detail-bookmark-actions.png" alt="Enlarged actual panel: bookmark at page 4 of 10, automatic last viewed at page 8 of 10, and separate buttons to open each position" width="504">
+
+*In this example, **Continue from bookmark · page 4** returns to the page you saved; **Open last viewed · page 8** returns to the page you browsed afterward. **Remove bookmark** clears the bookmark, leaving the automatic position available.*
 
 <details>
 <summary>See the Reading Flow panel</summary>
