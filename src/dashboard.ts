@@ -1,3 +1,4 @@
+import { resumeActionLabel } from './resumeReader';
 import { ResumeDisplayTarget } from './resumeReader';
 import { formatActivityTimestamp, formatPDFLocation, type DisplayReadingStatus, type ReadingStatus } from './flowData';
 import {
@@ -318,7 +319,7 @@ export class DashboardApp {
       button.textContent = 'Checking PDF…';
       void this.bridge?.getPDFTarget?.(id).then(target => {
         if (!button.isConnected) return;
-        button.textContent = target.action === 'resume' ? `Resume at page ${target.lastPage}${target.totalPages ? ` / ${target.totalPages}` : ''}` : target.action === 'open' ? 'Open PDF' : 'PDF unavailable';
+        button.textContent = resumeActionLabel(target);
         if (target.filename) {
           const filename = this.doc.createElement('span');
           filename.className = 'recent-pdf-filename'; filename.textContent = target.filename;
@@ -585,16 +586,21 @@ function renderRecentProgress(
     actions.className = 'recent-progress-actions';
     actions.append(focus, resume);
     paperCell.append(title, actions);
+    if (entry.positionChangeText || entry.resetCount > 0) {
+      const details = doc.createElement('details'), summary = doc.createElement('summary'), text = doc.createElement('p');
+      summary.textContent = 'Position history';
+      text.textContent = `Daily farthest positions in this period: ${entry.positionChangeText ?? 'Unknown'}. Resets: ${entry.resetCount}. Not pages read.`;
+      details.append(summary, text); paperCell.append(details);
+    }
     row.append(paperCell);
 
     const values = [
-      entry.positionText ?? formatProgress(entry.currentProgress),
-      entry.positionChangeText ?? '—',
+      (entry.bookmarkText ?? 'No reading bookmark').replace('Reading bookmark: page ', 'Page '),
+      (entry.positionText ?? formatProgress(entry.currentProgress)).replace('Last viewed: page ', 'Page '),
       entry.lastActivityAt ? formatActivityTimestamp(entry.lastActivityAt) : entry.lastProgressDay,
-      `${STATUS_LABELS[entry.status]}${entry.statusSource === 'automatic' ? ' (automatic)' : entry.statusSource === 'manual' ? ' (manual)' : ''}${entry.important ? ' · Important' : ''}`,
-      entry.resetCount > 0 ? `${entry.resetCount} reset${entry.resetCount === 1 ? '' : 's'}` : '—'
+      `${STATUS_LABELS[entry.status]}${entry.statusSource === 'automatic' ? ' (automatic)' : entry.statusSource === 'manual' ? ' (manual)' : ''}${entry.important ? ' · Important' : ''}`
     ];
-    const labels = ['Last saved position', 'Daily farthest positions', 'Last activity', 'Status', 'Reset'];
+    const labels = ['Reading bookmark', 'Last viewed (automatic)', 'Last activity', 'Status'];
     values.forEach((value, index) => {
       const cell = doc.createElement('td');
       cell.textContent = value;

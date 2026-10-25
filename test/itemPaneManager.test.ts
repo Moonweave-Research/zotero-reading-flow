@@ -103,7 +103,7 @@ test('direct pane controls share queued stage/importance writes and preserve PDF
   assert.equal(calculateStatisticsSnapshot(papers).statusCounts.read, 1);
   assert.equal(selectStatisticsPapers(papers, { dataset: 'tracked', statusFilter: 'read', importantOnly: true }).length, 1);
   const target = await f.reader.getResumeDisplayTarget(f.paper); assert.equal(target.lastPage, 1);
-  const button = f.body.querySelectorAll('button')[0]; await button.listeners.click(); assert.deepEqual(f.opens, [[2, { pageIndex: 0 }]]);
+  const button = f.body.querySelectorAll('button').find(b => /^(Continue from|Open PDF)/.test(b.textContent))!; await button.listeners.click(); assert.deepEqual(f.opens, [[2, { pageIndex: 0 }]]);
   await f.store.resetProgress(f.paper, 300); await f.view(); data = f.store.getData(f.paper);
   assert.equal(data.s, 'read'); assert.equal(data.important, true); assert.equal(getLastActivityAt(data), 200);
   assert.match(f.body.text(), /Open PDF/); assert.equal(firstRecordedPDFActivity(data), getLocalDayKey(200));
@@ -116,7 +116,7 @@ test('read-only books can open PDF; EPUB-only books keep independent manual cont
   const f = fixture(payload({ s: 'read', important: true, v: 3 }), false); await f.view();
   assert.ok(f.body.querySelectorAll('select,input').every(e => e.disabled));
   const select = f.body.querySelectorAll('select')[0]; select.value = 'skimmed'; select.listeners.change(); await tick();
-  await f.body.querySelectorAll('button')[0].listeners.click(); assert.equal(f.opens.length, 1); assert.equal(f.counts().saves, 0);
+  await f.body.querySelectorAll('button').find(b => /^(Continue from|Open PDF)/.test(b.textContent))!.listeners.click(); assert.equal(f.opens.length, 1); assert.equal(f.counts().saves, 0);
   f.manager.unregister();
   const book = fixture(); book.paper.getBestAttachment = async () => ({ id: 3, parentID: 1, isPDFAttachment: () => false });
   await book.view(); assert.equal(book.body.querySelectorAll('select')[0].disabled, false);
@@ -138,7 +138,7 @@ test('selection changes and destroy invalidate delayed results and detached cont
 test('multiple/deleted PDFs never transfer a saved page; changed targets and failed writes show plain errors', async () => {
   const f = fixture(payload({ lastAttachmentId: '2', lastPage: 37, p: { '2': 0.37 }, pageCount: { '2': 100 } }));
   await f.view(); assert.match(f.body.text(), /37 \/ 100/);
-  const button = f.body.querySelectorAll('button')[0]; f.pdf.deleted = true;
+  const button = f.body.querySelectorAll('button').find(b => /^(Continue from|Open PDF)/.test(b.textContent))!; f.pdf.deleted = true;
   const replacement: any = { id: 3, parentID: 1, attachmentFilename: 'alternative.pdf', isPDFAttachment: () => true };
   f.items.set(3, replacement); f.paper.getBestAttachment = async () => replacement;
   await button.listeners.click(); assert.equal(f.opens.length, 0); assert.match(f.body.text(), /no longer available/);
@@ -164,8 +164,8 @@ test('menu, dashboard and pane expose the same file/page action; dashboard filte
   const entry = f.menus[0].menus[0].menus.find((e: any) => e.l10nID === 'reading-flow-resume-reading');
   let label = ''; const context = { items: [f.paper], setEnabled() {}, menuElem: { setAttribute: (key: string, value: string) => { if (key === 'label') label = value; }, removeAttribute() {} } };
   await entry.onShowing(undefined, context);
-  assert.equal(label, target.fallbackLabel); assert.equal(f.body.querySelectorAll('button')[0].attributes['aria-label'], label);
-  assert.equal(f.body.querySelectorAll('button')[0].textContent, 'Resume at page 12 / 30');
+  assert.equal(label, target.fallbackLabel); assert.equal(f.body.querySelectorAll('button').find(b => /^(Continue from|Open PDF)/.test(b.textContent))!.attributes['aria-label'], label);
+  assert.equal(f.body.querySelectorAll('button').find(b => /^(Continue from|Open PDF)/.test(b.textContent))!.textContent, 'Continue from last viewed · page 12');
   const snapshot = await bridge.getSnapshot('current-view', 'all-time', 'read', 'tracked', true);
   assert.equal(snapshot.statusCounts.read, 1); assert.equal(f.counts().saves, 0); assert.equal(f.opens.length, 0);
   const check = f.body.querySelectorAll('input')[0]; check.checked = false; check.listeners.change(); await tick();
@@ -238,8 +238,8 @@ test('compact pane shows resolved automatic state, consistent dates and saved lo
   const visible = f.body.children.filter(e => e.tag !== 'details').map(e => e.text()).join(' ');
   assert.match(visible, /Last activity.*2026-10-24 14:11/);
   assert.match(visible, /First recorded.*2026-10-24/);
-  assert.match(visible, /Saved position.*Page 3 \/ 10/);
-  assert.match(visible, /Farthest position.*Page 9 \/ 10/);
+  assert.match(visible, /Last viewed \(automatic\).*page 3 \/ 10/);
+  assert.match(visible, /Reading bookmark.*No reading bookmark/);
   assert.doesNotMatch(visible, /Legacy Important|retains at most|clear manual status|Maximum recorded location/);
   assert.match(f.body.children.find(e => e.tag === 'details')!.text(), /Legacy Important/);
   assert.equal(f.counts().saves, 0); assert.equal(f.counts().setters, 0);
@@ -250,8 +250,8 @@ test('compact location facts keep ambiguous legacy maxima unknown instead of inv
   const f = fixture(payload({ p: { '2': 1 }, lastAttachmentId: '2', lastPage: 1, pageCount: { '2': 10 } }));
   await f.view();
   const visible = f.body.children.filter(e => e.tag !== 'details').map(e => e.text()).join(' ');
-  assert.match(visible, /Saved position.*Page 1 \/ 10/);
-  assert.match(visible, /Farthest position.*Unknown/);
+  assert.match(visible, /Last viewed \(automatic\).*page 1 \/ 10/);
+  assert.match(visible, /Reading bookmark.*No reading bookmark/);
   assert.equal(f.counts().saves, 0);
   f.manager.unregister();
 });
@@ -260,7 +260,7 @@ test('compact location facts keep ambiguous legacy maxima unknown instead of inv
 test('inaccessible PDF is unavailable, not an assertion that no PDF is attached', async () => {
   const f = fixture(); f.pdf.fileExists = async () => false;
   await f.view();
-  assert.match(f.body.text(), /Saved position.*PDF unavailable/);
+  assert.match(f.body.text(), /Last viewed \(automatic\).*No last viewed position/);
   assert.doesNotMatch(f.body.text(), /No PDF/);
   assert.equal(f.counts().saves, 0); f.manager.unregister();
 });
@@ -271,18 +271,20 @@ test('alternative PDF never inherits the original maximum in summary or disclosu
   const alternative: any = { id: 3, parentID: 1, attachmentFilename: 'alternative.pdf', isPDFAttachment: () => true };
   f.items.set(3, alternative); f.paper.getBestAttachment = async () => alternative;
   await f.view();
-  assert.match(f.body.text(), /Farthest position.*Unknown.*PDF.*alternative.pdf/);
-  assert.doesNotMatch(f.body.text(), /37%|Page 37|Recorded maximum/);
+  assert.match(f.body.text(), /Reading bookmark.*No reading bookmark.*Available PDF.*alternative.pdf/);
+  assert.match(f.body.text(), /page 37.*recorded PDF unavailable/);
+  assert.match(f.body.text(), /Available PDF.*alternative.pdf/);
+  assert.doesNotMatch(f.body.text(), /37%|Recorded maximum/);
   assert.equal(f.counts().saves, 0); f.manager.unregister();
 });
 
-for (const [count, expected] of [[10, /Farthest position.*Page 10 \/ 10/], [null, /Farthest position.*Unknown/]] as const) {
+for (const [count, expected] of [[10, /Last viewed \(automatic\).*page 10 \/ 10/], [null, /Reading bookmark.*No reading bookmark/]] as const) {
   test(`end position with page count ${count} never looks like completion percentage`, async () => {
     const f = fixture(payload({ v: 3, important: false, lastAttachmentId: '2', lastPage: 10, p: { '2': 1 }, pageCount: count ? { '2': count } : {} }));
     await f.view();
     assert.match(f.body.text(), expected); assert.doesNotMatch(f.body.text(), /100%/);
     assert.equal(f.body.querySelectorAll('select')[0].value, '');
-    assert.match(f.body.text(), /not pages read/);
+    assert.match(f.body.text(), /neither measures pages read/);
     assert.equal(f.counts().saves, 0); f.manager.unregister();
   });
 }
@@ -290,7 +292,7 @@ for (const [count, expected] of [[10, /Farthest position.*Page 10 \/ 10/], [null
 
 test('unknown page count does not round a fractional PDF location up to 100 percent', async () => {
   const f = fixture(payload({ lastAttachmentId: '2', lastPage: 99, p: { '2': 0.999 } }));
-  await f.view(); assert.match(f.body.text(), /Farthest position.*About 99% of PDF/);
+  await f.view(); assert.match(f.body.text(), /Reading bookmark.*No reading bookmark/);
   assert.doesNotMatch(f.body.text(), /100%|End of PDF/);
   assert.equal(f.counts().saves, 0); f.manager.unregister();
 });
@@ -299,13 +301,35 @@ test('unknown page count does not round a fractional PDF location up to 100 perc
 test('a sync pane rerender resolves PDF details without another async hook or scroll and writes nothing', async () => {
   const original = payload({ lastAttachmentId: '2', lastPage: 3, p: { '2': 0.9 }, pageCount: { '2': 10 } });
   const f = fixture(original); await f.view();
-  assert.match(f.body.text(), /Page 3 \/ 10/);
+  assert.match(f.body.text(), /page 3 \/ 10/);
   await f.hooks().onRender({ ...f.props }); await tick();
   assert.doesNotMatch(f.body.text(), /Checking PDF availability/);
-  assert.match(f.body.text(), /Page 3 \/ 10/);
-  assert.match(f.body.text(), /Page 9 \/ 10/);
-  assert.match(f.body.text(), /Resume at page 3 \/ 10/);
+  assert.match(f.body.text(), /page 3 \/ 10/);
+  assert.match(f.body.text(), /Reading bookmark.*No reading bookmark/);
+  assert.match(f.body.text(), /Continue from last viewed · page 3/);
   assert.equal(f.paper.getField('extra'), original);
   assert.equal(f.counts().saves, 0); assert.equal(f.counts().setters, 0); assert.equal(f.opens.length, 0);
+  f.manager.unregister();
+});
+
+test('bookmark and automatic position in different PDFs show independent filenames', async () => {
+  const f = fixture(); f.paper.libraryID = 1; f.pdf.key = 'ABCD2345';
+  const other: any = {...f.pdf, id:3, key:'OTHER234', attachmentFilename:'supplement.pdf'}; f.items.set(3,other);
+  (globalThis as any).Zotero.Items.getByLibraryAndKey = (_library: number, key: string) => [...f.items.values()].find(i => i.key === key);
+  await f.store.recordProgress(f.paper, {attachmentId:'3',progress:.8,pageCount:10,lastPage:8,at:100});
+  await f.store.setReadingBookmark(f.paper, {attachmentKey:'ABCD2345',page:4,pageCount:30,at:200});
+  await f.view(other);
+  assert.match(f.body.text(), /Reading bookmark.*page 4 \/ 30/);
+  assert.match(f.body.text(), /Last viewed \(automatic\).*page 8 \/ 10/);
+  assert.match(f.body.text(), /Bookmark PDF.*chosen.pdf.*Last viewed PDF.*supplement.pdf/);
+  const main = f.body.querySelectorAll('button').find(b => /^Continue from bookmark/.test(b.textContent))!;
+  await main.listeners.click(); assert.deepEqual(f.opens, [[2,{pageIndex:3}]]);
+  other.deleted = true;
+  const alternative = {...f.pdf, id:4, key:'THIRD234', attachmentFilename:'replacement.pdf'};
+  f.items.set(4,alternative); f.paper.getBestAttachment = async () => alternative;
+  await f.view();
+  assert.match(f.body.text(), /page 8 \/ 10.*recorded PDF unavailable/);
+  assert.match(f.body.text(), /Bookmark PDF.*chosen.pdf.*Available PDF.*replacement.pdf/);
+  assert.doesNotMatch(f.body.text(), /Last viewed PDF.*replacement.pdf/);
   f.manager.unregister();
 });

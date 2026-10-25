@@ -33,7 +33,23 @@ export interface ReadingHistory {
   days: { [day: string]: DailyReadingRollup };
 }
 
+export interface ReadingBookmark {
+  attachmentKey: string;
+  page: number;
+  pageCount: number | null;
+  at: number;
+}
+
+export function isReadingBookmark(value: any): value is ReadingBookmark {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value)
+    && typeof value.attachmentKey === 'string' && /^[A-Z0-9]{8}$/.test(value.attachmentKey)
+    && Number.isInteger(value.page) && value.page > 0 && value.page <= 100000
+    && (value.pageCount === null || (Number.isInteger(value.pageCount) && value.pageCount >= value.page && value.pageCount <= 100000))
+    && Number.isFinite(value.at) && value.at > 0);
+}
+
 export interface FlowData {
+  bookmark?: ReadingBookmark;
   /** Read-only interpretation; never persisted by a supported writer. */
   availability?: 'unavailable';
   v: number;
@@ -79,7 +95,7 @@ export function normalizeFlowData(input: any): FlowData {
       : null;
 
   const normalized: FlowData = {
-    v: input?.v === 3 ? 3 : history ? 2 : 1,
+    v: input?.v === 4 ? 4 : input?.v === 3 ? 3 : history ? 2 : 1,
     p: progress,
     pageCount: Object.keys(pageCount).length ? pageCount : undefined,
     c: typeof input?.c === 'string' ? input.c : null,
@@ -90,7 +106,8 @@ export function normalizeFlowData(input: any): FlowData {
     lastReadAt: finiteNumberOrNull(input?.lastReadAt)
   };
 
-  if (input?.important === true || input?.s === 'important' || input?.v === 3) normalized.important = input?.important === true || input?.s === 'important';
+  if (input?.v === 4 && isReadingBookmark(input.bookmark)) normalized.bookmark = { ...input.bookmark };
+  if (input?.important === true || input?.s === 'important' || input?.v >= 3) normalized.important = input?.important === true || input?.s === 'important';
   if (history) normalized.history = history;
   return normalized;
 }
@@ -104,7 +121,7 @@ export function mergeFlowData(current: FlowData, updates: Partial<FlowData>, now
   const nextWithoutTimestamp = normalizeFlowData({
     ...current,
     ...updates,
-    v: current.v === 3 ? 3 : updates.v ?? current.v,
+    v: Math.max(current.v, updates.v ?? current.v),
     p: shouldReplaceProgress ? {} : { ...current.p, ...(updates.p || {}) },
     pageCount: Object.keys(mergedPageCount).length ? mergedPageCount : undefined,
     ts: current.ts
@@ -141,14 +158,14 @@ export type ReadingAvailability = 'no-record' | 'available' | 'unavailable';
 
 export function resolveReadingAvailability(data: FlowData): ReadingAvailability {
   if (data.availability) return 'unavailable';
-  return data.important || data.s || data.c || Object.keys(data.p).length || data.lastAttachmentId
+  return data.bookmark || data.important || data.s || data.c || Object.keys(data.p).length || data.lastAttachmentId
     || data.lastPage || data.lastReadAt || data.history ? 'available' : 'no-record';
 }
 
 export function resolveReadingStatus(data: FlowData): ResolvedReadingStatus {
   if (data.availability === 'unavailable') return { status: 'unavailable', source: 'unavailable' };
   if (data.s) return { status: data.s, source: 'manual' };
-  if (Object.keys(data.p).length > 0 || data.lastPage != null || getLastActivityAt(data) !== null
+  if (data.bookmark || Object.keys(data.p).length > 0 || data.lastPage != null || getLastActivityAt(data) !== null
     || Object.values(data.history?.days ?? {}).some(day => day.activity)) {
     return { status: 'reading', source: 'automatic' };
   }
@@ -190,12 +207,18 @@ export function resolveDisplayProgress(data: FlowData): ResolvedDisplayProgress 
   };
 }
 
+export function formatReadingBookmark(data: FlowData): string {
+  if (data.availability) return 'Reading bookmark unavailable';
+  const mark = data.bookmark;
+  return mark ? `Reading bookmark: page ${mark.page}${mark.pageCount ? ` / ${mark.pageCount}` : ''}` : 'No reading bookmark';
+}
+
 export function formatPDFPosition(data: FlowData): string {
   if (data.availability) return 'Reading Flow record unavailable';
   const display = resolveDisplayProgress(data);
   const page = data.lastAttachmentId === display.attachmentId ? data.lastPage ?? null : null;
-  if (page === null) return Object.keys(data.p).length ? 'Saved PDF position unknown' : 'No saved PDF position';
-  return display.pageCount !== null ? `Saved at page ${page} / ${display.pageCount}` : `PDF page ${page} (page count unknown)`;
+  if (page === null) return Object.keys(data.p).length ? 'Last viewed position unknown' : 'No last viewed position';
+  return display.pageCount !== null ? `Last viewed: page ${page} / ${display.pageCount}` : `Last viewed: page ${page} (page count unknown)`;
 }
 
 /** A PDF location, never a reading/completion percentage. */

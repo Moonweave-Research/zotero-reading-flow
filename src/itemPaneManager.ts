@@ -1,6 +1,7 @@
+import { ReadingBookmarkManager } from './readingBookmarkManager';
 import { DataStore } from './dataStore';
-import { FlowData, formatActivityTimestamp, formatPDFLocation, getLastActivityAt, getLocalDayKey, resolveDisplayProgress, resolveReadingAvailability, resolveReadingStatus, ReadingStatus } from './flowData';
-import { ResumeReader } from './resumeReader';
+import { FlowData, formatActivityTimestamp, formatPDFPosition, formatReadingBookmark, getLastActivityAt, getLocalDayKey, resolveDisplayProgress, resolveReadingAvailability, resolveReadingStatus, ReadingStatus } from './flowData';
+import { ResumeReader, resumeActionLabel } from './resumeReader';
 
 export const READING_FLOW_PANE_ID = 'reading-flow-details';
 const HTML = 'http://www.w3.org/1999/xhtml';
@@ -22,7 +23,7 @@ export function recordProblem(item: any, data: FlowData): string {
   if (lines.length > 1) return 'Multiple Reading Flow records were found. They cannot be displayed or edited safely.';
   try {
     const raw = JSON.parse(lines[0].replace(/^ReadingFlow:\s*/, ''));
-    if (Number.isInteger(raw.v) && raw.v > 3) return 'This Reading Flow record uses an unsupported version. Use a compatible newer Reading Flow client to edit it.';
+    if (Number.isInteger(raw.v) && raw.v > 4) return 'This Reading Flow record uses an unsupported version. Use a compatible newer Reading Flow client to edit it.';
   } catch (_) { /* The shared parser has already classified this record as unavailable. */ }
   return 'The Reading Flow record is damaged or invalid. It cannot be displayed or edited safely.';
 }
@@ -30,7 +31,7 @@ export function recordProblem(item: any, data: FlowData): string {
 export class ReadingFlowItemPaneManager {
   private paneID?: string;
   private instances = new Map<HTMLElement, Instance>();
-  constructor(private store: DataStore, private reader = new ResumeReader(store)) {}
+  constructor(private store: DataStore, private reader = new ResumeReader(store), private bookmarks = new ReadingBookmarkManager(store)) {}
 
   register() {
     const api = (Zotero as any).ItemPaneManager;
@@ -49,9 +50,11 @@ export class ReadingFlowItemPaneManager {
     });
     if (!id) throw new Error('Reading Flow could not register its item pane section.');
     this.paneID = id;
+    this.bookmarks.register();
   }
 
   unregister() {
+    this.bookmarks.unregister();
     for (const body of this.instances.keys()) this.destroy(body);
     if (this.paneID) (Zotero as any).ItemPaneManager?.unregisterSection(this.paneID);
     this.paneID = undefined;
@@ -117,7 +120,7 @@ export class ReadingFlowItemPaneManager {
       text.style.setProperty('flex', '1.35 1 11em'); text.style.setProperty('min-width', '0');
       text.style.setProperty('margin', '0'); text.style.setProperty('font-weight', '500');
       text.style.setProperty('font-variant-numeric', 'tabular-nums');
-      if (name === 'PDF') {
+      if (name === 'PDF' || name.endsWith(' PDF')) {
         for (const [key, value] of Object.entries({ overflow: 'hidden', 'white-space': 'nowrap', 'text-overflow': 'ellipsis' })) text.style.setProperty(key, value);
         text.setAttribute('title', value);
       }
@@ -168,7 +171,7 @@ export class ReadingFlowItemPaneManager {
     props.body.append(this.facts(props, [['Last activity', problem ? 'Unavailable' : recent], ['First recorded', problem ? 'Unavailable' : first ?? 'Not recorded']]));
     const target = this.element(props, 'div', 'Checking PDF availability…');
     target.dataset.readingFlowTarget = 'true'; props.body.append(target);
-    const note = add("PDF positions, not pages read. Earlier activity may be missing.");
+    const note = add("Bookmarks are set by you. Last viewed is saved automatically; neither measures pages read.");
     note.style.setProperty('font-size', '0.9em'); note.style.setProperty('line-height', '1.4');
     const details = this.element(props, 'details');
     details.append(this.element(props, 'summary', 'About this record'));
@@ -192,18 +195,25 @@ export class ReadingFlowItemPaneManager {
     const region = props.body.querySelector('[data-reading-flow-target]');
     if (!region || !this.parent(item)) return;
     try {
-      const target = await this.reader.getResumeDisplayTarget(item);
+      const target = await this.reader.getResumeDisplayTarget(this.parent(item));
       if (!this.current(state, generation, item)) return;
       const data = this.store.getData(this.parent(item));
-      const saved = target.action === 'resume' ? `Page ${target.lastPage}${target.totalPages ? ` / ${target.totalPages}` : ''}` : (data.availability || data.lastPage !== null || Object.keys(data.p).length > 0) ? 'Unavailable' : target.action === 'none' ? 'PDF unavailable' : 'Not saved';
-      const display = resolveDisplayProgress(data);
-      const maximum = display.attachmentId === String(target.attachmentId) ? display.normalizedProgress : null;
-      const farthest = maximum === null ? (data.availability ? 'Unavailable' : Object.keys(data.p).length ? 'Unknown' : 'Not recorded') : formatPDFLocation(maximum, display.pageCount);
       region.textContent = ''; region.replaceChildren();
-      region.append(this.facts(props, [['Saved position', saved], ['Farthest position', farthest], ...(target.filename ? [['PDF', target.filename] as [string, string]] : [])]));
+      const lastTarget = data.bookmark ? await this.reader.getResumeDisplayTarget(this.parent(item), 'last-viewed') : target;
+      if (!this.current(state, generation, item)) return;
+      const automaticMissing = data.lastAttachmentId && data.lastPage !== null && String(lastTarget.attachmentId) !== data.lastAttachmentId;
+      const differentPDFs = data.bookmark && target.attachmentId !== lastTarget.attachmentId;
+      region.append(this.facts(props, [
+        ['Reading bookmark', formatReadingBookmark(data).replace('Reading bookmark: ', '')],
+        ['Last viewed (automatic)', `${formatPDFPosition(data).replace('Last viewed: ', '')}${automaticMissing ? ' (recorded PDF unavailable)' : ''}`],
+        ...(differentPDFs
+          ? [['Bookmark PDF', target.filename ?? 'Unavailable'], [automaticMissing || lastTarget.action !== 'resume' ? 'Available PDF' : 'Last viewed PDF', lastTarget.filename ?? 'Unavailable']] as [string, string][]
+          : target.filename ? [[automaticMissing ? 'Available PDF' : 'PDF', target.filename] as [string, string]] : [])
+      ]));
+      if (target.action !== 'none' || data.bookmark) region.append(this.bookmarks.controls(props.doc, this.parent(item), undefined, () => this.current(state, generation, item)));
       if (target.action === 'none' || data.availability || (target.action === 'open' && data.lastPage !== null)) region.append(this.element(props, 'p', target.reason));
       if (target.action !== 'none') {
-        const actionLabel = target.action === 'resume' ? `Resume at page ${target.lastPage}${target.totalPages ? ` / ${target.totalPages}` : ''}` : 'Open PDF';
+        const actionLabel = resumeActionLabel(target);
         const button = this.element(props, 'button', actionLabel); button.type = 'button';
         button.setAttribute('aria-label', target.fallbackLabel); button.setAttribute('title', target.fallbackLabel);
         for (const [key, value] of Object.entries({ height: 'auto', 'min-height': '2em', 'white-space': 'normal', 'max-width': '100%', 'overflow-wrap': 'anywhere', padding: '0.4em' })) button.style.setProperty(key, value);
@@ -217,6 +227,21 @@ export class ReadingFlowItemPaneManager {
           } catch (_) { if (this.current(state, generation, item)) this.error(state, 'The PDF could not be opened.'); }
           finally { if (this.current(state, generation, item)) button.disabled = false; }
         });
+      }
+      if (data.bookmark) {
+        const last = lastTarget;
+        if (!this.current(state, generation, item)) return;
+        if (last.action !== 'none') {
+          const button = this.element(props, 'button', last.action === 'resume' ? `Open last viewed · page ${last.lastPage}` : 'Open PDF without bookmark');
+          button.type = 'button'; button.style.setProperty('font', 'inherit');
+          button.addEventListener('click', async () => {
+            button.disabled = true;
+            try { if (!await this.reader.executeTarget(last, () => this.current(state, generation, item))) this.error(state, 'The last viewed position changed. Refresh to try again.'); }
+            catch (_) { this.error(state, 'The PDF could not be opened.'); }
+            finally { button.disabled = false; }
+          });
+          region.append(button);
+        }
       }
     } catch (_) { if (this.current(state, generation, item)) region.textContent = 'PDF information could not be loaded. Select the item again to retry.'; }
   }

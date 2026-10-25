@@ -84,7 +84,7 @@ test('importance-only items enroll; status and importance filters intersect and 
 });
 
 test('malformed, duplicate, future and invalid v3 records are retained without writes', async () => {
-  for (const payload of [{ v: 4, important: true }, { v: 3, important: 'true' }, { v: 3, important: true, s: 'important' }, { v: 2, important: true }]) {
+  for (const payload of [{ v: 5, important: true }, { v: 3, important: 'true' }, { v: 3, important: true, s: 'important' }, { v: 2, important: true }]) {
     const i = item(payload); const s = new DataStore(); const bytes = i.getField();
     assert.equal(s.getData(i).availability, 'unavailable');
     assert.equal(await s.setImportant(i, true), false); assert.equal(await s.setStatus(i, 'read'), false);

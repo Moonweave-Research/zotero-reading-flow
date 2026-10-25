@@ -640,6 +640,6 @@ test('PDF position column retains full cell width and exposes the saved page wit
   assert.match(cell.style.cssText, /padding:0/);
   assert.match(cell.style.cssText, /width:100%/);
   assert.equal(cell.textContent, '50 / 100 PDF pages');
-  assert.match(cell.title, /Maximum PDF position 98%/);
+  assert.doesNotMatch(cell.title, /Maximum PDF position 98%/);
   assert.doesNotMatch(JSON.stringify(cell), /% read|#4caf50/);
 });

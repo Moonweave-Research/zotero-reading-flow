@@ -19,7 +19,7 @@ for (const maximum of [0.98, 1]) {
     await store.recordProgress(paper, { attachmentId: 'pdf', progress: 0.01, lastPage: 1, pageCount: 100, at: 200 });
     const data = store.getData(paper);
     assert.equal(getNormalizedDisplayProgress(data), maximum);
-    assert.equal(formatPDFPosition(data), 'Saved at page 1 / 100');
+    assert.equal(formatPDFPosition(data), 'Last viewed: page 1 / 100');
     assert.deepEqual(resolveReadingStatus(data), { status: 'reading', source: 'automatic' });
     assert.equal(data.history?.completedAt, null);
     const snapshot = calculateStatisticsSnapshot([{ id: 1, flowData: data }]);
@@ -28,7 +28,7 @@ for (const maximum of [0.98, 1]) {
     assert.equal(snapshot.progressDistribution['1-24'], 1);
     await store.setStatus(paper, 'read', 300);
     assert.equal(resolveReadingStatus(store.getData(paper)).status, 'read');
-    assert.equal(formatPDFPosition(store.getData(paper)), 'Saved at page 1 / 100');
+    assert.equal(formatPDFPosition(store.getData(paper)), 'Last viewed: page 1 / 100');
     assert.equal(getLastActivityAt(store.getData(paper)), 200);
   });
 }
@@ -49,7 +49,7 @@ test('ambiguous legacy raw one remains unknown across reads and subsequent non-e
   assert.equal(paper.saves, 0);
   await store.recordProgress(paper, { attachmentId: 'pdf', progress: 0.2, pageCount: 100, lastPage: 20, at: 100 });
   assert.equal(getNormalizedDisplayProgress(store.getData(paper)), null);
-  assert.equal(formatPDFPosition(store.getData(paper)), 'Saved at page 20 / 100');
+  assert.equal(formatPDFPosition(store.getData(paper)), 'Last viewed: page 20 / 100');
 });
 
 test('no record, supported empty record, malformed, unsupported, duplicate, and invalid status have honest denominators', async () => {
@@ -114,7 +114,7 @@ test('preexisting manual states and historical completion records survive read-o
 test('current page without a total never becomes a percentage, including page one', () => {
   for (const page of [1, 37]) {
     const data = { ...DEFAULT_FLOW_DATA, lastAttachmentId: 'pdf', lastPage: page };
-    assert.equal(formatPDFPosition(data), `PDF page ${page} (page count unknown)`);
+    assert.equal(formatPDFPosition(data), `Last viewed: page ${page} (page count unknown)`);
     const snapshot = calculateStatisticsSnapshot([{ id: 1, flowData: data }]);
     assert.equal(snapshot.progressDistribution.unknown, 1);
     assert.equal(snapshot.progressDistribution['100'], 0);
