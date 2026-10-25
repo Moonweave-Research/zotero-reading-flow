@@ -1,244 +1,135 @@
 <div align="center">
 
-<img src=".github/assets/zotero-reading-flow-mark-512.png" alt="Zotero Reading Flow mark" width="96">
-
-</div>
+<img src=".github/assets/zotero-reading-flow-mark-512.png" alt="Reading Flow logo" width="72">
 
 # Zotero Reading Flow
 
-> **Stop opening every PDF just to remember where you left off.**
-> Reading Flow turns your Zotero library into a reading dashboard — see progress, status, and last-read time directly in the item tree.
+**Keep your place, even when you skip ahead.**
 
-[![Latest](https://img.shields.io/github/v/release/Moonweave-Research/zotero-reading-flow?label=Latest%20Release)](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/Moonweave-Research/zotero-reading-flow/latest/zotero-reading-flow.xpi?label=Downloads%20%28latest%29)](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/zotero-reading-flow.xpi)
-[![Zotero](https://img.shields.io/badge/Zotero-9.0.x%20%7C%2010.0.x-blue)](https://www.zotero.org/download/)
-[![License](https://img.shields.io/github/license/Moonweave-Research/zotero-reading-flow)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/Moonweave-Research/zotero-reading-flow?label=release)](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest) [![Verify](https://github.com/Moonweave-Research/zotero-reading-flow/actions/workflows/verify.yml/badge.svg)](https://github.com/Moonweave-Research/zotero-reading-flow/actions/workflows/verify.yml) [![Zotero](https://img.shields.io/badge/Zotero-9%20%7C%2010-blue)](https://www.zotero.org/download/) [![MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-![Reading Flow columns in the library](docs/assets/columns.png)
+[Install](#install) · [Try it](#try-it) · [Reading statistics](#reading-statistics) · [Questions](#questions) · [Build from source](#build-from-source)
 
-Best for **literature researchers, thesis students, and anyone who manages many PDFs across projects** and wants Zotero to show what is unread, in progress, important, or finished — without opening a single file.
+</div>
 
----
+Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
-## Table of Contents
+> [!IMPORTANT]
+> **Screenshots show 1.3.7, currently available from source.** The latest published release is **1.3.6** as of October 25, 2026. For **Bookmark here** and the workflow below, [build the current source](#build-from-source) until a 1.3.7+ release is available.
 
-- [Why Reading Flow](#why-reading-flow)
-- [Reading bookmarks](#reading-bookmarks)
-- [New in 1.3.6](#new-in-136)
-- [Quick demo](#quick-demo)
-- [Install (30 seconds)](#install-30-seconds)
-- [Features](#features)
-- [Compatibility](#compatibility)
-- [How it stores data](#how-it-stores-data)
-- [FAQ](#faq)
-- [Build and verification](#build-and-verification)
-- [Troubleshooting](#troubleshooting)
-- [License](#license)
+![Actual Zotero Reading Statistics window showing a reading bookmark at page 4 of 10, last viewed at page 8 of 10, and an independently chosen Read status](docs/assets/reading-bookmarks-statistics.jpg)
 
----
+*You marked page 4, then looked at page 8. Your bookmark stays at page 4. Screenshots use a separate test library; click an image to inspect it at full size.*
 
-## Why Reading Flow
+## Install
 
-- **Scan your reading workload at a glance.** Progress, status, and last-read time are visible directly in the item tree.
-- **Manage reading stages.** Mark papers as `To Read`, `Reading`, `Skimmed`, `Read`, or `Important`.
-- **Find what needs attention.** Spot unfinished, recently touched, and completed papers without opening each PDF.
-- **Handle messy PDFs.** Works with items that have multiple attachments under one parent record.
-- **Resume where you left off.** Reopen the tracked PDF near its saved page from the Reading Flow menu.
-- **Review your reading history.** Open **Tools → Reading Statistics** to see current-scope status, progress, remaining pages, activity days, first completions, and retained per-paper changes.
-- **Inspect an active day.** Select a highlighted calendar date to see every paper with a recorded progress update that day; each action remains your choice.
-- **Return from the dashboard.** Choose a paper in `Recent Progress` and click `Resume` to use the same saved-page Reader path; the dashboard shows the eight most recent rows first and can expand to all matching papers.
-
-## Reading bookmarks
-
-**Reading bookmark** is a position you deliberately keep. In an open PDF, choose **Bookmark here**. Browsing other pages does not move it. Use **Undo** to reverse your latest bookmark change, or remove it from the Reading Flow item pane.
-
-**Last viewed (automatic)** records the most recently displayed PDF page, including brief visits. Continue Reading prioritizes your bookmark; without one, it uses the automatic position. The item pane also lets you open the last viewed position explicitly. PDF page numbers count from the first page of the file.
-
-Neither position measures pages read or marks a paper Read. Your status, Important flag, dates, and historical positions remain independent. Resetting tracked PDF positions preserves your reading bookmark. Existing positions are never converted into bookmarks.
-
-Bookmarks use Zotero attachment keys so the marked PDF can be identified on another client. Clients need this version or newer to edit a record once a bookmark has been saved: older Reading Flow versions preserve the new record unchanged rather than dropping its bookmark. Undo is available during the current app session. Actual device-to-device delivery still depends on Zotero sync and file availability.
-
-## New in 1.3.6
-
-### Keep untouched papers truly unassigned
-
-New and existing papers stay **Unassigned** unless you deliberately assign a status or Reading Flow records PDF progress. This prevents a large library from suddenly looking like one giant `To Read` list.
-
-If you want a default for papers you add from now on, choose one in **Settings → Zotero Reading Flow → Status for newly added papers**. It is prospective: existing papers, historical sync items, attachments, read-only items, and papers that already have Reading Flow data are not rewritten.
-
-<img src="docs/assets/new-item-status-setting.png" alt="Zotero Reading Flow settings with the Status for newly added papers menu open, showing Unassigned, To Read, Reading, Skimmed, Read, and Important" width="720">
-
-### Put your tracked papers in Zotero's left sidebar
-
-In **Settings → Zotero Reading Flow**, choose **Add to Left Sidebar**. Reading Flow creates one native **Reading Flow — Tracked Papers** Saved Search in the selected library under **Saved Searches**. It is a convenient list of papers with Reading Flow data, not a second sidebar or a status-specific folder. Add it again to the same library and it reuses the existing list; remove affects only the selected library.
-
-<img src="docs/assets/sidebar-tracked-papers.png" alt="Zotero left sidebar showing the Reading Flow — Tracked Papers Saved Search" width="720">
-
-### Change many papers with a clear result
-
-Large status changes ask for confirmation first. Afterward, Reading Flow reports how many papers changed, were already unchanged, were skipped, or failed, so read-only items and PDF-parent normalization never look like silent failures.
-
-## Quick demo
-
-Review the selected scope, reading-set filters, current summary, and reading pulse in **Reading Statistics**:
-
-![Reading Statistics dashboard](docs/assets/reading-statistics-dashboard.jpeg)
-
-Then choose a specific paper in **Recent Progress**: `Show in Zotero` selects it in the library, while `Resume` reopens that paper through Zotero's saved-page Reader path.
-
-![Recent Progress with the two Resume actions highlighted in Reading Statistics](docs/assets/reading-statistics-recent-progress.jpeg)
-
-## Install (30 seconds)
-
-1. Download **`zotero-reading-flow.xpi`** from the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
+1. Download **`zotero-reading-flow.xpi`** from the [latest published release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest), or [build the current source](#build-from-source).
 2. In Zotero, open **Tools → Plugins**.
-3. Click **Install Add-on From File...** and select the `.xpi`.
-4. Restart Zotero if prompted.
-5. Open your library. When first registered in Zotero's clean default item-tree layout, `Progress`, `Status`, and `Last Read` are enabled. Zotero owns saved and custom layouts, so use its native column chooser to enable them there if needed.
+3. Open the gear menu, choose **Install Plugin From File…**, and select the `.xpi`.
+4. Restart Zotero after installing or updating.
 
-The auto-update URL is:
+Supports **Zotero 9 and 10**. The latest screenshots were verified on **Zotero 10.0.6 for macOS**. Use Zotero's plugin installer when updating so both the package and its registered version are updated.
 
-```text
-https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest/download/updates.json
-```
+## Try it
 
-### Use it
+### 1. Keep the page you want to return to
 
-- Right-click a paper → **Reading Flow → Mark as ...** to set its status.
-- Open a PDF and read as usual — progress and last-read time update on the parent item.
-- For a denser optional view, enable **Reading Flow** in Zotero's native library column chooser. It is not shown automatically and does not replace or rearrange `Progress`, `Status`, or `Last Read`.
-- In **Settings → Zotero Reading Flow → Reading Flow column density**, choose **Compact** (status icon plus progress/date) or **Icons** (status icon only). This setting changes only the optional `Reading Flow` column.
-- **Reading Flow → Resume Reading** to reopen the tracked PDF from its saved page.
-- **Reading Flow → Reset Reading Progress** to restart tracking for an item.
-- Leave **Status for newly added papers** at `Unassigned` to write nothing, or opt into one status for eligible papers added after that choice. This never bulk-edits your existing library.
-- In **Settings → Zotero Reading Flow**, choose **Add to Left Sidebar** to create the native `Reading Flow — Tracked Papers` Saved Search for the selected library.
-- Open **Tools → Reading Statistics** from anywhere in Zotero. A newly opened dashboard uses `Current View`; choose `Entire Library` when you want the whole active library.
-- Keep `Reading set (tracked)` for the intentional Reading Flow set, or choose `All papers (inventory)` for a broader inventory. Status and history-range filters refine that same paper set.
-- You can also right-click a paper and choose **Reading Flow → View Current View Statistics**. On a newly opened dashboard, this context action selects `Current View`. If the same modeless dashboard window is already open, either entry only focuses it and preserves its current Scope, Papers, Status, and History range, so check Scope before interpreting the results.
-- In `Recent Progress`, use `Show in Zotero` to select a paper or `Resume` to reopen that selected paper in the Zotero Reader. Resume is always user-invoked; it does not choose a next paper automatically.
-- Select a highlighted date in the activity calendar to inspect the matching papers. The detail respects the current scope, dataset, status filter, and range; use `Show in Zotero` or `Resume` only when you choose a row action.
+Open a PDF and choose **Bookmark here** in the **upper-right PDF toolbar, near Aa**. This saves a reading bookmark at the current page. No reading mode or timer needs to be switched on.
 
-If the detailed columns are hidden in a saved or custom layout, or later after a layout change, open the library column menu and re-enable `Progress`, `Status`, and `Last Read`. Use the same native chooser to show or hide the optional `Reading Flow` column; it is always user-enabled rather than shown automatically.
+![Actual Zotero PDF reader with the Bookmark here button in the upper-right toolbar and the PDF open at page 4](docs/assets/reading-bookmark-button.jpg)
 
-### Choose your display density
+### 2. Browse freely
 
-![Detailed columns, Compact Reading Flow, and Icons only compared in Zotero](docs/assets/reading-flow-display-modes.png)
+Jump to the references, inspect a figure, or look at another page. Reading Flow updates **Last viewed (automatic)** while keeping your reading bookmark in place.
 
-- **Detailed columns** means Zotero's native `Progress`, `Status`, and `Last Read` columns.
-- **Compact Reading Flow** means one optional `Reading Flow` column with a status book icon, micro progress bar, percentage, and short last-read date or `Not started` state.
-- **Icons only** means the same optional column shows only the status book or star; its tooltip and accessible name retain the full status, progress, and last-read meaning.
-
-Zotero's native column chooser owns visibility in every mode. Switching between Compact and Icons changes only the composite `Reading Flow` column's content; it does not show, hide, replace, or rearrange the detailed columns.
-
-## Features
-
-| Column / Action | What it does |
+| What you see | What it means |
 | --- | --- |
-| **Progress** | Latest tracked position for each paper, at a glance. |
-| **Status** | Reading state (`To Read`, `Reading`, `Skimmed`, `Read`, `Important`), kept in sync with library changes. |
-| **Last Read** | Human-friendly timestamp (`now`, `5m`, `3h`, `2d`, or a date). |
-| **Reading Flow** *(optional)* | User-enabled composite column with 📙 `To Read`, 📖 `Reading`, 📘 `Skimmed`, 📗 `Read`, and ⭐ `Important`. **Compact** shows the icon with progress/date; **Icons** shows only the icon. Never-read `To Read` items show `Not started` in Compact mode. Full status, progress, and last-read meaning remains available in the tooltip and accessible name. The first sort on this header is recent-first with never-read items last; each subsequent header click reverses the order through Zotero's native sorting. |
-| **Reading Flow menu** | Fast status updates, **Clear Manual Status (Use Automatic)**, **Restart as To Read**, **Resume Reading**, and **Reset Reading Progress**. Large multi-item changes confirm scope and report the outcome. |
-| **New-paper default** | Defaults to **Unassigned** and writes nothing. You may opt into one prospective status for eligible papers added later; existing, synced, read-only, attached, and already-tracked items are preserved. |
-| **Left-sidebar reading list** | Creates one native `Reading Flow — Tracked Papers` Saved Search per selected editable library. It lists top-level papers with Reading Flow data; it is not a status-filtered folder or a separate plugin sidebar. |
-| **Reading Statistics** | Modeless, read-only dashboard for the tracked reading set or all papers, with scope metrics, status/progress distribution, remaining-page coverage, bounded history, active-day drill-down, and user-selected paper actions. |
-| **Auto behavior** | The detailed `Progress`, `Status`, and `Last Read` columns are enabled when first registered in Zotero's clean default item-tree layout. Saved and custom layouts remain Zotero-controlled, and the optional `Reading Flow` column is always user-enabled through the native chooser. Reader page totals are preferred when available, and menu labels are robust across Zotero UI paths. |
+| **Reading bookmark** | A page you deliberately saved. Only a bookmark action changes it. |
+| **Last viewed (automatic)** | The most recently displayed PDF page, including a brief visit. |
+| **Status** | Your chosen stage, or **Reading (automatic)** when a bookmark or recorded PDF activity exists without a manual stage. |
 
-## Compatibility
+**Neither a bookmark nor an automatic position measures pages read.** Visiting the last page does not mark a paper **Read**. Page numbers refer to positions in the PDF file; printed page labels may differ.
 
-- Zotero `9.0.x` and `10.0.x`
-- Validated with Zotero `10.0` on macOS ARM64
-- Plugin ID: `readingflow@moon.com`
+### 3. Continue from your bookmark
 
-The manifest's `8.999` minimum is Zotero's previous-major sentinel, used so compatible Zotero 9 source/self-built version strings are admitted by version comparison. It does **not** mean Zotero 8 is supported; the maximum is `10.0.*`.
+Return to the library, select the paper, and click the **book-shaped Reading Flow icon** on the right. You can also right-click the paper and choose **Reading Flow → View Reading Flow**.
 
-## How it stores data
+Choose **Continue from bookmark** to return to your marked page. **Open last viewed** takes you to the automatic position instead. Without a bookmark, the primary action continues from the last viewed position, or opens the PDF when no saved position is available.
 
-Reading Flow stores progress in the parent item's `Extra` field as one namespaced line:
+<details>
+<summary>See the Reading Flow panel</summary>
 
-```text
-ReadingFlow: {"v":2, ...}
-```
+![Actual Zotero Reading Flow panel showing a reading bookmark at page 4 of 10, an automatic position at page 8 of 10, activity dates, and separate actions for each location](docs/assets/reading-bookmark-panel.jpg)
 
-Version 1 metadata remains readable. When historical tracking is available, version 2 adds at most 366 retained local-calendar daily rollups with progress, status, reset, and first-completion markers. Existing current progress remains separate from retrospective history: the dashboard never invents past activity from an old timestamp. Reading Flow preserves unrelated `Extra` metadata and only updates this plugin's own `ReadingFlow:` line. Because that line is parent-item metadata, it follows Zotero's metadata sync behavior. Disabling or uninstalling the add-on does not delete it; back up affected items before any manual removal. Your PDFs are never modified.
+*The panel and statistics show the same bookmark at page 4 and automatic position at page 8. Continuing from the bookmark opens page 4, as shown in the reader capture.*
 
-Version 1.3.6 has no separate analytics or reading-data upload service. The add-on declares the GitHub update URL shown above for retrieving release metadata and the release package; this statement does not change or characterize Zotero's own sync or update behavior.
+</details>
 
-## FAQ
+**Changed your mind?** Use **Undo** after setting a bookmark, or **Remove bookmark** in the panel. Undo is available during the current app session and does not overwrite a newer bookmark change from another client.
 
-**How do I know it's actually working?**
-Read one PDF, return to the library, and confirm the row shows updated `Progress`, `Status`, or `Last Read` values.
+## Organize your reading
 
-**Can I use it on Zotero 8?**
-No. The current update channel targets Zotero `9.0.x` and `10.0.x`.
+- **Choose a stage:** `To Read`, `Reading`, `Skimmed`, or `Read`. Set it in the panel or the paper's **Reading Flow** context menu. **Important** is a separate flag, so a paper can be both **Read** and **Important**.
+- **Keep automatic status:** choose **Clear Manual Status (Use Automatic)** in the context menu to remove your manual override. Untouched items remain **Unassigned**.
+- **Scan the library:** use Zotero's native column chooser to show **Bookmark / Last Viewed**, **Status**, **Last PDF Activity**, or the optional combined **Reading Flow** column. Column visibility and layout stay under Zotero's control.
+- **Choose a density:** in **Settings → Zotero Reading Flow**, **Compact** shows a status icon with position and activity date; **Icons** keeps the status icon with full information in its tooltip. This changes only the optional combined column.
+- **Create a reading list:** **Settings → Zotero Reading Flow → Add to Left Sidebar** creates one native **Reading Flow — Tracked Papers** Saved Search per selected editable library.
+- **Set a default for new items:** **Status for newly added papers** starts at **Unassigned**. Choosing a default affects eligible items added afterward; it does not rewrite the existing library.
 
-**Does it modify my PDFs?**
-No. Reading metadata is stored only in Zotero item metadata.
+## Reading statistics
 
-**Where is my data?**
+Open **Tools → Reading Statistics**, or right-click a paper and choose **Reading Flow → View Current View Statistics**.
 
-In each parent item's `Extra` field, on a single `ReadingFlow:` line. As Zotero item metadata, the line follows Zotero's metadata sync behavior. Detailed history is bounded to the retained window; `All time` keeps lifetime first-completion totals but does not imply that pruned daily detail is available. Disabling or uninstalling Reading Flow leaves the line in place; back up affected items before removing it manually.
+The dashboard brings together **reading bookmarks, automatic positions, last PDF activity, and status**. Its calendar shows days with recorded PDF page changes. Select an active day to inspect the matching papers; **Show in Zotero** selects a paper, and the PDF action opens the displayed bookmark or saved position.
 
-**Will changing Reading Flow column density change my existing columns?**
+- **Check Scope first.** A newly opened dashboard starts at **Current View**. Choose **Selected Library** for the whole active library. Reopening an existing statistics window preserves its filters.
+- **Use the activity period for activity.** Current status and position describe the item now. The period controls which retained activity is shown.
+- **Treat Marked Read as your judgment.** It counts papers explicitly marked **Read**, not papers that reached the last page.
+- **Expand details when needed.** **Position history** contains available daily farthest-position comparisons and reset counts. **Status and saved positions** contains the optional breakdowns.
 
-No. The existing `Progress`, `Status`, and `Last Read` layout remains unchanged. Density affects only the optional `Reading Flow` column; Zotero's native column chooser continues to control whether that column is visible.
+**Last activity** means recorded PDF activity, not a bookmark edit. **First recorded** is the earliest surviving activity date, not necessarily the day you started reading. Detailed daily history retains at most **366 days**; older or legacy activity may be missing.
 
-## Build and verification
+## Questions
 
-Prerequisites are Node.js 22 (the CI baseline), npm, and the `zip` and `unzip` command-line tools.
+### Does it decide whether I actually read a page?
+
+No. It records navigation and a bookmark you explicitly choose. A short visit counts as an automatic position update; time spent on a page does not prove that you read it. Set **Read** yourself.
+
+### Will it change my PDFs or replace my existing records?
+
+PDF files are not modified. Reading Flow keeps its data in one `ReadingFlow:` line in the parent item's **Extra** field and preserves unrelated Extra content. Existing automatic positions are not converted into reading bookmarks. Disabling or uninstalling the plugin leaves its metadata in place.
+
+### Does it sync between devices?
+
+The Extra record follows Zotero's metadata sync. Bookmarks identify attachments by Zotero key, so they do not depend on the same local numeric item ID. The PDF must also be available on the other device.
+
+Use **1.3.7 or newer on every device that needs to read or edit bookmark records**. The tested previous client refuses changes to the new record format rather than discarding its bookmark. Actual device-to-device delivery has **not yet been verified**; attachment-key resolution, supported-client round trips, and previous-writer refusal have been tested.
+
+### What if a paper has several PDFs, or a file is missing?
+
+A bookmark belongs to its specific PDF. The panel distinguishes that file from the automatically tracked PDF when they differ. A missing bookmarked file is reported as unavailable; its page is not silently applied to another attachment. With several open PDFs for one paper, use **Bookmark here** inside the intended PDF.
+
+### What does Reset tracked PDF positions clear?
+
+**Reading Flow → Advanced → Reset tracked PDF positions** clears automatic current and maximum positions. It preserves the reading bookmark, manual status, Important flag, last PDF activity, and retained history. To clear the bookmark, use **Remove bookmark** in the panel.
+
+### Where is Bookmark here? Why are my columns missing?
+
+**Bookmark here** appears inside the PDF reader, not the library toolbar. Check that **1.3.7 or newer** is installed and restart after updating. For hidden columns, use the library's native column chooser. The optional combined **Reading Flow** column must be enabled manually.
+
+Position tracking supports **PDFs**. Manual status and Important also work for items without a PDF; EPUB positions are not tracked. For other problems, see [Troubleshooting](docs/TROUBLESHOOTING.md) or [report an issue](https://github.com/Moonweave-Research/zotero-reading-flow/issues).
+
+## Build from source
+
+Requires **Node.js 22**, npm, Git, `zip`, and `unzip`. Clone with history: verification uses a pinned previous client to check that old writers preserve new bookmark records.
 
 ```bash
+git clone https://github.com/Moonweave-Research/zotero-reading-flow.git
+cd zotero-reading-flow
 npm ci
 npm run verify
 ```
 
-`npm run verify` runs:
+Install the resulting **`zotero-reading-flow.xpi`** through **Tools → Plugins → Install Plugin From File…**, then restart Zotero. Verification runs TypeScript checks, unit tests, the XPI build, package/update-manifest checks, and previous-writer compatibility checks. Generated artifacts are ignored by Git.
 
-- TypeScript typecheck
-- Unit tests
-- XPI build
-- Update manifest validation
-
-Verification generates ignored build/test artifacts in `tmp/`, `addon/bootstrap.js`, `addon/dashboard.js`, `zotero-reading-flow.xpi`, and `updates.json`.
-
-### Automated test-profile check
-
-Run a reproducible runtime smoke check against a local Zotero profile:
-
-```bash
-ZOTERO_TEST_PROFILE="/path/to/profile-dir" \
-ZOTERO_DATA_DIR="/path/to/zotero-data-dir" \
-npm run check:release-profile -- \
-  --itemKey "<item-key>" \
-  --attachmentKey "<attachment-key>" \
-  --attachmentPath "/path/to/zotero-data-dir/<pdf-file-path>" \
-  --json
-```
-
-The script verifies:
-
-- XPI existence and manifest metadata alignment
-- Add-on loaded/enabled state from `extensions.json`
-- `columnsInitialized` + `treePrefs.json` column visibility
-- Optional Zotero DB sample row checks (`itemKey` / `attachmentKey` / `attachmentPath`)
-
-## Troubleshooting
-
-- **Columns missing?** Restart Zotero once and check the library column chooser. The optional `Reading Flow` column must be enabled there manually.
-- **Context menu actions missing?** Make sure a regular item is selected (or a PDF attachment for `Resume Reading`).
-- **Internal warnings in the Zotero log?** Item-tree or add-on initialization warnings are usually harmless as long as columns and menu items appear. If they block normal use, file an issue with your Zotero version and a short error snippet.
-- For full help, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
-
-## Release notes
-
-See [CHANGELOG.md](CHANGELOG.md) for user-facing changes and [docs/RELEASE.md](docs/RELEASE.md) for the release process.
-
-## Contributing
-
-Issues and pull requests are welcome. If you're filing a bug, please include your Zotero version, OS, and (if possible) a short reproducer.
-
-## License
-
-MIT License. Copyright (c) 2026 Moon-Young Choi.
-
-The "Reading Flow" name and project branding should not be used to imply official endorsement by the original author.
+For maintainers: [release process](docs/RELEASE.md) · [release notes](CHANGELOG.md) · [test-profile checker](scripts/check-release-profile.js). Reading Flow has no separate reading-data upload service; plugin updates use its declared GitHub release channel. Zotero's own sync and network behavior are separate.
