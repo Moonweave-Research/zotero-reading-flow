@@ -59,9 +59,9 @@ Choose **Continue from bookmark** to return to your marked page. **Open last vie
 <details>
 <summary>See the Reading Flow panel</summary>
 
-![Actual Zotero Reading Flow panel showing a reading bookmark at page 4 of 10, an automatic position at page 10 of 10, activity dates, and separate actions for each location](docs/assets/reading-bookmark-panel.jpg)
+![Actual Zotero Reading Flow panel showing a reading bookmark at page 4 of 10, an automatic position at page 8 of 10, activity dates, and separate actions for each location](docs/assets/reading-bookmark-panel.jpg)
 
-*This panel capture follows a visit to page 10. The statistics capture above follows a later visit to page 8. Both retain the same bookmark at page 4.*
+*The panel and statistics show the same bookmark at page 4 and automatic position at page 8. Continuing from the bookmark opens page 4, as shown in the reader capture.*
 
 </details>
 
