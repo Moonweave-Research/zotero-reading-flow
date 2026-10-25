@@ -1,17 +1,20 @@
-# README screenshots
+# Screenshot provenance
 
-The primary README documents the current 1.3.7 source and uses actual English-language Zotero 10.0.6 captures from October 25, 2026. These three files are unchanged copies of verified captures from a separate test profile, not generated mockups. They contain no personal library records. The README notes the current published-release/source distinction.
+These are original, unedited captures of English Zotero 10.0.6 for macOS running Reading Flow 1.3.7 in a separate test profile. They are not generated mockups and contain no personal library records. Window layout changes and sample status choices were confined to that test profile. The public release remains 1.3.6; see the README version notice.
 
-| File | Shown in the README | Verified context |
+| File | Feature shown | Capture context |
 | --- | --- | --- |
-| `reading-bookmarks-statistics.jpg` | Lead image: bookmark and automatic position in separate columns, with a clearly named resume action | Bookmark 4/10, last viewed 8/10, manually Read and Important; five-column statistics table |
-| `reading-bookmark-button.jpg` | Quick start: where to find Bookmark here | Actual PDF reader at page 4/10; button near Aa in the upper-right toolbar |
-| `reading-bookmark-panel.jpg` | Expandable panel example | Bookmark 4/10, last viewed 8/10; explicit bookmark and automatic-position actions |
+| reading-status-library.jpg | Four manual stages, untouched blank status, independent Important, and the item panel | Six sample items; PDF bookmark and last viewed both page 4 after resuming |
+| reading-bookmark-button.jpg | Bookmark here in the upper-right PDF toolbar | PDF reader at page 4/10 |
+| reading-bookmark-panel.jpg | Distinct bookmark and automatic-position actions, status, dates | Bookmark 4/10; last viewed 8/10 |
+| reading-bookmarks-statistics.jpg | Activity calendar, manual Marked Read, separate position columns | Bookmark 4/10; last viewed 8/10; manually Read and Important |
+| reading-flow-settings.jpg | Sidebar controls, column density, prospective new-item default | Compact and Unassigned shown; no personal settings used |
+| reading-list-sidebar.jpg | Native, selected tracked-papers Saved Search and status list | Five items with metadata; untouched unassigned example excluded |
 
-The panel and statistics captures show the same bookmark at page 4 and last viewed page 8. The reader capture follows Continue from bookmark and shows page 4. Captures were taken in an English-language test profile with a separate app identifier to keep personal Zotero untouched. Only test-window column visibility and widths were adjusted for legibility. Each image has its own explanatory caption. Preserve original aspect ratios and UI text; do not synthesize or relabel the interface.
+Screens represent separate moments in the same sample workflow, not one simultaneous snapshot. The status overview follows a return to page 4. The earlier panel/statistics captures show automatic page 8. Every bookmark remains page 4.
 
-## Earlier assets
+The sample titled QA — Unsupported record retains a legacy Important record after earlier compatibility testing; the title is a fixture label, not a current parser-error diagnosis. Its Unassigned + Important display demonstrates that the flag does not imply a reading stage.
 
-`columns.png`, `reading-flow-display-modes.png`, `reading-statistics-dashboard.jpeg`, and `reading-statistics-recent-progress.jpeg` show earlier UI and are not used to illustrate the current workflow. They remain for existing references. `new-item-status-setting.png` and `sidebar-tracked-papers.png` document the earlier settings/sidebar features; the current README describes those features in text.
+The sidebar name can be truncated by Zotero's native sidebar width; its full name is Reading Flow — Tracked Papers, as shown in Settings. Native window captures keep original aspect ratios and full context. No UI text was relabeled in an image. Superseded screenshots were removed from the current tree; originals remain in Git history.
 
-Future captures should use a test profile and non-sensitive sample items. Do not publish personal paper titles, notes, paths, or library metadata. Update the screenshot and its caption together when the UI changes.
+For new captures, use non-sensitive sample items, preserve the original pixels, and update captions when the UI changes. Never publish personal paper titles, notes, paths, or library metadata.
