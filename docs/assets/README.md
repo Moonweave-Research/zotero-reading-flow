@@ -12,6 +12,21 @@ The 1.3.8 captures are original, unedited images of English Zotero 10.0.6 for ma
 | reading-list-sidebar.jpg | Native, selected tracked-papers Saved Search and concise positions | QA sample library; five items with status metadata |
 | reading-started-qa-v1.3.9.png | Manual Reading status, explicit Reading started date, separate Last PDF activity, bookmark, and automatic last-viewed fields | 1.3.9 QA source in an isolated profile; no PDF attached, so PDF activity and positions are not recorded |
 
+## Detail views
+
+These PNGs are rectangular crops of the original English 1.3.8 screenshots above. Their controls and labels have not been redrawn or relabeled. The README displays them at readable widths; they are existing capture details, not new runtime verification. The book-symbol key beside the Status crop is a written legend verified against `src/columnManager.ts`, not a screenshot of the combined column.
+
+`detail-reading-icons.svg` enlarges the same Unicode book symbols used by the combined column (`📙` for To Read and `📖` for Reading). It is an explanatory illustration; its caption and SVG description identify it as an icon key rather than a Zotero capture. Emoji artwork depends on the viewer's operating system.
+
+Crop coordinates use the original image's top-left origin, in pixels (`x, y, width, height`). Original full-window images remain available.
+
+| Detail | Original | Crop rectangle |
+| --- | --- | --- |
+| detail-status-stages.png | reading-status-library.jpg | 1760, 150, 210, 350 |
+| detail-bookmark-button.png | reading-bookmark-button.jpg | 2520, 65, 370, 100 |
+| detail-panel-shortcut.png | reading-status-library.jpg | 2934, 635, 90, 75 |
+| detail-bookmark-actions.png | reading-bookmark-panel.jpg | 2315, 470, 630, 410 |
+
 Screens represent separate moments in their sample workflows, not one simultaneous snapshot. The reader toolbar capture shows page 4; the library, panel, and statistics captures show bookmark page 4 and automatic last viewed page 8. Those captures use the published 1.3.8 build. The 1.3.9 QA-source capture demonstrates the explicit start date without implying PDF reading activity or pages read; its source tree is the one published in the 1.3.9 release.
 
 The sample titled QA — Unsupported record retains a legacy Important record after earlier compatibility testing; the title is a fixture label, not a current parser-error diagnosis. Its Unassigned + Important display demonstrates that the flag does not imply a reading stage.
