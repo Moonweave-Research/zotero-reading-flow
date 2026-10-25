@@ -201,6 +201,20 @@ test('save-time notifier refresh does not leave controls disabled', async () => 
   f.manager.unregister();
 });
 
+test('manual status changes refresh the library row after the new value is persisted', async () => {
+ const f = fixture();
+ let refreshValue = '', refreshedIDs: number[] = [];
+ (globalThis as any).Zotero.ItemTreeManager = { refreshColumns: async () => { refreshValue = resolveReadingStatus(f.store.getData(f.paper)).status; } };
+ (globalThis as any).Zotero.Notifier.trigger = async (_event: string, _type: string, ids: number[]) => { refreshedIDs = ids; };
+ await f.view();
+ const select = f.body.querySelectorAll('select')[0]; select.value = 'skimmed'; select.listeners.change();
+ await new Promise(resolve => setTimeout(resolve, 0));
+ assert.equal(refreshValue, 'skimmed');
+ assert.deepEqual(refreshedIDs, [f.paper.id]);
+ assert.equal(f.store.getData(f.paper).s, 'skimmed');
+ f.manager.unregister();
+});
+
 
 test('an already-achieved native command is not reported as a failed save', async () => {
  const f=fixture(); await f.view(); const original=f.store.setStatus.bind(f.store);

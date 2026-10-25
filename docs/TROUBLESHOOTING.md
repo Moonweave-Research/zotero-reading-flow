@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This guide describes the 1.3.7 source. Bookmark controls are unavailable in the published 1.3.6 package. Check the version notice in the [README](../README.md) first.
+This guide describes the 1.3.8 source. Bookmark controls are unavailable in the published 1.3.6 package. Check the version notice in the [README](../README.md) first.
 
 ## Find the controls
 

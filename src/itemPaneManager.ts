@@ -2,6 +2,7 @@ import { ReadingBookmarkManager } from './readingBookmarkManager';
 import { DataStore } from './dataStore';
 import { FlowData, formatActivityTimestamp, formatPDFPosition, formatReadingBookmark, getLastActivityAt, getLocalDayKey, resolveDisplayProgress, resolveReadingAvailability, resolveReadingStatus, ReadingStatus } from './flowData';
 import { ResumeReader, resumeActionLabel } from './resumeReader';
+import { Logger } from './Logger';
 
 export const READING_FLOW_PANE_ID = 'reading-flow-details';
 const HTML = 'http://www.w3.org/1999/xhtml';
@@ -248,16 +249,28 @@ export class ReadingFlowItemPaneManager {
   private error(state: Instance, text: string) {
     const region = state.props.body.querySelector('[data-reading-flow-error]'); if (region) region.textContent = text;
   }
+  private async refreshItem(parent: any) {
+    this.store.invalidateCache(parent.id);
+    try {
+      await (Zotero as any).ItemTreeManager?.refreshColumns?.();
+      await (Zotero as any).Notifier?.trigger?.('refresh', 'item', [parent.id]);
+    } catch (error) { Logger.warn(`Reading Flow status saved; the library row could not be refreshed: ${String(error)}`); }
+  }
   private async mutate(state: Instance, parent: any, operation: () => Promise<boolean>, achieved?: () => boolean) {
     if (state.busy || !state.props.editable || parent.isEditable?.() === false || parent.deleted
       || this.parent(state.props.item)?.id !== parent.id || this.store.getData(parent).availability) return;
     const item = state.props.item, mutation = Symbol('pane-mutation');
     state.mutation = mutation; state.busy = true;
     state.props.body.querySelectorAll('select,input').forEach((control: any) => { control.disabled = true; });
-    let message = '';
-    try { if (!await operation() && !achieved?.()) message = 'No change was saved. The record may have changed or may no longer be editable.'; }
+    let message = '', saved = false;
+    try {
+      saved = await operation();
+      if (!saved) saved = Boolean(achieved?.());
+      if (!saved) message = 'No change was saved. The record may have changed or may no longer be editable.';
+    }
     catch (_) { message = 'The change could not be saved. Select the item again to review its stored record.'; }
     finally {
+      if (saved) await this.refreshItem(parent);
       if (state.mutation === mutation) {
         state.busy = false; state.mutation = undefined;
         if (this.instances.get(state.props.body) === state && state.props.item === item) {

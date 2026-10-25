@@ -1,6 +1,6 @@
 # Product contract
 
-Current source: **1.3.7**. Latest published release as of October 25, 2026: **1.3.6**. Source, passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. This contract describes the current source; it is not a release announcement.
+Current source: **1.3.8**. Latest published release as of October 25, 2026: **1.3.6**. Source, passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. This contract describes the current source; it is not a release announcement.
 
 ## Reading meaning
 
