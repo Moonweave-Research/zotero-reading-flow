@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.9 - 2026-10-25
+
+### Added
+
+- Record when an item is explicitly marked Reading and show it separately from the latest PDF page activity. Starting Reading again updates the date; existing records are not backfilled.
+
+### Changed
+
+- Rename per-item and dashboard activity dates to **Last PDF activity** so page-position saves are not presented as proof of reading.
+
 ## 1.3.8 - 2026-10-25
 
 ### Added

@@ -187,7 +187,7 @@ test('retained history date changes only when a real write prunes evidence; view
   await f.store.recordProgress(f.paper, { attachmentId: '2', lastPage: 3, pageCount: 10, progress: 0.3, at: retained + 86400000 });
   await f.view(); assert.equal(firstRecordedPDFActivity(f.store.getData(f.paper)), getLocalDayKey(retained));
   assert.equal(f.store.getData(f.paper).history?.startedAt, old - 1000);
-  assert.match(f.body.text(), /not the actual reading start/); f.manager.unregister();
+  assert.match(f.body.text(), /Existing records are not backfilled/); f.manager.unregister();
 });
 
 
@@ -241,22 +241,32 @@ test('native View Reading Flow command localizes its menu label attribute', () =
   f.manager.unregister();
 });
 
-test('compact pane shows resolved automatic state, consistent dates and saved location before optional explanations, without writes', async () => {
+test('compact pane shows the explicit start date separately from PDF activity and saved location, without writes', async () => {
   const at = new Date(2026, 9, 24, 14, 11).getTime();
-  const f = fixture(payload({ v: 2, s: 'important', lastAttachmentId: '2', lastPage: 3,
+  const f = fixture(payload({ v: 5, important: true, s: null, readingStartedAt: at - 86400000, lastAttachmentId: '2', lastPage: 3,
     pageCount: { '2': 10 }, p: { '2': 0.9 }, lastReadAt: at }));
   await f.view();
   const select = f.body.querySelectorAll('select')[0];
   assert.equal(select.children.find(e => e.value === '')!.textContent, 'Reading (automatic)');
   assert.equal(select.children.find(e => e.value === 'read')!.textContent, 'Read (manual)');
   const visible = f.body.children.filter(e => e.tag !== 'details').map(e => e.text()).join(' ');
-  assert.match(visible, /Last activity.*2026-10-24 14:11/);
-  assert.match(visible, /First recorded.*2026-10-24/);
+  assert.match(visible, /Reading started.*2026-10-23 14:11/);
+  assert.match(visible, /Last PDF activity.*2026-10-24 14:11/);
   assert.match(visible, /Last viewed \(automatic\).*page 3 \/ 10/);
   assert.match(visible, /Reading bookmark.*No reading bookmark/);
   assert.doesNotMatch(visible, /Legacy Important|retains at most|clear manual status|Maximum recorded location/);
-  assert.match(f.body.children.find(e => e.tag === 'details')!.text(), /Legacy Important/);
+  assert.doesNotMatch(f.body.children.find(e => e.tag === 'details')!.text(), /Legacy Important/);
   assert.equal(f.counts().saves, 0); assert.equal(f.counts().setters, 0);
+  f.manager.unregister();
+});
+
+test('legacy pane shows no inferred reading start and viewing leaves the record untouched', async () => {
+  const f = fixture(payload({ v: 4, important: false, s: 'reading', lastReadAt: Date.parse('2026-10-24T14:11:00') }));
+  await f.view();
+  const visible = f.body.children.filter(e => e.tag !== 'details').map(e => e.text()).join(' ');
+  assert.match(visible, /Reading started.*Not recorded/);
+  assert.match(visible, /Last PDF activity.*2026-10-24 14:11/);
+  assert.equal(f.counts().saves, 0);
   f.manager.unregister();
 });
 

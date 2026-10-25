@@ -1,6 +1,6 @@
 # Product contract
 
-Current source and published release: **1.3.8** (October 25, 2026). Passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. Real device-to-device sync remains unverified.
+Current published release: **1.3.8** (October 25, 2026). The current source adds an explicit reading-start timestamp and is not yet released. Passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. Real device-to-device sync remains unverified.
 
 ## Reading meaning
 
@@ -17,12 +17,12 @@ The library, item pane, context menu, and statistics share conservative position
 - The PDF toolbar offers Bookmark here. The library's book-shaped icon opens the Reading Flow section.
 - Continue from bookmark opens the bookmarked attachment and page. Open last viewed opens the automatic target. With no known position, say Open PDF.
 - A bookmark identifies its PDF by Zotero attachment key. Never apply one PDF's page to another attachment. Report missing files and revalidate the target before opening.
-- Reset tracked PDF positions clears automatic current/maximum positions and preserves the bookmark, status, Important, last activity, and retained history. Remove bookmark is separate.
+- Reset tracked PDF positions clears automatic current/maximum positions and preserves the bookmark, status, Important, reading start date, last PDF activity, and retained history. Remove bookmark is separate.
 - Preserve selection/generation guards, read-only access, queued writes, and unrelated Extra content. Refresh position facts when the section is rebuilt; no extra scroll should be required.
 
 ## Dates and statistics
 
-Last activity is recorded PDF activity, not a status change or bookmark edit. First recorded is the earliest surviving activity record, not the actual reading start. Display local dates consistently, using YYYY-MM-DD and minute precision where appropriate.
+Reading started is recorded when the status changes to Reading, including a configured default for new items, and updates when Reading starts again. Never infer or backfill it from PDF history. Last PDF activity is the latest saved PDF page position, not proof that the page was read. Display local dates consistently, using YYYY-MM-DD and minute precision where appropriate.
 
 Detailed daily history retains at most 366 days. Brief page visits count as activity; status changes and resets alone do not. Period filters select retained activity; current status and saved positions still describe the item now. Marked Read counts manual Read choices. Missing legacy history must not be reconstructed as a reading judgment.
 
@@ -30,7 +30,7 @@ Detailed daily history retains at most 366 days. Brief page visits count as acti
 
 One ReadingFlow: JSON line in the parent item's Extra field holds plugin metadata. PDFs, annotations, user tags, and unrelated Extra lines are preserved. Unsupported, malformed, or duplicate namespaces must not be silently overwritten.
 
-The current writer supports v4 bookmark records and reads earlier supported formats. No bulk startup migration or inferred completion dates. Bookmarks require compatible clients (1.3.8 or newer); a previous writer's safe refusal does not mean it displays new data correctly. Keep the pinned previous-writer checks and their positive controls. Do not lower schema versions to work around refusal.
+The current source writes v5 records when it first records Reading started, supports v4 bookmarks, and reads earlier supported formats. No bulk startup migration or inferred completion dates. Bookmark clients require 1.3.8 or newer; v5 records require this patch or a later compatible release. Older writers must refuse unsupported records without changing their bytes. Keep the pinned previous-writer checks and their positive controls. Do not lower schema versions to work around refusal.
 
 Actual delivery between two devices remains unverified. Metadata sync transport belongs to Zotero. Every editing client must support the stored format; do not generalize tested refusal to arbitrary old releases.
 

@@ -72,6 +72,9 @@ export class DataStore {
       if (updates.important !== undefined || (updates.s !== undefined && current.important !== undefined)) {
         updates = { ...updates, v: 3, important: updates.important ?? Boolean(current.important) };
       }
+      if (updates.s === 'reading' && current.s !== 'reading') {
+        updates = { ...updates, v: 5, readingStartedAt: this.normalizeTimestamp(updates.ts) };
+      }
       const nextWithoutTimestamp = mergeFlowData(current, updates, current.ts);
       if (isFlowDataSame(current, nextWithoutTimestamp)) return false;
 
@@ -163,7 +166,11 @@ export class DataStore {
     const timestamp = this.normalizeTimestamp(at);
     return this.transition(item, (current) => {
       if (current.s === status) return current;
-      const next = mergeFlowData(current, { s: status, ...(current.important !== undefined ? { v: 3 } : {}) }, timestamp);
+      const startsReading = status === 'reading' && current.s !== 'reading';
+      const next = mergeFlowData(current, {
+        s: status,
+        ...(startsReading ? { v: 5, readingStartedAt: timestamp } : current.important !== undefined ? { v: 3 } : {})
+      }, timestamp);
       return normalizeFlowData({
         ...next,
         history: this.recordStatusHistory(current.history, next, timestamp)
@@ -189,7 +196,12 @@ export class DataStore {
       if (!await this.prepareMutation(item)) return false;
       const originalExtra = item.getField('extra') || '';
       if (this.getFlowLinesFromExtra(originalExtra).length > 0) return false;
-      const initial = normalizeFlowData({ ...DEFAULT_FLOW_DATA, s: status, ts: timestamp });
+      const initial = normalizeFlowData({
+        ...DEFAULT_FLOW_DATA,
+        ...(status === 'reading' ? { v: 5, readingStartedAt: timestamp } : {}),
+        s: status,
+        ts: timestamp
+      });
       return this.persistDataChange(
         item,
         initial,
@@ -442,10 +454,11 @@ export class DataStore {
     try {
       const parsed = JSON.parse(line.trimStart().substring('ReadingFlow:'.length));
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-      if (parsed.v !== 1 && parsed.v !== 2 && parsed.v !== 3 && parsed.v !== 4) return null;
+      if (parsed.v !== 1 && parsed.v !== 2 && parsed.v !== 3 && parsed.v !== 4 && parsed.v !== 5) return null;
       if ((parsed.v >= 3 && (typeof parsed.important !== 'boolean' || parsed.s === 'important'))
         || (parsed.v < 3 && parsed.important !== undefined)) return null;
-      if (parsed.bookmark !== undefined && (parsed.v !== 4 || !isReadingBookmark(parsed.bookmark))) return null;
+      if (parsed.bookmark !== undefined && (parsed.v < 4 || !isReadingBookmark(parsed.bookmark))) return null;
+      if (parsed.readingStartedAt != null && (parsed.v !== 5 || !Number.isFinite(parsed.readingStartedAt) || parsed.readingStartedAt <= 0)) return null;
       if ((parsed.s != null && !['to-read', 'reading', 'skimmed', 'read', 'important'].includes(parsed.s))
         || (parsed.p != null && (typeof parsed.p !== 'object' || Array.isArray(parsed.p)
           || Object.values(parsed.p).some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0)))
@@ -539,7 +552,7 @@ export class DataStore {
   }
 
   private hasMeaningfulData(data: FlowData): boolean {
-    if (data.bookmark || data.important || data.s !== null || data.c !== null || Object.keys(data.p).length > 0) return true;
+    if (data.bookmark || data.readingStartedAt || data.important || data.s !== null || data.c !== null || Object.keys(data.p).length > 0) return true;
     if (data.lastAttachmentId !== null || data.lastPage !== null || data.lastReadAt !== null) return true;
     if (!data.history) return false;
     if (data.history.completedAt !== null || data.history.activeDaysTotal > 0) return true;

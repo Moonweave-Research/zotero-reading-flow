@@ -24,7 +24,7 @@ export function recordProblem(item: any, data: FlowData): string {
   if (lines.length > 1) return 'Multiple Reading Flow records were found. They cannot be displayed or edited safely.';
   try {
     const raw = JSON.parse(lines[0].replace(/^ReadingFlow:\s*/, ''));
-    if (Number.isInteger(raw.v) && raw.v > 4) return 'This Reading Flow record uses an unsupported version. Use a compatible newer Reading Flow client to edit it.';
+    if (Number.isInteger(raw.v) && raw.v > 5) return 'This Reading Flow record uses an unsupported version. Use a compatible newer Reading Flow client to edit it.';
   } catch (_) { /* The shared parser has already classified this record as unavailable. */ }
   return 'The Reading Flow record is damaged or invalid. It cannot be displayed or edited safely.';
 }
@@ -167,9 +167,12 @@ export class ReadingFlowItemPaneManager {
     importantLabel.prepend(important); controls.append(importantLabel); props.body.append(controls);
     important.addEventListener('change', () => { if (!this.current(state, generation, props.item)) return; void this.mutate(state, parent, () => this.store.setImportant(parent, important.checked), () => Boolean(this.store.getData(parent).important) === important.checked); });
     if (!props.editable || parent.isEditable?.() === false) add('Read-only item.');
-    const last = getLastActivityAt(data), first = firstRecordedPDFActivity(data);
+    const last = getLastActivityAt(data);
     const recent = formatActivityTimestamp(last);
-    props.body.append(this.facts(props, [['Last activity', problem ? 'Unavailable' : recent], ['First recorded', problem ? 'Unavailable' : first ?? 'Not recorded']]));
+    props.body.append(this.facts(props, [
+      ['Reading started', problem ? 'Unavailable' : data.readingStartedAt ? formatActivityTimestamp(data.readingStartedAt) : 'Not recorded'],
+      ['Last PDF activity', problem ? 'Unavailable' : recent]
+    ]));
     const target = this.element(props, 'div', 'Checking PDF availability…');
     target.dataset.readingFlowTarget = 'true'; props.body.append(target);
     const note = add("Bookmarks are set by you. Last viewed is saved automatically; neither measures pages read.");
@@ -179,7 +182,7 @@ export class ReadingFlowItemPaneManager {
     if (resolveReadingAvailability(data) === 'no-record') details.append(this.element(props, 'p', 'No Reading Flow record.'));
     if (data.v < 3 && data.important) details.append(this.element(props, 'p', 'Legacy Important records do not preserve the earlier manual reading status. It cannot be recovered from PDF positions.'));
     details.append(this.element(props, 'p', 'Automatic Reading is based on recorded PDF activity. Choosing a manual status overrides it; choosing the automatic option clears that override. Neither activity nor a saved position confirms that the item was read.'));
-    details.append(this.element(props, 'p', 'The first recorded PDF activity is the earliest surviving record, not the actual reading start. Detailed history retains at most 366 days; earlier or legacy activity may be missing. Status changes and resets are not PDF activity.'));
+    details.append(this.element(props, 'p', 'Reading started is recorded when the status changes to Reading, including a configured default for new items, and updates when you start Reading again. Existing records are not backfilled. Last PDF activity is the latest saved PDF page position; it does not confirm that you read the page. Detailed history retains at most 366 days; older activity may be missing. Status changes and resets are not PDF activity.'));
     details.append(this.element(props, 'p', 'Position tracking supports PDFs only. Manual status and Important also work for books and items without a PDF; EPUB positions are not tracked.'));
     props.body.append(details);
     const error = add(''); error.setAttribute('role', 'status'); error.dataset.readingFlowError = 'true';

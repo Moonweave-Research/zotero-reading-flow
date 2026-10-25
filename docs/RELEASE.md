@@ -28,7 +28,7 @@ Generated files (`addon/bootstrap.js`, `addon/dashboard.js`, `updates.json`, the
 8. Verify bookmark persistence after restart and pending automatic-position persistence on immediate shutdown.
 9. Check the prospective new-item default and the library-scoped sidebar list without changing pre-existing data.
 
-Real synchronization across two devices is a separate acceptance step. Report it as unverified until observed; local round trips do not prove delivery. Use compatible clients on every device. The previous writer tested against v4 refuses edits; arbitrary old versions are not certified safe. Never strip metadata or downgrade its schema to enable an older writer.
+Real synchronization across two devices is a separate acceptance step. Report it as unverified until observed; local round trips do not prove delivery. Use compatible clients on every device. The v1.3.6 writer tested against v4 refuses edits, and the v1.3.8 writer must be tested against v5 before that format is released; arbitrary old versions are not certified safe. Never strip metadata or downgrade its schema to enable an older writer.
 
 ## Prepare a release
 

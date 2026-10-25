@@ -70,6 +70,19 @@ test('normalizeFlowData reads valid v2 history without changing current fields',
   assert.equal(data.history?.days['2026-07-28'].status, 'reading');
 });
 
+test('normalizeFlowData preserves the explicit start only in v5 and retains v4 bookmarks', () => {
+  const bookmark = { attachmentKey: 'ABCD2345', page: 3, pageCount: 10, at: 10 };
+  const current = normalizeFlowData({ v: 5, important: false, s: 'reading', readingStartedAt: 100, bookmark });
+  assert.equal(current.v, 5);
+  assert.equal(current.readingStartedAt, 100);
+  assert.deepEqual(current.bookmark, bookmark);
+
+  const legacy = normalizeFlowData({ v: 4, important: false, s: 'reading', readingStartedAt: 100, bookmark });
+  assert.equal(legacy.v, 4);
+  assert.equal(legacy.readingStartedAt, undefined);
+  assert.deepEqual(legacy.bookmark, bookmark);
+});
+
 test('normalizeFlowData drops malformed or oversized history but keeps current state', () => {
   const days = Object.fromEntries(Array.from({ length: HISTORY_RETENTION_DAYS + 1 }, (_, index) => [
     `2026-01-${String(index + 1).padStart(2, '0')}`,

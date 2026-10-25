@@ -285,7 +285,7 @@ test('populated history renders the reading pulse and one semantic Recent Progre
   assert.equal(table?.hidden, false);
   assert.equal(row?.tagName, 'tr');
   assert.deepEqual(row?.children.map((cell) => cell.tagName), ['td', 'td', 'td', 'td', 'td']);
-  assert.deepEqual(row?.children.map((cell) => cell.attributes['data-label']), ['Paper', 'Reading bookmark', 'Last viewed (automatic)', 'Last activity', 'Status']);
+  assert.deepEqual(row?.children.map((cell) => cell.attributes['data-label']), ['Paper', 'Reading bookmark', 'Last viewed (automatic)', 'Last PDF activity', 'Status']);
   assert.match(row?.children[4]?.className ?? '', /status-reading/);
   assert.equal(doc.getElementById('dashboard-recent-progress-summary')?.textContent, 'Showing 1 of 1 items with PDF activity in this period.');
 });

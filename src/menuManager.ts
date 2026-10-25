@@ -356,7 +356,7 @@ export class ReadingFlowMenuManager {
   private confirmReset(): boolean {
     return (globalThis as any).Services?.prompt?.confirm?.(
       Zotero.getMainWindow?.() ?? null, 'Reset tracked PDF positions',
-      'Clear current and maximum tracked PDF positions for the selected items? Manual status, importance, last PDF activity, and history are preserved. This does not open a PDF at its first page.'
+      'Clear current and maximum tracked PDF positions for the selected items? Manual status, importance, reading start date, last PDF activity, and history are preserved. This does not open a PDF at its first page.'
     ) === true;
   }
 
