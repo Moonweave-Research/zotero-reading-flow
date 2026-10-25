@@ -1,6 +1,6 @@
 # Release process
 
-The source version is 1.3.7. The latest published release remains 1.3.6 as of October 25, 2026. Merging a PR does not publish a release or update installed clients.
+The source version is 1.3.8. The latest published release remains 1.3.6 as of October 25, 2026. Merging a PR does not publish a release or update installed clients.
 
 ## Verify the candidate
 

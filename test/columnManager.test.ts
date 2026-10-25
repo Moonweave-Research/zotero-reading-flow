@@ -104,6 +104,23 @@ test('compact and icons render full accessible text while changing only composit
   assert.equal(icons.children.length, 1);
 });
 
+test('bookmark and last viewed locations use a short list label while retaining full accessible detail', async () => {
+  const zotero = setupZotero('compact');
+  const data = { ...flow, bookmark: { attachmentKey: 'a', page: 12, pageCount: 30 } };
+  const manager = new ColumnManager(dataStoreFor(data));
+  await manager.register();
+  const item = { id: 7, isRegularItem: () => true };
+  const progress = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowProgress');
+  const progressCell = progress.renderCell(0, progress.dataProvider(item), {}, false, fakeDocument());
+  assert.equal(progressCell.textContent, 'Bookmark 12/30 · Last 42/100');
+  assert.equal(progressCell.title, 'Reading bookmark: page 12 / 30 · Last viewed: page 42 / 100');
+  const composite = zotero.registrations.find((entry) => entry.dataKey === 'readingFlowDisplay');
+  const compositeCell = composite.renderCell(0, composite.dataProvider(item), {}, false, fakeDocument());
+  assert.match(compositeCell.children[1].textContent, /^Bookmark 12\/30 · Last 42\/100 · /);
+  assert.match(compositeCell.title, /Reading bookmark: page 12 \/ 30/);
+  assert.match(compositeCell.title, /Last viewed: page 42 \/ 100/);
+});
+
 test('composite status icons use the approved eye-free mapping in both densities', async () => {
   const expected = {
     'to-read': '📙', reading: '📖', skimmed: '📘', read: '📗'

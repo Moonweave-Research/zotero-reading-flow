@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased — 1.3.7 source
+## 1.3.8 — source candidate
+
+### Fixed
+
+- Refresh library status rows immediately after a manual status or Important change in the Reading Flow pane.
+- Shorten bookmark and last-viewed labels in list columns while preserving full text in tooltips and accessibility labels.
+
+## 1.3.7 — source candidate
 
 ### Added
 

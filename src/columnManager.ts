@@ -88,6 +88,18 @@ function progressText(progress: number | null): string {
   return progress > 1 ? `page ${Math.round(progress)}` : `${Math.round(progress * 100)}% PDF position`;
 }
 
+function compactLocation(text: string | undefined, kind: 'Bookmark' | 'Last'): string {
+  if (!text) return '';
+  const pattern = kind === 'Bookmark'
+    ? /^Reading bookmark: page (\d+)(?: \/ (\d+))?$/
+    : /^Last viewed: page (\d+)(?: \/ (\d+))?$/;
+  const match = pattern.exec(text);
+  if (match) return `${kind} ${match[1]}${match[2] ? `/${match[2]}` : ''}`;
+  if (kind === 'Bookmark' && text === 'Reading bookmark unavailable') return 'Bookmark unavailable';
+  if (kind === 'Last' && text === 'Last viewed position unknown') return 'Last position unknown';
+  return kind === 'Bookmark' && text === 'No reading bookmark' ? '' : text;
+}
+
 function accessibleText(value: CompositeValue): string {
   if (value.status === 'unavailable') return 'Reading Flow record unavailable';
   if (value.status === 'to-read' && value.positionText === 'No last viewed position' && !value.lastReadAt) {
@@ -231,8 +243,9 @@ export class ColumnManager {
       const details = doc.createElement('span');
       const progress = progressText(value.progress);
       const notStarted = (value.status === 'to-read' || value.status === 'unassigned') && value.positionText === 'No last viewed position' && !value.lastReadAt;
-      const visualProgress = value.bookmarkText && value.bookmarkText !== 'No reading bookmark'
-        ? `${value.bookmarkText} · ${value.positionText}` : value.positionText ?? progress;
+      const bookmark = compactLocation(value.bookmarkText, 'Bookmark');
+      const lastPosition = compactLocation(value.positionText, 'Last');
+      const visualProgress = [bookmark, lastPosition].filter(Boolean).join(' · ') || progress;
       details.textContent = notStarted
         ? 'No PDF activity recorded'
         : `${visualProgress} · ${value.lastReadAt ? formatActivityTimestamp(value.lastReadAt) : value.positionText === 'No last viewed position' ? 'No PDF activity recorded' : 'PDF activity date unknown'}`;
@@ -293,8 +306,9 @@ export class ColumnManager {
     cell.style.cssText = 'display:flex;align-items:center;justify-content:center;position:relative;width:100%;max-width:100%;min-width:0;height:100%;padding:0;box-sizing:border-box;overflow:hidden;';
     if (!data) return cell;
     const [, position, maximum] = data.split('|');
-    cell.textContent = maximum?.startsWith('Reading bookmark:') ? `${maximum} · ${position}` : position ?? 'Saved PDF position unknown';
-    cell.title = cell.textContent;
+    const bookmark = maximum?.startsWith('Reading bookmark:') ? compactLocation(maximum, 'Bookmark') : '';
+    cell.textContent = [bookmark, compactLocation(position, 'Last')].filter(Boolean).join(' · ') || position || 'Saved PDF position unknown';
+    cell.title = maximum?.startsWith('Reading bookmark:') ? `${maximum} · ${position}` : position ?? 'Saved PDF position unknown';
     cell.setAttribute('aria-label', cell.title);
     cell.style.padding = '0 6px';
     return cell;
