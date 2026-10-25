@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> **Most screenshots show Reading Flow 1.3.8.** The dedicated Reading started example uses the 1.3.9 QA source, which is now available in the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
+> **Most workflow screenshots show Reading Flow 1.3.8.** The new **Reading started** example shows the 1.3.9 QA build, now available in the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest). The captions call out where older screenshots use earlier date labels.
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read with Important, and independent Unassigned states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
@@ -30,26 +30,36 @@ Reading Flow helps you return to the page you meant to keep. Leave a **reading b
 
 Supports **Zotero 9 and 10**. The latest screenshots were verified on **Zotero 10.0.6 for macOS**. Use Zotero's plugin installer when updating so both the package and its registered version are updated.
 
-## What you can do
+## At a glance
 
-| Feature | Where to find it |
-| --- | --- |
-| Choose To Read, Reading, Skimmed, or Read; flag Important independently | Library Status column, item menu, and Reading Flow panel — shown above |
-| Keep a deliberate bookmark while browsing freely | Bookmark here in the PDF toolbar — [try it](#try-it) |
-| Resume the bookmark or the automatic last viewed page | Two separate actions in the [Reading Flow panel](#3-continue-from-your-bookmark) |
-| Review PDF activity, manual Read counts, and current positions | [Reading statistics](#reading-statistics) |
-| Keep tracked papers in the left sidebar | [Reading list and settings](#reading-list-and-settings) |
-| Choose Compact/Icons and a prospective new-item default | [Reading Flow settings](#reading-list-and-settings) |
+| What you want to know | Where it appears | What it means |
+| --- | --- | --- |
+| Reading stage and Important flag | [Library row](docs/assets/reading-status-library.jpg) or the Reading Flow panel | The stage is your choice; Important is independent. |
+| Page to return to | [Bookmark here](docs/assets/reading-bookmark-button.jpg), then the [panel](docs/assets/reading-bookmark-panel.jpg) | A bookmark changes only when you set or remove it. |
+| Most recently viewed page | Library row or panel | Saved automatically when you visit a PDF page; a brief visit counts. |
+| When you started Reading | [Reading started example](docs/assets/reading-started-qa-v1.3.9.png) | Recorded when the item enters Reading; older records are not guessed. |
+| PDF activity and manual Read count | [Reading Statistics](#reading-statistics) | PDF activity describes saved page positions. **Read** is always your manual choice. |
+| Papers with Reading Flow data | [Tracked-papers list](docs/assets/reading-list-sidebar.jpg) | A native Zotero Saved Search, not a folder for one status. |
 
-## Try it
+**A page visit is not proof that you read it.** Reading Flow does not calculate pages read or mark an item Read when you reach the last page.
 
-### 1. Keep the page you want to return to
+## A simple reading workflow
+
+### 1. Choose a reading stage
+
+Select a paper and set its **Status** in the Reading Flow panel or context menu. Choose **Reading** when you start; the panel records **Reading started**. The date updates if you start Reading again. Existing items are not backfilled because their earlier start date cannot be inferred reliably.
+
+![Reading Flow showing Reading started separately from Last PDF activity, bookmark, and automatic last-viewed position](docs/assets/reading-started-qa-v1.3.9.png)
+
+*This isolated QA item has no PDF attached. The start date is present while PDF activity and page positions are not. Reading Flow labels are in English; the host Zotero app uses a Korean locale in this capture.*
+
+### 2. Save the page you want to return to
 
 Open a PDF and choose **Bookmark here** in the **upper-right PDF toolbar, near Aa**. This saves a reading bookmark at the current page. No reading mode or timer needs to be switched on.
 
 ![Actual Zotero PDF reader with the Bookmark here button in the upper-right toolbar and the PDF open at page 4](docs/assets/reading-bookmark-button.jpg)
 
-### 2. Browse freely
+### 3. Browse freely
 
 Jump to the references, inspect a figure, or look at another page. Reading Flow updates **Last viewed (automatic)** while keeping your reading bookmark in place.
 
@@ -61,7 +71,7 @@ Jump to the references, inspect a figure, or look at another page. Reading Flow 
 
 **Neither a bookmark nor an automatic position measures pages read.** Visiting the last page does not mark a paper **Read**. Page numbers refer to positions in the PDF file; printed page labels may differ.
 
-### 3. Continue from your bookmark
+### 4. Continue from your bookmark
 
 Return to the library, select the paper, and click the **book-shaped Reading Flow icon** on the right. You can also right-click the paper and choose **Reading Flow → View Reading Flow**.
 
@@ -70,9 +80,9 @@ Choose **Continue from bookmark** to return to your marked page. **Open last vie
 <details>
 <summary>See the Reading Flow panel</summary>
 
-![Actual Zotero Reading Flow panel showing a reading bookmark at page 4 of 10, an automatic position at page 8 of 10, activity dates, and separate actions for each location](docs/assets/reading-bookmark-panel.jpg)
+![Zotero 10 Reading Flow panel showing a bookmark at page 4, an automatic position at page 8, and separate actions for each location](docs/assets/reading-bookmark-panel.jpg)
 
-*The panel and statistics show the same bookmark at page 4 and automatic position at page 8. Continuing from the bookmark opens page 4, as shown in the reader capture.*
+*This panel capture uses Reading Flow 1.3.8, whose date rows use the earlier labels **First recorded** and **Last activity**. In 1.3.9, these are clarified as **Reading started** and **Last PDF activity**; see the current example above. The bookmark and automatic position remain separate.*
 
 </details>
 
@@ -106,7 +116,7 @@ Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Pape
 
 ![Actual English Zotero Reading Statistics showing bookmark page 4, automatic page 8, activity dates, and manually chosen Read with Important](docs/assets/reading-bookmarks-statistics.jpg)
 
-*You marked page 4, then looked at page 8. The bookmark stays at page 4; Marked Read remains a manual judgment.*
+*You marked page 4, then looked at page 8. The bookmark stays at page 4; Marked Read remains a manual judgment. This 1.3.8 capture says **Last activity**; 1.3.9 calls it **Last PDF activity**.*
 
 Open **Tools → Reading Statistics**, or right-click a paper and choose **Reading Flow → View Current View Statistics**.
 
@@ -117,11 +127,7 @@ The dashboard brings together **reading bookmarks, automatic positions, last PDF
 - **Treat Marked Read as your judgment.** It counts papers explicitly marked **Read**, not papers that reached the last page.
 - **Expand details when needed.** **Position history** contains available daily farthest-position comparisons and reset counts. **Status and saved positions** contains the optional breakdowns.
 
-**Reading started** is recorded when an item's status changes to **Reading**, including a configured default for new items. Starting Reading again updates the date. Existing records are not backfilled. **Last PDF activity** is the latest saved PDF page position; a brief visit can update it, and it does not prove that you read the page. Detailed daily history retains at most **366 days**; older or legacy activity may be missing.
-
-![Reading Flow item pane showing Reading started separately from Last PDF activity, bookmark, and automatic last-viewed position](docs/assets/reading-started-qa-v1.3.9.png)
-
-*This isolated QA item has no PDF attachment: the manual Reading start is recorded, while PDF activity and page positions remain unrecorded. Reading Flow labels are in English; the Zotero host app in this capture uses a Korean locale.*
+Detailed PDF activity history retains at most **366 days**; older or legacy activity may be missing. A brief visit can update the last PDF position, but that does not prove the page was read.
 
 ## Questions
 
@@ -137,7 +143,7 @@ PDF files are not modified. Reading Flow keeps its data in one `ReadingFlow:` li
 
 The Extra record follows Zotero's metadata sync. Bookmarks identify attachments by Zotero key, so they do not depend on the same local numeric item ID. The PDF must also be available on the other device.
 
-Use **1.3.8 or newer on every device that needs to read or edit bookmark records**. This source also writes v5 records when it records a start date; those require this patch or a later v5-compatible release on every device. Version 1.3.8 preserves v5 records but shows them as unsupported, without their details or editing controls. Actual device-to-device delivery has **not yet been verified**; attachment-key resolution, supported-client round trips, and previous-writer refusal have been tested.
+Use **1.3.8 or newer** on every device that needs to read or edit bookmark records. **Reading started** records require **1.3.9 or newer** on every device that needs to view or edit them. Version 1.3.8 preserves those newer records but shows them as unsupported, without their details or editing controls. Actual device-to-device delivery has **not yet been verified**; attachment-key resolution, supported-client round trips, and previous-writer refusal have been tested.
 
 ### What if a paper has several PDFs, or a file is missing?
 
