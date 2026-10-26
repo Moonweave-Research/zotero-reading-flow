@@ -1,71 +1,61 @@
 # Screenshot provenance
 
-All screenshot sources are actual English Zotero 10.0.6 for macOS running released Reading Flow 1.3.8 or 1.3.9 in separate test profiles. The reading-start, settings, statistics, and additional-workflow images have been refreshed using the 1.3.9 XPI. None are generated UI mockups or contain personal library records. Window layout changes and sample status choices were confined to isolated test profiles. Version 1.3.9 is available from the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
+All 32 raster images in this directory and `workflows/` were refreshed from actual **English Zotero 10.0.6 for macOS running released Reading Flow 1.3.10**. Captures use an isolated QA app, profile, and data folder containing six synthetic papers and two generated ten-page PDFs. No personal library records are shown or modified. The released XPI SHA-256 is `910518b0139ed474f3edbe9b7b9cd0c7aa501cf7062c5ed2f94b4fd1495db971`.
 
-| File | Feature shown | Capture context |
+These are native application captures, not generated UI mockups. Full views preserve the captured JPEG pixels; PNG details are rectangular crops, with no controls redrawn or text relabeled. The library overview and panel examples are also crops. Source observation names and crop coordinates below refer to the original captures; coordinates are top-left `x, y, width, height` in pixels. Full workflow views remain linked from the visual guide.
+
+## What each workflow demonstrates
+
+- **Library, Compact, and panel:** manual Reading + Important, bookmark 4/10 and automatic last viewed 8/10 in Sample paper.pdf. The library includes all four manual stages and Unassigned + Important. Icons shows the same saved data with a different selected row; only combined-column density differs.
+- **Reading started:** a manually started item with no PDF. Its start date is present; PDF activity and positions are not recorded.
+- **PDF toolbar:** Bookmark here at page 4; the later capture shows the actual Undo and Saved feedback.
+- **Batch change:** three selected papers are changed to To Read; Important remains independent, and other papers retain their stages. No PDF activity is invented by a status change.
+- **Manual to automatic:** Read (manual) becomes Reading (automatic), retaining Important, dates, bookmark page 4 in Sample paper.pdf, and automatic page 3 in Supplement.pdf.
+- **Multiple and missing PDFs:** the panel names the two PDF identities. Only the synthetic bookmarked file was temporarily renamed for the unavailable-file capture, then restored with identical SHA-256. Its bookmark is retained and the independent automatic location remains available.
+- **Statistics:** after returning to Sample paper.pdf, the current bookmark is 4 and last viewed is 8; Reading (automatic) + Important matches the filters and Marked Read is 0. The selected day has activity in two PDFs, so Recorded location is Unknown rather than an invented single page. Current status and the bookmark action are separate from the historical record.
+- **Settings and sidebar:** Compact density, Unassigned new-item default, and the native tracked-papers Saved Search. Settings changes were confined to the QA profile.
+
+The images show separate moments in these workflows, not one simultaneous state. Page positions do not measure pages read. These macOS captures do not verify Windows rendering or device-to-device delivery. The statistics window was successfully opened through Reading Flow's context menu in this QA session; this documentation update claims no application-code fix.
+
+## Image sources
+
+| Published file | Original observation | Crop rectangle (full if blank) |
 | --- | --- | --- |
-| reading-status-library.jpg | Four manual stages, unassigned + Important, compact positions, and the item panel | QA sample library; bookmark 4/10; last viewed 8/10; Read + Important |
-| reading-bookmark-button.jpg | Bookmark here in the upper-right PDF toolbar | QA PDF reader at page 4/10 |
-| reading-bookmark-panel.jpg | Distinct bookmark and automatic-position actions, status, dates | 1.3.8 labels: First recorded and Last activity; bookmark 4/10; last viewed 8/10 |
-| reading-bookmarks-statistics.jpg | Activity calendar, manual Marked Read count, separate position columns | 1.3.9; bookmark 4/10; last viewed 8/10; Reading automatic + Important; Marked Read 0 |
-| reading-flow-settings.jpg | Sidebar controls, column density, prospective new-item default | 1.3.9; Compact and Unassigned shown; test-profile settings only |
-| reading-list-sidebar.jpg | Native, selected tracked-papers Saved Search and concise positions | QA sample library; five items with status metadata |
-| reading-started-qa-v1.3.9.png | Manual Reading status, explicit Reading started date, separate Last PDF activity, bookmark, and automatic last-viewed fields | English 1.3.9 XPI in an isolated profile; no PDF attached, so PDF activity and positions are not recorded |
+| `reading-status-library.jpg` | `library` | 0, 0, 2500, 1050 |
+| `reading-bookmark-button.jpg` | `reader` | Full |
+| `reading-bookmark-panel.jpg` | `library` | 1788, 175, 625, 825 |
+| `reading-bookmarks-statistics.jpg` | `statistics-filters` | Full |
+| `reading-flow-settings.jpg` | `settings` | Full |
+| `reading-list-sidebar.jpg` | `sidebar` | Full |
+| `reading-started.png` | `started` | 1788, 670, 625, 620 |
+| `detail-status-stages.png` | `started` | 985, 155, 190, 415 |
+| `detail-bookmark-button.png` | `reader` | 2025, 75, 430, 85 |
+| `detail-panel-shortcut.png` | `library` | 2427, 635, 73, 80 |
+| `detail-bookmark-actions.png` | `library` | 1790, 455, 625, 410 |
+| `workflows/batch-menu.jpg` | `batch-menu` | Full |
+| `workflows/batch-result.jpg` | `batch-result` | Full |
+| `workflows/bookmark-undo.jpg` | `bookmark-undo` | Full |
+| `workflows/status-manual-before.jpg` | `status-manual-before` | Full |
+| `workflows/status-automatic-after.jpg` | `status-automatic-after` | Full |
+| `workflows/statistics-filters.jpg` | `statistics-filters` | Full |
+| `workflows/statistics-day.jpg` | `statistics-day` | Full |
+| `workflows/multiple-pdfs.jpg` | `multiple-pdfs` | Full |
+| `workflows/missing-bookmarked-pdf.jpg` | `missing-bookmarked-pdf` | Full |
+| `workflows/density-compact.jpg` | `library` | Full |
+| `workflows/density-icons.jpg` | `started` | Full |
+| `workflows/batch-result-detail.png` | `batch-result` | 400, 155, 1380, 420 |
+| `workflows/density-compact-detail.png` | `library` | 980, 155, 790, 420 |
+| `workflows/density-icons-detail.png` | `started` | 980, 155, 790, 420 |
+| `workflows/bookmark-undo-detail.png` | `bookmark-undo` | 1840, 75, 500, 85 |
+| `workflows/status-manual-detail.png` | `status-manual-before` | 1788, 675, 625, 960 |
+| `workflows/status-automatic-detail.png` | `status-automatic-after` | 1788, 675, 625, 960 |
+| `workflows/statistics-filters-detail.png` | `statistics-filters` | 115, 170, 1540, 300 |
+| `workflows/statistics-day-detail.png` | `statistics-day` | 635, 430, 1020, 400 |
+| `workflows/multiple-pdfs-detail.png` | `multiple-pdfs` | 1788, 930, 625, 650 |
+| `workflows/missing-bookmarked-pdf-detail.png` | `missing-bookmarked-pdf` | 1788, 930, 625, 670 |
 
-## Detail views
+## Illustrations and future updates
 
-### English 1.3.9 workflow captures
+`detail-reading-icons.svg` is an explicitly labeled icon-key illustration, verified against `src/columnManager.ts`, rather than a screenshot. It explains the Unicode book symbols used by the combined column; emoji artwork depends on the viewer's operating system. `icon.svg` is the project icon.
 
-The files in `workflows/` are new, real English Zotero 10.0.6 captures using Reading Flow 1.3.9 in a separately identified QA app, profile, and data folder. The library contains only synthetic papers and two generated ten-page sample PDFs. No personal library records are shown. Display-density and column-layout changes were confined to that QA profile. Full-window captures are JPEG exports of the original PNG observations; detail PNGs crop the original observations without relabeling controls.
-
-| File | Observed behavior |
-| --- | --- |
-| workflows/batch-menu.jpg | Three selected synthetic papers and the Reading Flow context submenu |
-| workflows/batch-result.jpg | All three selected papers now show To Read; the existing Reading item is unchanged |
-| workflows/density-compact.jpg | Combined column showing symbols, bookmark 4/10, automatic position 8/10, and PDF activity date |
-| workflows/density-icons.jpg | The same rows and data in Icons mode; the separate Status column is unchanged |
-| workflows/bookmark-undo.jpg | PDF reader at page 4 immediately after Bookmark here, showing Undo and Saved |
-| workflows/status-manual-before.jpg | Read manual with Important, retained dates, bookmark 4 in Sample paper.pdf, last viewed 3 in Supplement.pdf |
-| workflows/status-automatic-after.jpg | After clearing the manual stage: Reading automatic, with the same flag, dates, bookmark, and automatic position |
-| workflows/statistics-filters.jpg | Selected Library, Reading, and Important only leave one matching paper |
-| workflows/statistics-day.jpg | Selected activity day shows recorded page 8, current Reading automatic + Important, and bookmark action page 4 |
-| workflows/multiple-pdfs.jpg | Distinct Bookmark PDF and Last viewed PDF names and page-opening actions |
-| workflows/missing-bookmarked-pdf.jpg | Missing bookmarked file explicitly labeled Unavailable; independent last-viewed action remains |
-
-| Detail PNG | Original observation | Crop (`x, y, width, height`) |
-| --- | --- | --- |
-| workflows/batch-result-detail.png | batch-result | 410, 155, 1515, 420 |
-| workflows/density-compact-detail.png | density-compact | 1035, 160, 875, 370 |
-| workflows/density-icons-detail.png | density-icons | 1035, 160, 875, 370 |
-| workflows/bookmark-undo-detail.png | bookmark-undo | 1320, 75, 460, 85 |
-| workflows/status-manual-detail.png | status-manual-before | 1295, 155, 620, 500 |
-| workflows/status-automatic-detail.png | status-automatic-after | 1295, 155, 620, 500 |
-| workflows/statistics-filters-detail.png | statistics-filters | 115, 175, 1540, 285 |
-| workflows/statistics-day-detail.png | statistics-day | 635, 800, 1020, 410 |
-| workflows/multiple-pdfs-detail.png | multiple-pdfs | 1295, 440, 620, 445 |
-| workflows/missing-bookmarked-pdf-detail.png | missing-bookmarked-pdf | 1295, 440, 620, 520 |
-
-Native checks also exercised Undo (bookmark changed to page 6, then restored to page 4), the disabled general bookmark button with two loaded PDF readers, statistics-window reopening, and restoration of the temporarily unavailable QA PDF with its original SHA-256. The early QA session did not open the statistics window; after a normal QA-only restart, opening and reopening the window through the context menu succeeded. The cause of that early-session failure is not established, and no application-code fix is claimed by this documentation change.
-
-### Earlier workflow details
-
-These PNGs are rectangular crops of the original English 1.3.8 screenshots above. Their controls and labels have not been redrawn or relabeled. The README displays them at readable widths; they are existing capture details, not new runtime verification. The book-symbol key beside the Status crop is a written legend verified against `src/columnManager.ts`, not a screenshot of the combined column.
-
-`detail-reading-icons.svg` enlarges the same Unicode book symbols used by the combined column (`📙` for To Read and `📖` for Reading). It is an explanatory illustration; its caption and SVG description identify it as an icon key rather than a Zotero capture. Emoji artwork depends on the viewer's operating system.
-
-Crop coordinates use the original image's top-left origin, in pixels (`x, y, width, height`). Original full-window images remain available.
-
-| Detail | Original | Crop rectangle |
-| --- | --- | --- |
-| detail-status-stages.png | reading-status-library.jpg | 1760, 150, 210, 350 |
-| detail-bookmark-button.png | reading-bookmark-button.jpg | 2520, 65, 370, 100 |
-| detail-panel-shortcut.png | reading-status-library.jpg | 2934, 635, 90, 75 |
-| detail-bookmark-actions.png | reading-bookmark-panel.jpg | 2315, 470, 630, 410 |
-
-Screens represent separate moments in their sample workflows, not one simultaneous snapshot. The original 1.3.8 library/panel captures and refreshed 1.3.9 statistics show bookmark page 4 and automatic page 8. Later 1.3.9 multi-PDF captures show bookmark page 4 in Sample paper.pdf and automatic page 3 in Supplement.pdf. The reading-start example has no PDF and makes no claim about PDF activity or pages read.
-
-The sample titled QA — Unsupported record retains a legacy Important record after earlier compatibility testing; the title is a fixture label, not a current parser-error diagnosis. Its Unassigned + Important display demonstrates that the flag does not imply a reading stage.
-
-The sidebar name can be truncated by Zotero's native sidebar width; its full name is Reading Flow — Tracked Papers, as shown in Settings. Native window captures keep original aspect ratios and full context. No UI text was relabeled in an image. Superseded screenshots were removed from the current tree; originals remain in Git history.
-
-For new captures, use non-sensitive sample items, preserve the original pixels, and update captions when the UI changes. Never publish personal paper titles, notes, paths, or library metadata.
+For future captures, use non-sensitive sample items, preserve the original pixels, and update captions when the UI changes. Never publish personal paper titles, notes, paths, or library metadata. Superseded captures remain available in Git history.

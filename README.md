@@ -15,11 +15,11 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> Screenshots use **English Zotero 10.0.6** with Reading Flow **1.3.8 or 1.3.9**. The start-date, settings, statistics, and [additional visual workflows](docs/VISUAL_GUIDE.md) show **1.3.9**. The [latest release, **1.3.10**](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest), improves sidebar width isolation and button wrapping; its Windows Zotero verification is pending. Earlier date labels are identified in the older panel capture.
+> Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
 
-![Actual English Zotero library showing To Read, Reading, Skimmed, Read with Important, and independent Unassigned states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
+![Actual English Zotero library showing To Read, Reading, Skimmed, Read, and Unassigned with Important states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
-*See each reading stage in the library, with Important kept separate. All captures use separate test libraries with synthetic papers. Click a full-window image to inspect it, or use the detail views below.*
+*See each reading stage in the library, with Important kept separate. All captures use separate test libraries with synthetic papers. Click an overview image to inspect it, or use the detail views below.*
 
 ## Install
 
@@ -37,7 +37,7 @@ Supports **Zotero 9 and 10**. The latest screenshots were verified on **Zotero 1
 | Reading stage and Important flag | [Library row](docs/assets/reading-status-library.jpg) or the Reading Flow panel | The stage is your choice; Important is independent. |
 | Page to return to | [Bookmark here](docs/assets/reading-bookmark-button.jpg), then the [panel](docs/assets/reading-bookmark-panel.jpg) | A bookmark changes only when you set or remove it. |
 | Most recently viewed page | Library row or panel | Saved automatically when you visit a PDF page; a brief visit counts. |
-| When you started Reading | [Reading started example](docs/assets/reading-started-qa-v1.3.9.png) | Recorded when the item enters Reading; older records are not guessed. |
+| When you started Reading | [Reading started example](docs/assets/reading-started.png) | Recorded when the item enters Reading; older records are not guessed. |
 | PDF activity and manual Read count | [Reading Statistics](#reading-statistics) | PDF activity describes saved page positions. **Read** is always your manual choice. |
 | Papers with Reading Flow data | [Tracked-papers list](docs/assets/reading-list-sidebar.jpg) | A native Zotero Saved Search, not a folder for one status. |
 
@@ -54,7 +54,7 @@ Select a paper and set its **Status** in the Reading Flow panel or context menu.
 <table>
 <tr><th>Status column — actual screenshot detail</th><th>Combined Reading Flow column — icon key</th></tr>
 <tr>
-<td><img src="docs/assets/detail-status-stages.png" alt="Enlarged Status column showing Read with a star, To Read, Unassigned with a star, Reading, and Skimmed" width="168"></td>
+<td><img src="docs/assets/detail-status-stages.png" alt="Enlarged Status column showing Unassigned with Important, Read, To Read, Reading with Important, Reading, and Skimmed" width="190"></td>
 <td>
 <img src="docs/assets/detail-reading-icons.svg" alt="Enlarged icon key illustration: orange closed book for To Read changes to an open book for Reading" width="420">
 <p><strong>📙 To Read</strong> — saved for later</p>
@@ -72,9 +72,9 @@ Select a paper and set its **Status** in the Reading Flow panel or context menu.
 
 **A start date is separate from PDF activity:**
 
-![Reading Flow showing Reading started separately from Last PDF activity, bookmark, and automatic last-viewed position](docs/assets/reading-started-qa-v1.3.9.png)
+![Reading Flow showing Reading started separately from Last PDF activity, bookmark, and automatic last-viewed position](docs/assets/reading-started.png)
 
-*This English 1.3.9 capture shows an item without a PDF. Its manually recorded start date is present while PDF activity and page positions are not.*
+*This English 1.3.10 capture shows an item without a PDF. Its manually recorded start date is present while PDF activity and page positions are not.*
 
 ### 2. Save the page you want to return to
 
@@ -122,7 +122,7 @@ Choose **Continue from bookmark** to return to your marked page. **Open last vie
 
 ![Zotero 10 Reading Flow panel showing a bookmark at page 4, an automatic position at page 8, and separate actions for each location](docs/assets/reading-bookmark-panel.jpg)
 
-*This panel capture uses Reading Flow 1.3.8, whose date rows use the earlier labels **First recorded** and **Last activity**. In 1.3.9, these are clarified as **Reading started** and **Last PDF activity**; see the current example above. The bookmark and automatic position remain separate.*
+*The 1.3.10 panel separates **Reading started**, **Last PDF activity**, your bookmark at page 4, and the automatic position at page 8. Neither position measures pages read.*
 
 </details>
 
@@ -152,7 +152,7 @@ For the smaller controls and less frequent tasks, see the **[visual guide](docs/
 
 <img src="docs/assets/workflows/density-icons-detail.png" alt="The same English Zotero rows in Icons mode showing books and the independent Important star" width="700">
 
-*Both captures use Reading Flow 1.3.9. The same saved data is shown in two display modes; the separate Status column is unchanged.*
+*Both captures use Reading Flow 1.3.10. The same saved data is shown in two display modes, with a different row selected; the separate Status column is unchanged.*
 
 </details>
 
@@ -173,7 +173,7 @@ Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Pape
 
 ![Actual English Zotero Reading Statistics showing bookmark page 4, automatic page 8, Last PDF activity, and Reading automatic with Important](docs/assets/reading-bookmarks-statistics.jpg)
 
-*In this 1.3.9 capture, you bookmarked page 4 and looked at page 8. The item is **Reading (automatic) · Important** and **Marked Read** is 0. Neither reaching a page nor setting a bookmark marks a paper Read.*
+*In this 1.3.10 capture, you bookmarked page 4 and looked at page 8. The item is **Reading (automatic) · Important** and **Marked Read** is 0. Neither reaching a page nor setting a bookmark marks a paper Read.*
 
 Open **Tools → Reading Statistics**, or right-click a paper and choose **Reading Flow → View Current View Statistics**.
 
@@ -193,11 +193,11 @@ Choose a scope, expand **Filter items**, then combine a stage with **Important o
 
 <img src="docs/assets/workflows/statistics-filters-detail.png" alt="Actual English statistics controls: Selected Library, 7 days, Reading Flow items, Reading, and Important only" width="770">
 
-Click an active calendar day to see its matching paper and recorded position. The PDF action still identifies the saved bookmark separately:
+Click an active calendar day to see its matching papers. The PDF action identifies the saved bookmark separately:
 
-<img src="docs/assets/workflows/statistics-day-detail.png" alt="Actual selected activity day showing recorded page 8, Reading automatic with Important, and a separate continue-from-bookmark page 4 action" width="714">
+<img src="docs/assets/workflows/statistics-day-detail.png" alt="Actual selected activity day showing Recorded location Unknown, current Reading automatic with Important, and a separate bookmark page 4 action" width="714">
 
-*This sample has one matching paper. Recorded location is the PDF position on the selected day; Current status describes the paper now. [More filter examples and full-window captures](docs/VISUAL_GUIDE.md#explore-the-statistics-filters).*
+*This sample has one matching paper, with activity in two PDFs that day. **Recorded location: Unknown** means the daily record cannot identify a single PDF position. **Current status** describes the paper now; the bookmark action still returns to page 4. [More filter examples and full-window captures](docs/VISUAL_GUIDE.md#explore-the-statistics-filters).*
 
 </details>
 
