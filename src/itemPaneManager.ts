@@ -108,11 +108,14 @@ export class ReadingFlowItemPaneManager {
   private element(props: Props, tag: string, text = ''): any {
     const element = props.doc.createElementNS(HTML, tag); element.textContent = text;
     if (['select', 'input', 'button'].includes(tag)) element.style.setProperty('font', 'inherit');
+    if (tag === 'button') {
+      for (const [key, value] of Object.entries({ 'box-sizing': 'border-box', 'min-width': '0', 'max-width': '100%', height: 'auto', 'white-space': 'normal', 'overflow-wrap': 'anywhere' })) element.style.setProperty(key, value);
+    }
     return element;
   }
   private facts(props: Props, entries: [string, string][]) {
     const list = this.element(props, 'dl');
-    for (const [key, value] of Object.entries({ display: 'grid', gap: '0.4em', margin: '0.65em 0', 'line-height': '1.4' })) list.style.setProperty(key, value);
+    for (const [key, value] of Object.entries({ display: 'grid', 'grid-template-columns': 'minmax(0, 1fr)', gap: '0.4em', margin: '0.65em 0', 'line-height': '1.4' })) list.style.setProperty(key, value);
     for (const [name, value] of entries) {
       const row = this.element(props, 'div');
       for (const [key, value] of Object.entries({ display: 'flex', 'flex-wrap': 'wrap', gap: '0.15em 0.75em' })) row.style.setProperty(key, value);
@@ -132,6 +135,9 @@ export class ReadingFlowItemPaneManager {
   private render(props: Props) {
     const state = this.state(props); state.generation++;
     props.body.replaceChildren(); props.body.setAttribute('lang', 'en');
+    // Keep this section's preferred width out of the shared native item pane.
+    props.body.style.setProperty('contain', 'inline-size');
+    props.body.style.setProperty('min-width', '0');
     props.body.style.setProperty('overflow-wrap', 'anywhere');
     const parent = this.parent(props.item);
     if (!parent) return;
