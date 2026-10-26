@@ -21,9 +21,11 @@ In a separate Zotero 10.0.6 test profile on macOS, changing the QA paper from **
 
 Do not claim real multi-device sync, VoiceOver certification, or universal Zotero/platform coverage from these bounded observations. VoiceOver settings are outside this workflow. [Release acceptance](RELEASE.md) remains separate from unit checks and screenshots.
 
-## Known native limitation
+## New-item refresh check — 1.3.10
 
-During the October25 screenshot preparation, newly created sample items saved their manual stages correctly (confirmed in the panel and persisted records), but their existing library rows continued to show the earlier blank state until Zotero restarted. The captures show the reloaded persisted state. Immediate library refresh for those new-item status changes remains unresolved; these screenshots must not be used to claim that behavior passed.
+On October 26, a new Journal Article was created through the native New Item menu in an isolated English Zotero 10.0.6 for macOS running released Reading Flow 1.3.10. With that new item kept selected, its status changed from Unassigned to To Read, then Reading. The library row updated after each saved change without restarting or selecting another item; Important also appeared in the selected row when enabled. Reading started was recorded, while Last PDF activity and both positions stayed unrecorded for the item without a PDF. [Actual result](assets/workflows/new-item-reading-important.jpg).
+
+An October 25 capture session had observed stale blank rows for newly created items. That symptom was not reproduced in this check; no speculative application-code patch was added. The screen-capture transport returned older frames, so current accessibility values and the later native image were checked separately. Bringing the library window forward through its native Window menu recovered the image stream; this did not refresh or restart the library. This bounded result does not cover all import, sync, or platform scenarios.
 
 ## Documentation checks
 

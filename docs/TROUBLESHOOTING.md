@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This guide covers Reading Flow 1.3.8. To use bookmark controls, install 1.3.8 or newer from the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest) and restart Zotero. Check the installed add-on version first.
+This guide covers Reading Flow 1.3.10. To use bookmark controls, install 1.3.8 or newer from the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest) and restart Zotero. Check the installed add-on version first.
 
 ## Find the controls
 
@@ -23,7 +23,7 @@ The book-shaped icon should resolve saved positions without another scroll. If i
 
 Use the Reading Flow panel or item context menu. Read-only items cannot be changed. Bulk changes normalize PDF selections to their parent and report unchanged, skipped, or failed items. Unsupported, duplicate, or malformed ReadingFlow records are protected rather than overwritten. Do not delete their Extra line as a repair shortcut.
 
-During current test-profile capture work, newly created items could retain a stale blank library status after a saved manual change. The panel and persisted record were correct; restarting refreshed the list. This remains a known display-refresh limitation, not evidence that the save was lost.
+An earlier capture session observed stale blank library rows for newly created items. A fresh native check of released 1.3.10 on macOS created a paper and changed it to To Read, then Reading, and toggled Important: the selected row updated without restarting or selecting another item. That earlier symptom did not recur in this check. If it occurs in your workflow, report the exact creation/import steps and versions; do not delete the saved record or reset your library.
 
 Important is independent of status. Clear Manual Status (Use Automatic) removes only the manual stage. Existing activity or a bookmark may still derive Reading; untouched items remain Unassigned.
 
@@ -39,7 +39,7 @@ That is expected. Advanced → Reset tracked PDF positions clears automatic posi
 
 Metadata lives in a ReadingFlow: JSON line in the parent item's Extra field. Do not edit it manually for routine use. Unrelated Extra content, PDFs, and annotations are preserved; uninstalling does not remove this metadata.
 
-Use compatible clients (1.3.8 or newer) for bookmark records on every editing device. Records with the new Reading started date use v5 and require this patch or a later v5-compatible release on every device. Version 1.3.8 safely preserves v5 records but shows them as unsupported, without their details or editing controls. The PDF must be available there too. Actual device-to-device delivery has not been verified. Never lower a record's schema version to make an old writer accept it.
+Use compatible clients (1.3.8 or newer) for bookmark records on every editing device. Records with Reading started use v5 and require 1.3.9 or a later v5-compatible release on every editing device. Version 1.3.8 safely preserves v5 records but shows them as unsupported, without their details or editing controls. The PDF must be available there too. Actual device-to-device delivery has not been verified. Never lower a record's schema version to make an old writer accept it.
 
 ## An update still shows an old version
 

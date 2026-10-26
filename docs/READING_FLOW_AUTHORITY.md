@@ -1,6 +1,6 @@
 # Product contract
 
-Current published release: **1.3.8** (October 25, 2026). The current source adds an explicit reading-start timestamp and is not yet released. Passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. Real device-to-device sync remains unverified.
+Current published release: **1.3.10** (October 26, 2026). Explicit reading-start timestamps shipped in 1.3.9; 1.3.10 isolates sidebar width and wraps controls. The [Windows issue #39 reporter confirmed normal behavior after updating](https://github.com/Moonweave-Research/zotero-reading-flow/issues/39#issuecomment-6405504991); that is user confirmation, not our direct Windows desktop test. Passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. Real device-to-device sync remains unverified.
 
 ## Reading meaning
 
@@ -30,7 +30,7 @@ Detailed daily history retains at most 366 days. Brief page visits count as acti
 
 One ReadingFlow: JSON line in the parent item's Extra field holds plugin metadata. PDFs, annotations, user tags, and unrelated Extra lines are preserved. Unsupported, malformed, or duplicate namespaces must not be silently overwritten.
 
-The current source writes v5 records when it first records Reading started, supports v4 bookmarks, and reads earlier supported formats. No bulk startup migration or inferred completion dates. Bookmark clients require 1.3.8 or newer; v5 records require this patch or a later compatible release. Older writers must refuse unsupported records without changing their bytes. Keep the pinned previous-writer checks and their positive controls. Do not lower schema versions to work around refusal.
+The current source writes v5 records when it first records Reading started, supports v4 bookmarks, and reads earlier supported formats. No bulk startup migration or inferred completion dates. Bookmark clients require 1.3.8 or newer; v5 reading-start records require 1.3.9 or a later compatible release. Older writers must refuse unsupported records without changing their bytes. Keep the pinned previous-writer checks and their positive controls. Do not lower schema versions to work around refusal.
 
 Actual delivery between two devices remains unverified. Metadata sync transport belongs to Zotero. Every editing client must support the stored format; do not generalize tested refusal to arbitrary old releases.
 

@@ -30,6 +30,17 @@ Reading Flow helps you return to the page you meant to keep. Leave a **reading b
 
 Supports **Zotero 9 and 10**. The latest screenshots were verified on **Zotero 10.0.6 for macOS**. Use Zotero's plugin installer when updating so both the package and its registered version are updated.
 
+<details>
+<summary>First setup: show the library columns</summary>
+
+Right-click a **column heading** in the library, such as **Title**, and choose **Bookmark / Last Viewed**, **Status**, or **Last PDF Activity**. The combined **Reading Flow** column is optional and must be enabled separately. Column choices are saved by Zotero.
+
+<img src="docs/assets/workflows/column-chooser-detail.png" alt="Actual native column menu listing Bookmark / Last Viewed, Status, Last PDF Activity, and Reading Flow; this QA example has Status and Reading Flow checked" width="445">
+
+*The checkmarks show this sample’s column choices, not a required layout. [Full column-menu capture](docs/assets/workflows/column-chooser.jpg).*
+
+</details>
+
 ## At a glance
 
 | What you want to know | Where it appears | What it means |
@@ -37,7 +48,7 @@ Supports **Zotero 9 and 10**. The latest screenshots were verified on **Zotero 1
 | Reading stage and Important flag | [Library row](docs/assets/reading-status-library.jpg) or the Reading Flow panel | The stage is your choice; Important is independent. |
 | Page to return to | [Bookmark here](docs/assets/reading-bookmark-button.jpg), then the [panel](docs/assets/reading-bookmark-panel.jpg) | A bookmark changes only when you set or remove it. |
 | Most recently viewed page | Library row or panel | Saved automatically when you visit a PDF page; a brief visit counts. |
-| When you started Reading | [Reading started example](docs/assets/reading-started.png) | Recorded when the item enters Reading; older records are not guessed. |
+| When you started Reading | [Reading started example](docs/assets/reading-started.png) | Recorded when you choose Reading, or a Reading default is applied to a new item; earlier dates are not guessed. |
 | PDF activity and manual Read count | [Reading Statistics](#reading-statistics) | PDF activity describes saved page positions. **Read** is always your manual choice. |
 | Papers with Reading Flow data | [Tracked-papers list](docs/assets/reading-list-sidebar.jpg) | A native Zotero Saved Search, not a folder for one status. |
 
@@ -47,7 +58,11 @@ Supports **Zotero 9 and 10**. The latest screenshots were verified on **Zotero 1
 
 ### 1. Choose a reading stage
 
-Select a paper and set its **Status** in the Reading Flow panel or context menu. Choose **Reading** when you start; the panel records **Reading started**. The date updates if you start Reading again. Existing items are not backfilled because their earlier start date cannot be inferred reliably.
+Select a paper and open its panel: click the **book-shaped Reading Flow icon** on the right, or right-click the paper → **Reading Flow → View Reading Flow**. Then choose **Status**. Choose **Reading** when you start; the panel records **Reading started**. The date updates if you start Reading again. Existing items are not backfilled because their earlier start date cannot be inferred reliably.
+
+<img src="docs/assets/detail-panel-shortcut.png" alt="Actual book-shaped Reading Flow shortcut on Zotero's right-hand sidebar" width="72">
+
+*This shortcut opens the panel; the library’s changing book symbols are separate.*
 
 **Look for the open book.** In the optional combined **Reading Flow** column, changing **To Read → Reading** changes the orange closed-book symbol to an open book: **📙 → 📖**. The separate **Status** column spells out the stage, as shown in this close-up:
 
@@ -107,11 +122,7 @@ Jump to the references, inspect a figure, or look at another page. Reading Flow 
 
 Return to the library, select the paper, and click the **book-shaped Reading Flow icon** on the right. You can also right-click the paper and choose **Reading Flow → View Reading Flow**.
 
-<img src="docs/assets/detail-panel-shortcut.png" alt="Actual book-shaped Reading Flow shortcut on Zotero's right-hand sidebar" width="72">
-
-*This sidebar shortcut opens the panel. The changing book symbols described above appear in the combined library column.*
-
-Choose **Continue from bookmark** to return to your marked page. **Open last viewed** takes you to the automatic position instead. Without a bookmark, the primary action continues from the last viewed position, or opens the PDF when no saved position is available.
+Choose **Continue from bookmark** to return to your marked page. **Open last viewed** takes you to the automatic position instead. Without a bookmark, the primary action continues from the last viewed position, or opens the PDF when no saved position is available. [See the automatic-only example](docs/VISUAL_GUIDE.md#without-a-reading-bookmark).
 
 <img src="docs/assets/detail-bookmark-actions.png" alt="Enlarged actual panel: bookmark at page 4 of 10, automatic last viewed at page 8 of 10, and separate buttons to open each position" width="504">
 
@@ -158,7 +169,9 @@ For the smaller controls and less frequent tasks, see the **[visual guide](docs/
 
 Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Papers**, choose the optional combined column's density, or set a default for future eligible additions. The default **Unassigned** leaves new items untouched. Existing items keep their current data.
 
-![Actual English Zotero Reading Flow settings with sidebar-list controls, Compact density, and Unassigned new-item default](docs/assets/reading-flow-settings.jpg)
+<img src="docs/assets/workflows/settings-controls-detail.png" alt="Actual settings detail showing Compact column density and Unassigned status for newly added papers" width="600">
+
+*Density changes the optional combined column. The new-item default applies only to future eligible additions. [Full settings window](docs/assets/reading-flow-settings.jpg).*
 
 <details>
 <summary>See the tracked-papers list in Zotero</summary>
@@ -171,7 +184,9 @@ Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Pape
 
 ## Reading statistics
 
-![Actual English Zotero Reading Statistics showing bookmark page 4, automatic page 8, Last PDF activity, and Reading automatic with Important](docs/assets/reading-bookmarks-statistics.jpg)
+<img src="docs/assets/workflows/statistics-position-detail.png" alt="Actual statistics row: reading bookmark page 4 of 10, automatic last viewed page 8 of 10, Last PDF activity 2026-10-26 14:01, and Reading automatic with Important" width="920">
+
+[Open the full statistics dashboard](docs/assets/reading-bookmarks-statistics.jpg).
 
 *In this 1.3.10 capture, you bookmarked page 4 and looked at page 8. The item is **Reading (automatic) · Important** and **Marked Read** is 0. Neither reaching a page nor setting a bookmark marks a paper Read.*
 
