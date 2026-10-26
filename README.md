@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> Screenshots use **English Zotero 10.0.6** with Reading Flow **1.3.8 or 1.3.9**. The start-date, settings, statistics, and [additional visual workflows](docs/VISUAL_GUIDE.md) show **1.3.9**, available in the [latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest). Earlier date labels are identified in the older panel capture.
+> Screenshots use **English Zotero 10.0.6** with Reading Flow **1.3.8 or 1.3.9**. The start-date, settings, statistics, and [additional visual workflows](docs/VISUAL_GUIDE.md) show **1.3.9**. The [latest release, **1.3.10**](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest), improves sidebar width isolation and button wrapping; its Windows Zotero verification is pending. Earlier date labels are identified in the older panel capture.
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read with Important, and independent Unassigned states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
