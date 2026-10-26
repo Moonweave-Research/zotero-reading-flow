@@ -32,6 +32,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Gecko for panel layout checks
+        run: npx playwright install --with-deps firefox
+
+      - name: Verify panel layout
+        run: npm run test:layout
+
       - name: Verify package
         run: npm run verify
 

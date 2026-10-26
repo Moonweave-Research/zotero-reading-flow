@@ -55,7 +55,7 @@ export class ReadingBookmarkManager {
     const make = (label: string, action: () => Promise<boolean>) => {
       const button = doc.createElementNS(HTML, 'button') as HTMLButtonElement;
       button.type = 'button'; button.textContent = label; button.title = label;
-      button.style.cssText = 'font:inherit;white-space:normal;max-width:100%;min-height:2em;border:1px solid color-mix(in srgb, currentColor 25%, transparent);border-radius:4px;padding:0.3em 0.6em;background:ButtonFace;color:ButtonText;';
+      button.style.cssText = 'font:inherit;box-sizing:border-box;min-width:0;white-space:normal;overflow-wrap:anywhere;max-width:100%;height:auto;min-height:2em;border:1px solid color-mix(in srgb, currentColor 25%, transparent);border-radius:4px;padding:0.3em 0.6em;background:ButtonFace;color:ButtonText;';
       button.disabled = this.changing.has(parent.id) || parent.isEditable?.() === false || Boolean(this.store.getData(parent).availability);
       button.addEventListener('click', async () => {
         if (button.disabled || !isCurrent()) return;

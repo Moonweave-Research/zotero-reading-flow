@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.10 - 2026-10-26
+
+### Fixed
+
+- Isolate the Reading Flow section from the shared item pane’s intrinsic width calculation so its content cannot widen neighboring sections.
+- Keep long PDF filenames within the panel and wrap bookmark/resume buttons without clipping enlarged text.
+
+### Verification
+
+- Add Gecko layout regression checks for four record states, three panel widths, two font sizes, collapsed/expanded details, and PDF-toolbar save/Undo.
+- These checks exercise production rendering in a synthetic host. The Windows Zotero 10.0.6 report in issue #39 has not been verified on a Windows desktop; confirmation from the reporter is requested. No metadata format or preference changes are included.
+
 ## 1.3.9 - 2026-10-25
 
 ### Added
