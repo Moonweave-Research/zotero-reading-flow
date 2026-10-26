@@ -1,6 +1,6 @@
 # Screenshot provenance
 
-All 32 raster images in this directory and `workflows/` were refreshed from actual **English Zotero 10.0.6 for macOS running released Reading Flow 1.3.10**. Captures use an isolated QA app, profile, and data folder containing six synthetic papers and two generated ten-page PDFs. No personal library records are shown or modified. The released XPI SHA-256 is `910518b0139ed474f3edbe9b7b9cd0c7aa501cf7062c5ed2f94b4fd1495db971`.
+The original set of 32 raster images in this directory and `workflows/` was refreshed from actual **English Zotero 10.0.6 for macOS running released Reading Flow 1.3.10**. Captures use an isolated QA app, profile, and data folder containing six synthetic papers and two generated ten-page PDFs. No personal library records are shown or modified. The released XPI SHA-256 is `910518b0139ed474f3edbe9b7b9cd0c7aa501cf7062c5ed2f94b4fd1495db971`.
 
 These are native application captures, not generated UI mockups. Full views preserve the captured JPEG pixels; PNG details are rectangular crops, with no controls redrawn or text relabeled. The library overview and panel examples are also crops. Source observation names and crop coordinates below refer to the original captures; coordinates are top-left `x, y, width, height` in pixels. Full workflow views remain linked from the visual guide.
 
@@ -59,3 +59,20 @@ The images show separate moments in these workflows, not one simultaneous state.
 `detail-reading-icons.svg` is an explicitly labeled icon-key illustration, verified against `src/columnManager.ts`, rather than a screenshot. It explains the Unicode book symbols used by the combined column; emoji artwork depends on the viewer's operating system. `icon.svg` is the project icon.
 
 For future captures, use non-sensitive sample items, preserve the original pixels, and update captions when the UI changes. Never publish personal paper titles, notes, paths, or library metadata. Superseded captures remain available in Git history.
+
+## First-use follow-up — October 26
+
+New native English 1.3.10 captures add the column chooser, an automatic-only position, and a newly created item’s immediate status/Important update. The temporary bookmark removal used only the synthetic QA record and was undone afterward. The new item remained selected throughout its status and Important changes; there was no library restart. The app window’s original size was restored after a capture-transport recovery probe. No personal Zotero data or preferences were changed.
+
+| Published file | Source | Crop (`x, y, width, height`) |
+| --- | --- | --- |
+| workflows/column-chooser.jpg | New native column chooser | Full |
+| workflows/column-chooser-detail.png | column-chooser.jpg | 1305, 755, 445, 215 |
+| workflows/automatic-only.jpg | New native panel without a bookmark | Full |
+| workflows/automatic-only-detail.png | automatic-only.jpg | 1788, 935, 625, 445 |
+| workflows/new-item-reading-important.jpg | New native selected-item result | Full |
+| workflows/new-item-status-detail.png | new-item-reading-important.jpg | 420, 665, 1350, 80 |
+| workflows/settings-controls-detail.png | reading-flow-settings.jpg | 405, 725, 860, 180 |
+| workflows/statistics-position-detail.png | reading-bookmarks-statistics.jpg | 730, 1040, 920, 155 |
+
+The last two details crop the already verified 1.3.10 settings and statistics captures; they are not separate runtime sessions. Full views remain linked while the README shows controls and current position values at readable sizes.

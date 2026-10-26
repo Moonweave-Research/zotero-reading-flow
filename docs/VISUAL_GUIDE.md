@@ -4,6 +4,14 @@
 
 These English Zotero 10.0.6 captures use Reading Flow 1.3.10 and synthetic papers in an isolated QA profile. Detail views crop the real captures; full-window images are linked where useful.
 
+## Without a reading bookmark
+
+With a saved automatic position and no reading bookmark, the panel offers **Continue from last viewed**. In this example it opens page 8 of Sample paper.pdf. A brief page visit can move that automatic position; use the PDF reader’s **Bookmark here** when you want to keep a deliberate return point.
+
+<img src="assets/workflows/automatic-only-detail.png" alt="Actual panel with No reading bookmark, automatic page 8 of 10, and Continue from last viewed page 8" width="625">
+
+*This capture follows Remove bookmark, so session-scoped Undo is also available. A paper that has never had a bookmark uses the same last-viewed action without that Undo control. Without any saved position, the action becomes Open PDF. [Full automatic-only view](assets/workflows/automatic-only.jpg).*
+
 ## Change several papers together
 
 Select papers in Zotero's library, right-click, and open **Reading Flow**. Choose **Mark as To Read**, **Mark as Reading**, **Mark as Skimmed**, or **Mark as Read**. **Mark as Important** and **Clear Important** change the independent flag.
@@ -91,3 +99,11 @@ If the bookmarked file is unavailable, its page is not silently applied to a dif
 *The saved page remains visible, but **The bookmarked PDF file is unavailable on this device** replaces the bookmark-opening action. The separate automatic position can still be opened. This QA file was restored after the capture. [Full unavailable-file view](assets/workflows/missing-bookmarked-pdf.jpg).*
 
 [Back to the README](../README.md) · [Troubleshooting](TROUBLESHOOTING.md) · [Capture provenance](assets/README.md)
+
+## New items update in place
+
+In an isolated English Zotero 10.0.6 library running released Reading Flow 1.3.10, a newly created paper changed from Unassigned to To Read, then Reading, without restarting or selecting another item. Toggling Important also updated its selected row. The panel recorded Reading started but left PDF activity and positions unrecorded because the sample has no PDF.
+
+<img src="assets/workflows/new-item-status-detail.png" alt="Actual newly created Start a new paper row showing Reading and the independent Important star, with no PDF activity" width="900">
+
+[Full new-item result](assets/workflows/new-item-reading-important.jpg). This is a bounded macOS observation, not a claim about every import, sync, or platform scenario.
