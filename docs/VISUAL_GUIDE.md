@@ -2,7 +2,7 @@
 
 [Back to the main reading workflow](../README.md#a-simple-reading-workflow)
 
-These English Zotero 10.0.6 captures use Reading Flow 1.3.9 and synthetic papers in an isolated QA profile. Detail views crop the real captures; full-window images are linked where useful.
+These English Zotero 10.0.6 captures use Reading Flow 1.3.10 and synthetic papers in an isolated QA profile. Detail views crop the real captures; full-window images are linked where useful.
 
 ## Change several papers together
 
@@ -28,7 +28,7 @@ First enable the optional combined **Reading Flow** column with Zotero's native 
 
 ![Actual Icons column detail for the same sample papers, showing books and an independent Important star](assets/workflows/density-icons-detail.png)
 
-*These are the same papers, with the same saved data. Only the combined column's presentation changed. The separate Status column stays visible in both examples. [Full Compact view](assets/workflows/density-compact.jpg) · [Full Icons view](assets/workflows/density-icons.jpg).*
+*These are the same papers, with the same saved data; the selected row differs. Only the combined column's presentation changed. The separate Status column stays visible in both examples. [Full Compact view](assets/workflows/density-compact.jpg) · [Full Icons view](assets/workflows/density-icons.jpg).*
 
 ## Undo a bookmark change
 
@@ -70,9 +70,9 @@ Expand **Filter items** to choose **Reading Flow items** or **All items (invento
 
 *These filters leave one matching paper in this sample. [Full filtered dashboard](assets/workflows/statistics-filters.jpg).*
 
-![Actual selected activity day showing one paper at recorded page 8, current Reading automatic with Important, and a distinct action to return to bookmark page 4](assets/workflows/statistics-day-detail.png)
+![Actual selected activity day showing Recorded location Unknown, current Reading automatic with Important, and a distinct bookmark page 4 action](assets/workflows/statistics-day-detail.png)
 
-*The date detail shows a recorded location for that day, alongside the paper's current status. Its bookmark action returns to the page you deliberately saved. [Full selected-day dashboard](assets/workflows/statistics-day.jpg).*
+*This paper has activity in two PDFs on the selected day, so **Recorded location** is **Unknown**: the daily record cannot identify a single position. The current status and bookmark action remain separate; the latter returns to the deliberately saved page 4. [Full selected-day dashboard](assets/workflows/statistics-day.jpg).*
 
 **Show in Zotero** selects a paper in the library. The PDF action opens its displayed bookmark or automatic location. **Marked Read** counts your manual Read choices. Status changes alone do not count as PDF activity.
 
