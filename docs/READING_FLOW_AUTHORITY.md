@@ -1,8 +1,8 @@
 # Product contract
 
-Current published release: **1.3.10** (October 26, 2026). Explicit reading-start timestamps shipped in 1.3.9; 1.3.10 isolates sidebar width and wraps controls. The [Windows issue #39 reporter confirmed normal behavior after updating](https://github.com/Moonweave-Research/zotero-reading-flow/issues/39#issuecomment-6405504991); that is user confirmation, not our direct Windows desktop test. Passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. Real device-to-device sync remains unverified.
+Source version: **1.3.11** (November 8, 2026). The [GitHub Releases page](https://github.com/Moonweave-Research/zotero-reading-flow/releases) is the authority for the currently published version. Explicit reading-start timestamps shipped in 1.3.9; 1.3.10 isolates sidebar width and wraps controls. The [Windows issue #39 reporter confirmed normal behavior after updating](https://github.com/Moonweave-Research/zotero-reading-flow/issues/39#issuecomment-6405504991); that is user confirmation, not our direct Windows desktop test. Passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. Real device-to-device sync remains unverified.
 
-The #43 reader-opening fix described below is in source and awaits publication; published 1.3.10 only observes page changes for automatic position tracking.
+The #43 reader-opening fix is included in 1.3.11. Published 1.3.10 only observes page changes for automatic position tracking.
 
 ## Reading meaning
 
