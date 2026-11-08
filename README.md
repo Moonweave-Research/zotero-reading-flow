@@ -218,6 +218,11 @@ Click an active calendar day to see its matching papers. The PDF action identifi
 
 ## Questions
 
+### Why does a paper stay To Read after I open its PDF?
+
+A manual status stays until you change it. In the Reading Flow panel's **Status** menu, choose **Automatic (Reading)** or **Automatic (Unassigned)** to let recorded PDF activity determine the status. The source fix for [#43](https://github.com/Moonweave-Research/zotero-reading-flow/issues/43) also records opening a loaded PDF at the same saved page; this fix is not yet in the published 1.3.10 release. Neither opening nor changing a page marks it Read. Choose **Read** yourself when you finish.
+
+
 ### Does it decide whether I actually read a page?
 
 No. It records navigation and a bookmark you explicitly choose. A short visit counts as an automatic position update; time spent on a page does not prove that you read it. Set **Read** yourself.

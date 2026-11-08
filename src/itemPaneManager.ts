@@ -158,7 +158,7 @@ export class ReadingFlowItemPaneManager {
     select.style.setProperty('max-width', '100%');
     select.style.setProperty('width', '100%');
     const automatic = resolveReadingStatus({ ...data, s: null }).status === 'reading' ? 'Reading' : 'Unassigned';
-    for (const [value, text] of [['', `${automatic} (automatic)`], ['to-read', 'To Read (manual)'], ['reading', 'Reading (manual)'], ['skimmed', 'Skimmed (manual)'], ['read', 'Read (manual)']]) {
+    for (const [value, text] of [['', `Automatic (${automatic})`], ['to-read', 'To Read (manual)'], ['reading', 'Reading (manual)'], ['skimmed', 'Skimmed (manual)'], ['read', 'Read (manual)']]) {
       const option = this.element(props, 'option', text); option.value = value; select.append(option);
     }
     if (problem) { const option = this.element(props, 'option', 'Record unavailable'); option.value = 'unavailable'; select.append(option); }

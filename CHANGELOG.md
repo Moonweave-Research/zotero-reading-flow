@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Record the visible PDF position after the reader finishes loading, including reopening at the same saved page without a page-change event (#43).
+- Keep manual reading stages unchanged and identify the automatic status option as `Automatic (Reading)` or `Automatic (Unassigned)`. Reaching the final page or closing a tab never marks Read.
+
 ## 1.3.10 - 2026-10-26
 
 ### Fixed

@@ -9,6 +9,8 @@ interface PendingReaderSave {
 export class ReaderTracker {
   private dataStore: DataStore;
   private notifierId: string | null = null;
+  private readerOpenListener?: (event: any) => void;
+  private openedReaders = new WeakSet<object>();
   private pendingSaves = new Map<string, PendingReaderSave>();
   private inFlightSaves = new Set<PendingReaderSave>();
   private flushPromise: Promise<void> | null = null;
@@ -24,6 +26,15 @@ export class ReaderTracker {
     this.generation += 1;
     this.active = true;
     this.notifierId = Zotero.Notifier.registerObserver(this, ['file'], 'ReadingFlowTracker');
+    const api = (Zotero as any).Reader;
+    const generation = this.generation;
+    this.openedReaders = new WeakSet<object>();
+    if (api?.registerEventListener) {
+      this.readerOpenListener = ({ reader }: any) => {
+        void this.trackOpenedReader(reader, generation).catch(error => Logger.error('reader-open tracking failed', error));
+      };
+      api.registerEventListener('renderToolbar', this.readerOpenListener, 'readingflow@moon.com');
+    }
     Logger.log('ReaderTracker registered, notifierId=' + this.notifierId);
   }
 
@@ -33,6 +44,10 @@ export class ReaderTracker {
     if (this.notifierId) {
       Zotero.Notifier.unregisterObserver(this.notifierId);
       this.notifierId = null;
+    }
+    if (this.readerOpenListener) {
+      (Zotero as any).Reader?.unregisterEventListener?.('renderToolbar', this.readerOpenListener);
+      this.readerOpenListener = undefined;
     }
     for (const pending of this.pendingSaves.values()) {
       clearTimeout(pending.timeout);
@@ -67,6 +82,15 @@ export class ReaderTracker {
     for (const attachmentId of attachmentIds) {
       this.handlePageChange(attachmentId);
     }
+  }
+
+  private async trackOpenedReader(reader: any, generation: number) {
+    if (!reader || reader._type !== 'pdf' || this.shouldSkipSave(generation) || this.openedReaders.has(reader)) return;
+    this.openedReaders.add(reader);
+    await reader._initPromise;
+    await reader._internalReader?._primaryView?.initializedPromise;
+    if (this.shouldSkipSave(generation) || !(Zotero as any).Reader?._readers?.includes(reader)) return;
+    this.handlePageChange(reader.itemID);
   }
 
   private handlePageChange(attachmentId: number) {
