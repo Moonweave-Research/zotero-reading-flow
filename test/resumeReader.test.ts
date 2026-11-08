@@ -1023,3 +1023,44 @@ test('PR2 async validation rejects selection changes and target deletion while r
   (attachment as any).fileExists = async () => false;
   assert.equal((await reader.getResumeDisplayTarget(parent)).action, 'none');
 });
+
+test('a synced last-viewed position follows the PDF key across local item IDs', async () => {
+  const originalZotero = (globalThis as any).Zotero;
+  const pdf = { ...pdfAttachment(99, 20), key: 'ABCD2345', libraryID: 1 };
+  const otherPDF = { ...pdfAttachment(10, 20), key: 'EFGH6789', libraryID: 1 };
+  const parent = { ...regularItem(20, otherPDF), libraryID: 1 };
+  const data = flowData({
+    lastAttachmentId: 'key:ABCD2345', lastPage: 8,
+    p: { 'key:ABCD2345': 0.8 }, pageCount: { 'key:ABCD2345': 10 }
+  });
+  const opened: unknown[][] = [];
+  let resolvedPDF: typeof pdf | null = pdf;
+  (globalThis as any).Zotero = {
+    Items: {
+      get: (id: number) => id === 20 ? parent : id === 99 ? pdf : id === 10 ? otherPDF : null,
+      getByLibraryAndKey: (libraryID: number, key: string) => libraryID === 1 && key === pdf.key ? resolvedPDF : null
+    },
+    Reader: { open: async (...args: unknown[]) => { opened.push(args); } }
+  };
+  try {
+    const reader = new ResumeReader({ getData: () => data } as any);
+    const target = await reader.getResumeDisplayTarget(parent, 'last-viewed');
+    assert.equal(target.attachmentId, 99);
+    assert.equal(target.lastPage, 8);
+    assert.equal(target.totalPages, 10);
+    assert.equal((await reader.getResumeDisplayTarget(pdf)).lastPage, 8);
+    assert.equal((await reader.getResumeDisplayTarget(otherPDF)).lastPage, null);
+    assert.equal(await reader.executeTarget(target), true);
+    assert.deepEqual(opened, [[99, { pageIndex: 7 }]]);
+
+    resolvedPDF = { ...pdf, parentID: 30 };
+    const fallback = await reader.getResumeDisplayTarget(parent, 'last-viewed');
+    assert.equal(fallback.action, 'open');
+    assert.equal(fallback.attachmentId, 10);
+    assert.equal(fallback.lastPage, null);
+    assert.equal(await reader.executeTarget(target), false);
+    assert.equal(opened.length, 1);
+  } finally {
+    (globalThis as any).Zotero = originalZotero;
+  }
+});

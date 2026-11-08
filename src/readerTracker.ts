@@ -1,5 +1,6 @@
 import { DataStore } from './dataStore';
 import { Logger } from './Logger';
+import { keyedAttachmentReference } from './flowData';
 
 interface PendingReaderSave {
   timeout: ReturnType<typeof setTimeout>;
@@ -137,7 +138,8 @@ export class ReaderTracker {
     const isPdfWithPages = (reader?._type === 'pdf' || item.isPDFAttachment?.()) && pdfNumPages > 0;
     const lastPage = isPdfWithPages ? this.getLastPage(reader, item, pdfNumPages) : null;
     const pageCount = isPdfWithPages ? pdfNumPages : null;
-    this.debounceSave(parentId, String(attachmentId), progress, lastPage, pageCount);
+    const reference = keyedAttachmentReference(item.key) ?? String(attachmentId);
+    this.debounceSave(parentId, reference, progress, lastPage, pageCount);
   }
 
   private debounceSave(

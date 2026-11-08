@@ -211,7 +211,9 @@ export class ReadingFlowItemPaneManager {
       region.textContent = ''; region.replaceChildren();
       const lastTarget = data.bookmark ? await this.reader.getResumeDisplayTarget(this.parent(item), 'last-viewed') : target;
       if (!this.current(state, generation, item)) return;
-      const automaticMissing = data.lastAttachmentId && data.lastPage !== null && String(lastTarget.attachmentId) !== data.lastAttachmentId;
+      const automaticMissing = data.lastAttachmentId && data.lastPage !== null
+        && data.lastAttachmentId !== (data.lastAttachmentId.startsWith('key:')
+          ? lastTarget.attachmentReference : String(lastTarget.attachmentId));
       const differentPDFs = data.bookmark && target.attachmentId !== lastTarget.attachmentId;
       region.append(this.facts(props, [
         ['Reading bookmark', formatReadingBookmark(data).replace('Reading bookmark: ', '')],

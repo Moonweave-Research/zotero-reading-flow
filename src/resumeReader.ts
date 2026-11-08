@@ -1,5 +1,5 @@
 import { DataStore } from './dataStore';
-import { FlowData } from './flowData';
+import { FlowData, keyedAttachmentReference } from './flowData';
 import { Logger } from './Logger';
 
 type ZoteroItem = {
@@ -32,6 +32,7 @@ export type ResumeDisplayTarget = {
   filename?: string;
   canResume: boolean;
   attachmentId?: number;
+  attachmentReference?: string;
   lastPage?: number | null;
   totalPages?: number | null;
   l10nArgs?: string;
@@ -90,6 +91,7 @@ export class ResumeReader {
     const filename = target.attachment.attachmentFilename || target.attachment.getField?.('title') || `PDF ${target.attachment.id}`;
     const fallbackLabel = `${lastPage ? `${usesBookmark ? 'Reading bookmark' : 'Last viewed'}: page ${lastPage}${totalPages ? ` / ${totalPages}` : ''}` : 'Open PDF'} — ${filename}`;
     const l10nArgs = this.getL10nArgs(lastPage, totalPages);
+    const attachmentReference = keyedAttachmentReference(target.attachment.key);
 
     return {
       action: canResume ? 'resume' : 'open',
@@ -101,6 +103,7 @@ export class ResumeReader {
           : `No saved page for ${filename}; Zotero chooses the opening position.`,
       canResume,
       attachmentId: target.attachment.id,
+      ...(attachmentReference ? { attachmentReference } : {}),
       lastPage,
       totalPages,
       l10nArgs,
@@ -118,7 +121,7 @@ export class ResumeReader {
     if (!source || source.deleted) return false;
     const fresh = await this.getResumeDisplayTarget(source, target.positionKind);
     if (!isCurrent() || fresh.action !== target.action || fresh.attachmentId !== target.attachmentId
-      || fresh.lastPage !== target.lastPage) return false;
+      || fresh.attachmentReference !== target.attachmentReference || fresh.lastPage !== target.lastPage) return false;
     const attachment = (globalThis as any).Zotero?.Items?.get?.(target.attachmentId);
     if (!this.isPdfAttachment(attachment) || source.deleted
       || (!source.isPDFAttachment?.() && !this.idsEqual(attachment.parentID, source.id))) return false;
@@ -154,7 +157,7 @@ export class ResumeReader {
   }
 
   private async resolveParentTarget(item: ZoteroItem, data: FlowData): Promise<ResumeTarget | null> {
-    const trackedAttachment = this.getTrackedAttachment(data.lastAttachmentId, item.id);
+    const trackedAttachment = this.getTrackedAttachment(data.lastAttachmentId, item);
     if (trackedAttachment) {
       return {
         attachment: trackedAttachment,
@@ -172,15 +175,23 @@ export class ResumeReader {
     };
   }
 
-  private getTrackedAttachment(lastAttachmentId: string | null, parentId: number): ZoteroItem | null {
-    const id = this.parsePositiveId(lastAttachmentId);
-    if (!id) return null;
-
+  private getTrackedAttachment(reference: string | null, parent: ZoteroItem): ZoteroItem | null {
+    const items = (globalThis as any).Zotero?.Items;
+    const key = reference?.startsWith('key:') ? reference.slice(4) : undefined;
     try {
-      const item = (globalThis as any).Zotero?.Items?.get?.(id);
-      return this.isPdfAttachment(item) && this.idsEqual(item.parentID, parentId) ? item : null;
+      let attachment: ZoteroItem | null;
+      if (key !== undefined) {
+        if (keyedAttachmentReference(key) !== reference || !parent.libraryID) return null;
+        attachment = items?.getByLibraryAndKey?.(parent.libraryID, key) ?? null;
+        if (attachment?.key !== key || attachment.libraryID !== parent.libraryID) return null;
+      } else {
+        const id = this.parsePositiveId(reference);
+        if (!id) return null;
+        attachment = items?.get?.(id) ?? null;
+      }
+      return this.isPdfAttachment(attachment) && this.idsEqual(attachment?.parentID, parent.id) ? attachment : null;
     } catch (error) {
-      Logger.warn(`ResumeReader: failed to resolve tracked attachment ${id}`);
+      Logger.warn(`ResumeReader: failed to resolve tracked attachment ${reference}`);
       return null;
     }
   }
@@ -196,7 +207,11 @@ export class ResumeReader {
       if (!parent?.isRegularItem?.()) return null;
 
       const data = this.dataStore.getData(parent);
-      return this.idsEqual(data.lastAttachmentId, attachment.id) ? data.lastPage : null;
+      const reference = keyedAttachmentReference(attachment.key);
+      const matches = data.lastAttachmentId?.startsWith('key:')
+        ? reference === data.lastAttachmentId && attachment.libraryID === parent.libraryID
+        : this.idsEqual(data.lastAttachmentId, attachment.id);
+      return matches ? data.lastPage : null;
     } catch (error) {
       Logger.warn(`ResumeReader: failed to resolve parent item ${parentID}: ${this.getErrorMessage(error)}`);
       return null;
@@ -207,9 +222,12 @@ export class ResumeReader {
     const attachmentId = this.parsePositiveNumber(attachment.id);
     if (!attachmentId) return null;
 
-    const cachedPageCount = this.normalizePageCount(
-      this.parsePositiveCount(parentData?.pageCount?.[String(attachmentId)])
-    );
+    const reference = parentData?.lastAttachmentId?.startsWith('key:')
+      ? keyedAttachmentReference(attachment.key)
+      : String(attachmentId);
+    const cachedPageCount = reference
+      ? this.normalizePageCount(this.parsePositiveCount(parentData?.pageCount?.[reference]))
+      : null;
     const metadataPageCount = this.normalizePageCount(
       this.readAttachmentPageCountFromMetadata(attachment)
     );
