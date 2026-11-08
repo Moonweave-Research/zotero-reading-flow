@@ -550,6 +550,7 @@ function renderRecentProgress(
   empty.hidden = hasRows;
   summary.textContent = '';
   toggle.hidden = true;
+  toggle.onclick = null;
   if (!hasRows) return;
 
   const total = history.recentProgress.length;
@@ -561,7 +562,7 @@ function renderRecentProgress(
   if (total > RECENT_PROGRESS_INITIAL_LIMIT) {
     toggle.hidden = false;
     toggle.textContent = expanded ? 'Show fewer' : `Show all ${total}`;
-    toggle.addEventListener('click', () => options.onToggleRecentProgress?.());
+    toggle.onclick = () => options.onToggleRecentProgress?.();
   }
 
   for (const entry of displayed) {
