@@ -704,3 +704,24 @@ for (const exit of ['unregister', 'close-reader'] as const) {
     } finally { tracker.unregister(); (globalThis as any).Zotero = originalZotero; }
   });
 }
+
+test('a timer cancelled by shutdown cannot keep the flush pending', async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalServices = (globalThis as any).Services;
+  let run!: () => Promise<void>;
+  const tracker = new ReaderTracker({} as any);
+  (tracker as any).active = true;
+  (globalThis as any).setTimeout = (callback: typeof run) => { run = callback; return 1; };
+  (globalThis as any).Services = { startup: { shuttingDown: false } };
+  try {
+    (tracker as any).debounceSave(20, '10', 0.5, 2, 4);
+    (globalThis as any).Services.startup.shuttingDown = true;
+    await run();
+    // A retained, settled operation would starve the event loop during flush.
+    assert.equal((tracker as any).inFlightSaves.size, 0);
+    await tracker.flushPending();
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    (globalThis as any).Services = originalServices;
+  }
+});

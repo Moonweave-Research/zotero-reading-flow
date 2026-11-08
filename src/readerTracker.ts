@@ -161,11 +161,11 @@ export class ReaderTracker {
       operation = (async () => {
         if (this.pendingSaves.get(key) === save) this.pendingSaves.delete(key);
         this.inFlightSaves.add(save);
-        if (this.shouldSkipSave(generation, allowShutdown)) {
-          Logger.log('save skipped: tracker inactive or Zotero shutting down');
-          return;
-        }
         try {
+          if (this.shouldSkipSave(generation, allowShutdown)) {
+            Logger.log('save skipped: tracker inactive or Zotero shutting down');
+            return;
+          }
           Logger.log('saving progress=' + progress + ' for parent=' + parentId);
           const parentItem = await Zotero.Items.getAsync(parentId);
           if (this.shouldSkipSave(generation, allowShutdown)) {
