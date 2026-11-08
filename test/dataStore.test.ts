@@ -1086,3 +1086,17 @@ test('a new day records its own observed PDF position below an older maximum', a
   assert.equal(flowData.p['10'], 0.8);
   assert.equal(flowData.history?.days[getLocalDayKey(yesterday)].progress['10'], 0.8);
 });
+
+test('a confirmed final page survives the daily statistics round trip', async () => {
+  const store = new DataStore();
+  const item = memoryItem(92);
+  const at = new Date(2026, 6, 29, 12).getTime();
+  await store.recordProgress(item, { attachmentId: '10', pageCount: 10, lastPage: 10, progress: 1, at });
+  await store.recordProgress(item, { attachmentId: '10', pageCount: 10, lastPage: 2, progress: 0.2, at: at + 1000 });
+  const flowData = new DataStore().getData(item);
+  const [detail] = calculateActivityDayDetail([{ id: item.id, flowData }], getLocalDayKey(at));
+  assert.equal(detail.recordedPositionText, 'Page 10 / 10');
+  assert.equal(flowData.lastPage, 2);
+  assert.equal(flowData.s, null);
+  assert.equal(flowData.history?.completedAt, null);
+});

@@ -143,10 +143,7 @@ export class DataStore {
           current.history,
           next,
           input.attachmentId,
-          normalizeComparableProgress(
-            observed,
-            next.pageCount?.[input.attachmentId] ?? input.pageCount
-          ) ?? observed,
+          observed,
           at
         )
       });
@@ -517,7 +514,14 @@ export class DataStore {
 
     day.activity = true;
     day.lastReadAt = at;
-    day.progress[attachmentId] = Math.max(day.progress[attachmentId] ?? 0, progress);
+    const previous = day.progress[attachmentId];
+    const pageCount = next.pageCount?.[attachmentId];
+    const previousFraction = normalizeComparableProgress(previous, pageCount);
+    const observedFraction = normalizeComparableProgress(progress, pageCount);
+    if (previous === undefined || (observedFraction !== null
+      && (previousFraction === null || observedFraction >= previousFraction))) {
+      day.progress[attachmentId] = progress;
+    }
     day.status = inferStatus(next);
     history.activeDaysTotal += wasActive ? 0 : 1;
     history.days[dayKey] = day;
