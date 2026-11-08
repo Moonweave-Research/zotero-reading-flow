@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { ReaderTracker } from '../src/readerTracker';
 import { ColumnManager } from '../src/columnManager';
 import { DataStore } from '../src/dataStore';
+import { resolveReadingStatus } from '../src/flowData';
 
 function deferred<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -643,3 +644,63 @@ test('PDF position column retains full cell width and exposes the saved page wit
   assert.doesNotMatch(cell.title, /Maximum PDF position 98%/);
   assert.doesNotMatch(JSON.stringify(cell), /% read|#4caf50/);
 });
+
+for (const manual of [null, 'to-read', 'reading', 'skimmed', 'read'] as const) {
+  test(`opening a PDF at its saved page records automatic activity while preserving ${manual ?? 'automatic'} status`, async () => {
+    const originalZotero = (globalThis as any).Zotero;
+    let extra = manual ? `Unrelated: preserved\nReadingFlow: ${JSON.stringify({ v: 2, p: {}, s: manual })}` : 'Unrelated: preserved';
+    let saves = 0;
+    const paper = { id: 20, getField: () => extra, setField: (_name: string, value: string) => { extra = value; }, async saveTx() { saves++; } };
+    const pdf = { parentID: 20, isPDFAttachment: () => true, getAttachmentLastPageIndex: () => 0 };
+    const reader = { itemID: 10, _type: 'pdf', _initPromise: Promise.resolve(),
+      _internalReader: { _primaryView: { initializedPromise: Promise.resolve() } },
+      PDFViewerApplication: { pdfDocument: { numPages: 10 }, pdfViewer: { currentPageNumber: 1 } } };
+    let onToolbar: ((event: any) => void) | undefined;
+    const store = new DataStore();
+    const tracker = new ReaderTracker(store);
+    (globalThis as any).Zotero = {
+      Reader: { _readers: [reader], registerEventListener(type: string, listener: any) { if (type === 'renderToolbar') onToolbar = listener; }, unregisterEventListener() {} },
+      Items: { get: () => pdf, getAsync: async () => paper },
+      Notifier: { registerObserver: () => 'tracker', unregisterObserver() {}, trigger() {} },
+      ItemTreeManager: { refreshColumns() {} }
+    };
+    try {
+      tracker.register();
+      assert.equal(typeof onToolbar, 'function', 'reader-open event must be observed without a pageChange');
+      onToolbar!({ reader });
+      onToolbar!({ reader });
+      await waitFor(() => (tracker as any).pendingSaves.size === 1);
+      await tracker.flushPending();
+      const data = store.getData(paper);
+      assert.equal(data.lastPage, 1);
+      assert.equal(data.lastAttachmentId, '10');
+      assert.equal(data.s, manual);
+      assert.equal(resolveReadingStatus(data).status, manual ?? 'reading');
+      assert.equal(saves, 1, 'toolbar rerenders must not record a second opening');
+      assert.equal(data.history?.completedAt, null);
+      assert.equal(extra.startsWith('Unrelated: preserved\n'), true);
+    } finally { tracker.unregister(); (globalThis as any).Zotero = originalZotero; }
+  });
+}
+
+for (const exit of ['unregister', 'close-reader'] as const) {
+  test(`PDF initialization finishing after ${exit} does not create activity`, async () => {
+    const originalZotero = (globalThis as any).Zotero;
+    const ready = deferred();
+    const reader = { itemID: 10, _type: 'pdf', _initPromise: ready.promise };
+    let onToolbar: any;
+    let removed = 0;
+    const api = { _readers: [reader], registerEventListener(_type: string, listener: any) { onToolbar = listener; }, unregisterEventListener() { removed++; } };
+    (globalThis as any).Zotero = { Reader: api, Notifier: { registerObserver: () => 'tracker', unregisterObserver() {} } };
+    const tracker = new ReaderTracker({} as any);
+    try {
+      tracker.register(); onToolbar({ reader });
+      if (exit === 'unregister') tracker.unregister();
+      else api._readers = [];
+      ready.resolve();
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+      assert.equal((tracker as any).pendingSaves.size, 0);
+      if (exit === 'unregister') assert.equal(removed, 1);
+    } finally { tracker.unregister(); (globalThis as any).Zotero = originalZotero; }
+  });
+}

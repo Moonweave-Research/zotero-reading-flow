@@ -2,12 +2,14 @@
 
 Current published release: **1.3.10** (October 26, 2026). Explicit reading-start timestamps shipped in 1.3.9; 1.3.10 isolates sidebar width and wraps controls. The [Windows issue #39 reporter confirmed normal behavior after updating](https://github.com/Moonweave-Research/zotero-reading-flow/issues/39#issuecomment-6405504991); that is user confirmation, not our direct Windows desktop test. Passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. Real device-to-device sync remains unverified.
 
+The #43 reader-opening fix described below is in source and awaits publication; published 1.3.10 only observes page changes for automatic position tracking.
+
 ## Reading meaning
 
 - A reading bookmark is a deliberate user choice for one PDF attachment and page. Navigation never moves it. Setting, removing, and undoing a bookmark are explicit actions.
 - Last viewed is the most recently displayed PDF page, including a brief visit. It can move backward. Historical farthest positions are optional navigation history, never measured reading coverage.
 - Neither reaching the final page nor spending time on a page proves reading or completion. Do not label automatic positions as pages read, reading percentage, or completion.
-- Manual stages are To Read, Reading, Skimmed, and Read. Without a manual stage, a bookmark or recorded PDF activity can derive Reading; otherwise the item is Unassigned.
+- Manual stages are To Read, Reading, Skimmed, and Read. Without a manual stage, a bookmark or recorded PDF activity can derive Reading; otherwise the item is Unassigned. A loaded PDF opening records its visible position even when it matches the previously saved page. Manual stages remain unchanged; reaching the end or closing a tab never marks Read.
 - Important is independent of the stage. Clearing either preserves the other. Legacy Important does not recover a lost earlier manual stage.
 
 ## Surfaces and actions

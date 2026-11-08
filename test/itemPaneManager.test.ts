@@ -247,7 +247,7 @@ test('compact pane shows the explicit start date separately from PDF activity an
     pageCount: { '2': 10 }, p: { '2': 0.9 }, lastReadAt: at }));
   await f.view();
   const select = f.body.querySelectorAll('select')[0];
-  assert.equal(select.children.find(e => e.value === '')!.textContent, 'Reading (automatic)');
+  assert.equal(select.children.find(e => e.value === '')!.textContent, 'Automatic (Reading)');
   assert.equal(select.children.find(e => e.value === 'read')!.textContent, 'Read (manual)');
   const visible = f.body.children.filter(e => e.tag !== 'details').map(e => e.text()).join(' ');
   assert.match(visible, /Reading started.*2026-10-23 14:11/);

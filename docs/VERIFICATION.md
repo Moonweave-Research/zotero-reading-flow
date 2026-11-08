@@ -32,3 +32,11 @@ An October 25 capture session had observed stale blank rows for newly created it
 Check local links and heading anchors, screenshot identity/aspect ratio, current UI terms, English maintained text, and absence of personal information. Render the README on GitHub and inspect images at their displayed size. A passing source test cannot substitute for this review.
 
 One-off implementation reports and superseded proposals were removed from the current tree during the October25 documentation cleanup. Their original evidence remains in Git history before this change; use historical records as evidence of that revision, not as current operating instructions.
+
+## Issue #43 — same-page opening (source fix, not yet released)
+
+In a disposable Zotero 10.0.8 profile on macOS, the current DataStore and ReaderTracker modules were loaded into a plugin-equivalent sandbox and connected to the real Reader API, using a synthetic ten-page PDF. No personal library or settings were used.
+
+Before the fix, opening at the attachment’s saved page left the record empty and the status Unassigned after the normal save delay. Navigating to the next page emitted pageChange and recorded automatic Reading: this was the positive control. After the fix, the loaded opening recorded page 1 without navigation. Manual To Read and Read remained unchanged after opening and navigating; completion was not inferred.
+
+This observes the native Reader lifecycle with the source modules, not full installed-XPI UI acceptance or the reporter’s unspecified environment. The issue’s requested automatic Read-on-close behavior is not implemented. The reporter’s exact conditions and Windows behavior remain unverified. Unit coverage also checks repeated toolbar rendering, all manual stages, closure during initialization, and unregister during initialization.
