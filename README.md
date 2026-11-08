@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
+> Current release: **1.3.11**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read, and Unassigned with Important states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
@@ -220,7 +220,7 @@ Click an active calendar day to see its matching papers. The PDF action identifi
 
 ### Why does a paper stay To Read after I open its PDF?
 
-A manual status stays until you change it. In the Reading Flow panel's **Status** menu, choose **Automatic (Reading)** or **Automatic (Unassigned)** to let recorded PDF activity determine the status. The source fix for [#43](https://github.com/Moonweave-Research/zotero-reading-flow/issues/43) also records opening a loaded PDF at the same saved page; this fix is not yet in the published 1.3.10 release. Neither opening nor changing a page marks it Read. Choose **Read** yourself when you finish.
+A manual status stays until you change it. In the Reading Flow panel's **Status** menu, choose **Automatic (Reading)** or **Automatic (Unassigned)** to let recorded PDF activity determine the status. Reading Flow 1.3.11 also records opening a loaded PDF at the same saved page ([#43](https://github.com/Moonweave-Research/zotero-reading-flow/issues/43)). Neither opening nor changing a page marks it Read. Choose **Read** yourself when you finish.
 
 
 ### Does it decide whether I actually read a page?
