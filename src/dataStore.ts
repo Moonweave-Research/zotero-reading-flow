@@ -144,9 +144,9 @@ export class DataStore {
           next,
           input.attachmentId,
           normalizeComparableProgress(
-            nextProgress,
+            observed,
             next.pageCount?.[input.attachmentId] ?? input.pageCount
-          ) ?? nextProgress,
+          ) ?? observed,
           at
         )
       });
