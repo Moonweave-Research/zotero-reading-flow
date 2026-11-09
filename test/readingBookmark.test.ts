@@ -188,3 +188,35 @@ test('bookmark changes and Undo refresh the visible list after persistence, not 
   await manager.undoChange(f.parent); assert.equal(listPage, 12);
   assert.equal(refreshes, 3);
 });
+
+test('bookmark save and Undo report success even if another toolbar cannot refresh', async () => {
+  const f = readerFixture();
+  const manager = new ReadingBookmarkManager(f.store);
+  const staleToolbar = manager.controls(doc, f.parent, f.live) as unknown as Node;
+  const toolbar = manager.controls(doc, f.parent, f.live) as unknown as Node;
+  const status = () => toolbar.querySelectorAll('span').find(node => node.attributes.role === 'status')?.textContent;
+  staleToolbar.replaceChildren = () => { throw new Error('another reader toolbar is no longer available'); };
+
+  await toolbar.querySelectorAll('button')[0].listeners.click();
+  assert.equal(new DataStore().getData(f.parent).bookmark?.page, 12);
+  assert.equal(status(), 'Saved.');
+  const undo = toolbar.querySelectorAll('button').find(button => button.textContent === 'Undo');
+  assert.ok(undo);
+  await undo.listeners.click();
+  assert.equal(new DataStore().getData(f.parent).bookmark, undefined);
+  assert.equal(status(), 'Saved.');
+});
+
+test('a rejected bookmark write reports failure and preserves the previous bookmark', async () => {
+  const f = readerFixture();
+  await f.store.setReadingBookmark(f.parent, mark);
+  const manager = new ReadingBookmarkManager(f.store);
+  const toolbar = manager.controls(doc, f.parent, f.live) as unknown as Node;
+  f.move(18);
+  f.parent.saveTx = async () => { throw new Error('disk'); };
+
+  await toolbar.querySelectorAll('button')[0].listeners.click();
+  assert.deepEqual(new DataStore().getData(f.parent).bookmark, mark);
+  assert.equal(toolbar.querySelectorAll('span').find(node => node.attributes.role === 'status')?.textContent,
+    'Could not save the reading bookmark.');
+});
