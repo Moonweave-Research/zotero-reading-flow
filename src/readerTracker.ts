@@ -1,5 +1,6 @@
 import { DataStore } from './dataStore';
 import { Logger } from './Logger';
+import { keyedAttachmentReference } from './flowData';
 
 interface PendingReaderSave {
   timeout: ReturnType<typeof setTimeout>;
@@ -137,7 +138,8 @@ export class ReaderTracker {
     const isPdfWithPages = (reader?._type === 'pdf' || item.isPDFAttachment?.()) && pdfNumPages > 0;
     const lastPage = isPdfWithPages ? this.getLastPage(reader, item, pdfNumPages) : null;
     const pageCount = isPdfWithPages ? pdfNumPages : null;
-    this.debounceSave(parentId, String(attachmentId), progress, lastPage, pageCount);
+    const reference = keyedAttachmentReference(item.key) ?? String(attachmentId);
+    this.debounceSave(parentId, reference, progress, lastPage, pageCount);
   }
 
   private debounceSave(
@@ -161,11 +163,11 @@ export class ReaderTracker {
       operation = (async () => {
         if (this.pendingSaves.get(key) === save) this.pendingSaves.delete(key);
         this.inFlightSaves.add(save);
-        if (this.shouldSkipSave(generation, allowShutdown)) {
-          Logger.log('save skipped: tracker inactive or Zotero shutting down');
-          return;
-        }
         try {
+          if (this.shouldSkipSave(generation, allowShutdown)) {
+            Logger.log('save skipped: tracker inactive or Zotero shutting down');
+            return;
+          }
           Logger.log('saving progress=' + progress + ' for parent=' + parentId);
           const parentItem = await Zotero.Items.getAsync(parentId);
           if (this.shouldSkipSave(generation, allowShutdown)) {

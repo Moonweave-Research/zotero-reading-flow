@@ -651,7 +651,7 @@ for (const manual of [null, 'to-read', 'reading', 'skimmed', 'read'] as const) {
     let extra = manual ? `Unrelated: preserved\nReadingFlow: ${JSON.stringify({ v: 2, p: {}, s: manual })}` : 'Unrelated: preserved';
     let saves = 0;
     const paper = { id: 20, getField: () => extra, setField: (_name: string, value: string) => { extra = value; }, async saveTx() { saves++; } };
-    const pdf = { parentID: 20, isPDFAttachment: () => true, getAttachmentLastPageIndex: () => 0 };
+    const pdf = { key: 'ABCD2345', parentID: 20, isPDFAttachment: () => true, getAttachmentLastPageIndex: () => 0 };
     const reader = { itemID: 10, _type: 'pdf', _initPromise: Promise.resolve(),
       _internalReader: { _primaryView: { initializedPromise: Promise.resolve() } },
       PDFViewerApplication: { pdfDocument: { numPages: 10 }, pdfViewer: { currentPageNumber: 1 } } };
@@ -673,7 +673,7 @@ for (const manual of [null, 'to-read', 'reading', 'skimmed', 'read'] as const) {
       await tracker.flushPending();
       const data = store.getData(paper);
       assert.equal(data.lastPage, 1);
-      assert.equal(data.lastAttachmentId, '10');
+      assert.equal(data.lastAttachmentId, 'key:ABCD2345');
       assert.equal(data.s, manual);
       assert.equal(resolveReadingStatus(data).status, manual ?? 'reading');
       assert.equal(saves, 1, 'toolbar rerenders must not record a second opening');
@@ -704,3 +704,24 @@ for (const exit of ['unregister', 'close-reader'] as const) {
     } finally { tracker.unregister(); (globalThis as any).Zotero = originalZotero; }
   });
 }
+
+test('a timer cancelled by shutdown cannot keep the flush pending', async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalServices = (globalThis as any).Services;
+  let run!: () => Promise<void>;
+  const tracker = new ReaderTracker({} as any);
+  (tracker as any).active = true;
+  (globalThis as any).setTimeout = (callback: typeof run) => { run = callback; return 1; };
+  (globalThis as any).Services = { startup: { shuttingDown: false } };
+  try {
+    (tracker as any).debounceSave(20, '10', 0.5, 2, 4);
+    (globalThis as any).Services.startup.shuttingDown = true;
+    await run();
+    // A retained, settled operation would starve the event loop during flush.
+    assert.equal((tracker as any).inFlightSaves.size, 0);
+    await tracker.flushPending();
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    (globalThis as any).Services = originalServices;
+  }
+});

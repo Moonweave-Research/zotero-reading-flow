@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.12 - 2026-11-09
+
+- Finish draining PDF writes when a timer is cancelled during shutdown.
+- Keep the statistics list’s expand and collapse control responsive after rerenders.
+- Record only positions observed that day and keep confirmed final pages readable in the calendar.
+- Resolve newly saved automatic positions by Zotero attachment key. Existing local-ID records remain readable without a bulk migration.
+
 ## 1.3.11 - 2026-11-08
 
 - Record the visible PDF position after the reader finishes loading, including reopening at the same saved page without a page-change event (#43).

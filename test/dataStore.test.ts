@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { calculateActivityDayDetail } from '../src/statistics';
 import { DataStore } from '../src/dataStore';
 import { FLOW_PREFIX, getLocalDayKey } from '../src/flowData';
 
@@ -481,7 +482,7 @@ test('recordProgress advances legacy page progress when a page count makes the n
   assert.equal(saved.history.days[getLocalDayKey(at)].progress['10'], 0.6);
 });
 
-test('recordProgress keeps a legacy page value when the new observation is behind it but normalizes history', async () => {
+test('recordProgress keeps a legacy lifetime maximum while recording the current observation in history', async () => {
   const item = memoryItem(42, `${FLOW_PREFIX}${JSON.stringify({
     v: 1,
     p: { '10': 5 },
@@ -500,7 +501,7 @@ test('recordProgress keeps a legacy page value when the new observation is behin
 
   const saved = readFlowLine(item.getExtra());
   assert.equal(saved.p['10'], 5);
-  assert.equal(saved.history.days[getLocalDayKey(at)].progress['10'], 0.5);
+  assert.equal(saved.history.days[getLocalDayKey(at)].progress['10'], 0.4);
 });
 
 test('setStatus records a manual label without inventing completion or activity', async () => {
@@ -1070,4 +1071,32 @@ test('PR2 reset preserves genuine activity timestamp and manual status; status c
     assert.deepEqual(after.history!.days[day].progress, rollup.progress);
     assert.equal(after.history!.days[day].lastReadAt, rollup.lastReadAt);
   }
+});
+
+test('a new day records its own observed PDF position below an older maximum', async () => {
+  const store = new DataStore();
+  const item = memoryItem(91);
+  const yesterday = new Date(2026, 6, 28, 12).getTime();
+  const today = new Date(2026, 6, 29, 12).getTime();
+  await store.recordProgress(item, { attachmentId: '10', pageCount: 10, lastPage: 8, progress: 0.8, at: yesterday });
+  await store.recordProgress(item, { attachmentId: '10', pageCount: 10, lastPage: 1, progress: 0.1, at: today });
+  const flowData = store.getData(item);
+  const [detail] = calculateActivityDayDetail([{ id: item.id, flowData }], getLocalDayKey(today));
+  assert.equal(detail.recordedPositionText, 'Page 1 / 10');
+  assert.equal(flowData.p['10'], 0.8);
+  assert.equal(flowData.history?.days[getLocalDayKey(yesterday)].progress['10'], 0.8);
+});
+
+test('a confirmed final page survives the daily statistics round trip', async () => {
+  const store = new DataStore();
+  const item = memoryItem(92);
+  const at = new Date(2026, 6, 29, 12).getTime();
+  await store.recordProgress(item, { attachmentId: '10', pageCount: 10, lastPage: 10, progress: 1, at });
+  await store.recordProgress(item, { attachmentId: '10', pageCount: 10, lastPage: 2, progress: 0.2, at: at + 1000 });
+  const flowData = new DataStore().getData(item);
+  const [detail] = calculateActivityDayDetail([{ id: item.id, flowData }], getLocalDayKey(at));
+  assert.equal(detail.recordedPositionText, 'Page 10 / 10');
+  assert.equal(flowData.lastPage, 2);
+  assert.equal(flowData.s, null);
+  assert.equal(flowData.history?.completedAt, null);
 });

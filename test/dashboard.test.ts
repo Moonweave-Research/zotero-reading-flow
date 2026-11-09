@@ -35,6 +35,11 @@ class FakeElement {
     this.listeners[type].push(listener);
   }
 
+  click() {
+    for (const listener of [...(this.listeners.click ?? [])]) listener();
+    return this.onclick?.();
+  }
+
   replaceChildren(...children: FakeElement[]) {
     this.children = children;
   }
@@ -302,25 +307,32 @@ test('Recent Progress makes its displayed subset explicit, can expand, and retur
     resetCount: 0
   }));
   const selected: Array<[number | string, string]> = [];
-  const render = (expanded: boolean) => renderDashboard(doc as any, snapshot({
+  let expanded = false;
+  const render = () => renderDashboard(doc as any, snapshot({
     history: history({ recentProgress })
   }), 'all', 0, 'tracked', {
     recentProgressExpanded: expanded,
-    onToggleRecentProgress: () => render(true),
+    onToggleRecentProgress: () => { expanded = !expanded; render(); },
     onFocusItem: (id, title) => selected.push([id, title])
   });
 
-  render(false);
+  render();
   assert.equal(doc.getElementById('dashboard-recent-progress-body')?.children.length, 8);
   assert.equal(doc.getElementById('dashboard-recent-progress-summary')?.textContent, 'Showing 8 of 9 items with PDF activity in this period.');
   assert.equal(doc.getElementById('dashboard-recent-progress-toggle')?.textContent, 'Show all 9');
-  doc.getElementById('dashboard-recent-progress-toggle')!.listeners.click[0]();
+  doc.getElementById('dashboard-recent-progress-toggle')!.click();
   assert.equal(doc.getElementById('dashboard-recent-progress-body')?.children.length, 9);
   assert.equal(doc.getElementById('dashboard-recent-progress-toggle')?.textContent, 'Show fewer');
 
   const focus = doc.getElementById('dashboard-recent-progress-body')?.children[0]?.children[0]?.children[1]?.children[0];
   focus?.listeners.click[0]();
   assert.deepEqual(selected, [[1, 'Paper 1']]);
+
+  doc.getElementById('dashboard-recent-progress-toggle')!.click();
+  assert.equal(doc.getElementById('dashboard-recent-progress-body')?.children.length, 8);
+  render();
+  doc.getElementById('dashboard-recent-progress-toggle')!.click();
+  assert.equal(doc.getElementById('dashboard-recent-progress-body')?.children.length, 9);
 });
 
 test('Resume invokes its row bridge exactly once only after direct activation', async () => {

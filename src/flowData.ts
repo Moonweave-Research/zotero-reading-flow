@@ -40,6 +40,11 @@ export interface ReadingBookmark {
   at: number;
 }
 
+// A prefix keeps a Zotero key distinct from legacy local numeric IDs.
+export function keyedAttachmentReference(key: unknown): string | undefined {
+  if (typeof key === 'string' && /^[A-Z0-9]{8}$/.test(key)) return `key:${key}`;
+}
+
 export function isReadingBookmark(value: any): value is ReadingBookmark {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value)
     && typeof value.attachmentKey === 'string' && /^[A-Z0-9]{8}$/.test(value.attachmentKey)
