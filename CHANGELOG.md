@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.13 - 2026-11-09
+
+- Keep bookmark save and Undo feedback accurate if another PDF toolbar fails to refresh. A rejected write still reports failure.
+
 ## 1.3.12 - 2026-11-09
 
 - Finish draining PDF writes when a timer is cancelled during shutdown.
