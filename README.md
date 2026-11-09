@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> Current release: **1.3.11**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
+> Current release: **1.3.12**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read, and Unassigned with Important states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
@@ -233,7 +233,7 @@ PDF files are not modified. Reading Flow keeps its data in one `ReadingFlow:` li
 
 ### Does it sync between devices?
 
-The Extra record follows Zotero's metadata sync. Bookmarks identify attachments by Zotero key, so they do not depend on the same local numeric item ID. The PDF must also be available on the other device.
+The Extra record follows Zotero's metadata sync. Bookmarks and automatic positions saved by 1.3.12 identify the PDF by its Zotero attachment key. Use 1.3.12 or newer on each device for automatic resume, and make sure the PDF is available there. Earlier automatic positions use local IDs and continue to work where the saved ID matches. Opening the PDF records a new position using its key.
 
 Use **1.3.8 or newer** on every device that needs to read or edit bookmark records. **Reading started** records require **1.3.9 or newer** on every device that needs to view or edit them. Version 1.3.8 preserves those newer records but shows them as unsupported, without their details or editing controls. Actual device-to-device delivery has **not yet been verified**; attachment-key resolution, supported-client round trips, and previous-writer refusal have been tested.
 

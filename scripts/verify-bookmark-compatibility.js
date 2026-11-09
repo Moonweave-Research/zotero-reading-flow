@@ -51,5 +51,32 @@ function item(payload) {
   const v5Peer=item(started); await new New().setImportant(v5Peer,true);
   assert.equal(new New().getData(v5Peer).readingStartedAt,2);
   assert.deepEqual(new New().getData(v5Peer).bookmark,started.bookmark);
+  const v1311Dir = path.join(dir, 'v1311');
+  fs.mkdirSync(v1311Dir, { recursive: true });
+  const previousRelease = 'd00031b8f4ce5fbe527d077bea44312250136d51';
+  for (const name of ['dataStore', 'flowData', 'lruCache', 'Logger', 'preferences']) {
+    fs.writeFileSync(path.join(v1311Dir, `${name}.ts`), execFileSync('git', ['show', `${previousRelease}:src/${name}.ts`]));
+  }
+  const previousBundle = path.join(v1311Dir, 'store.cjs');
+  esbuild.buildSync({ entryPoints: [path.join(v1311Dir, 'dataStore.ts')], outfile: previousBundle, bundle: true, platform: 'node' });
+  const Previous = require(previousBundle).DataStore;
+  const ref = 'key:ABCD2345';
+  const updated = item(started);
+  assert.equal(await new New().recordProgress(updated, { attachmentId: ref, progress: 1, lastPage: 10, pageCount: 10, at: Date.now() }), true);
+  const beforeLegacyEdit = new New().getData(updated);
+  assert.equal(await new Previous().setStatus(updated, 'read'), true);
+  const afterLegacyEdit = new New().getData(updated);
+  assert.equal(afterLegacyEdit.lastAttachmentId, ref);
+  assert.equal(afterLegacyEdit.lastPage, 10);
+  assert.equal(afterLegacyEdit.p[ref], 10);
+  assert.equal(afterLegacyEdit.p['9'], started.p['9']);
+  assert.deepEqual(afterLegacyEdit.bookmark, started.bookmark);
+  for (const [key, day] of Object.entries(beforeLegacyEdit.history.days)) {
+    assert.deepEqual(afterLegacyEdit.history.days[key].progress, day.progress);
+    assert.equal(afterLegacyEdit.history.days[key].lastReadAt, day.lastReadAt);
+  }
+  assert.equal(afterLegacyEdit.readingStartedAt, started.readingStartedAt);
+  assert.ok(updated.getField().startsWith('Custom: keep\n'));
+  console.log('Compatibility PASS: released 1.3.11 preserves keyed positions and daily observations during a manual status edit.');
   console.log(`Compatibility PASS: ${refusals} v3-writer refusals for v4; ${v4Refusals} released v1.3.8-writer refusals for v5, all with exact byte retention; v3/v4 positive controls; v5 round trip.`);
 })().catch(e=>{console.error(e);process.exitCode=1;});

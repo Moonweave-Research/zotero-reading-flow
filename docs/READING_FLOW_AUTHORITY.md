@@ -1,6 +1,6 @@
 # Product contract
 
-Source version: **1.3.11** (November 8, 2026). The [GitHub Releases page](https://github.com/Moonweave-Research/zotero-reading-flow/releases) is the authority for the currently published version. Explicit reading-start timestamps shipped in 1.3.9; 1.3.10 isolates sidebar width and wraps controls. The [Windows issue #39 reporter confirmed normal behavior after updating](https://github.com/Moonweave-Research/zotero-reading-flow/issues/39#issuecomment-6405504991); that is user confirmation, not our direct Windows desktop test. Passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. Real device-to-device sync remains unverified.
+Source version: **1.3.12** (November 9, 2026). The [GitHub Releases page](https://github.com/Moonweave-Research/zotero-reading-flow/releases) is the authority for the currently published version. Explicit reading-start timestamps shipped in 1.3.9; 1.3.10 isolates sidebar width and wraps controls. The [Windows issue #39 reporter confirmed normal behavior after updating](https://github.com/Moonweave-Research/zotero-reading-flow/issues/39#issuecomment-6405504991); that is user confirmation, not our direct Windows desktop test. Passing checks, observed Zotero behavior, publication, and real device-to-device sync are separate facts. Real device-to-device sync remains unverified.
 
 The #43 reader-opening fix is included in 1.3.11. Published 1.3.10 only observes page changes for automatic position tracking.
 
@@ -34,7 +34,7 @@ One ReadingFlow: JSON line in the parent item's Extra field holds plugin metadat
 
 The current source writes v5 records when it first records Reading started, supports v4 bookmarks, and reads earlier supported formats. No bulk startup migration or inferred completion dates. Bookmark clients require 1.3.8 or newer; v5 reading-start records require 1.3.9 or a later compatible release. Older writers must refuse unsupported records without changing their bytes. Keep the pinned previous-writer checks and their positive controls. Do not lower schema versions to work around refusal.
 
-Actual delivery between two devices remains unverified. Metadata sync transport belongs to Zotero. Every editing client must support the stored format; do not generalize tested refusal to arbitrary old releases.
+Automatic PDF positions written by 1.3.12 use attachment keys. Legacy numeric references remain readable locally and are not bulk migrated. Actual delivery between two devices remains unverified. Metadata sync transport belongs to Zotero. Every editing client must support the stored format; do not generalize tested refusal to arbitrary old releases.
 
 ## Preferences and scope
 
