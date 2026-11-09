@@ -63,8 +63,12 @@ export class ReadingBookmarkManager {
         try {
           const changed = await action();
           message.textContent = changed ? 'Saved.' : 'Not changed. Open this PDF at the page you want, or refresh the record.';
-        } catch (_) { message.textContent = 'Could not save the reading bookmark.'; }
-        finally { paint(); }
+        } catch (error) {
+          message.textContent = 'Could not save the reading bookmark.';
+          Logger.error('Reading bookmark action failed', error);
+        } finally {
+          this.refreshControl(box, paintIfCurrent);
+        }
       });
       box.append(button); return button;
     };
@@ -81,7 +85,8 @@ export class ReadingBookmarkManager {
       box.append(message);
       if (focused) Array.from(box.querySelectorAll('button')).find(button => button.textContent === focused)?.focus();
     };
-    this.controlsToRefresh.set(box, () => { if (isCurrent()) paint(); });
+    const paintIfCurrent = () => { if (isCurrent()) paint(); };
+    this.controlsToRefresh.set(box, paintIfCurrent);
     paint(); return box;
   }
 
@@ -90,14 +95,20 @@ export class ReadingBookmarkManager {
     try {
       await (Zotero as any).ItemTreeManager?.refreshColumns?.();
       await (Zotero as any).Notifier?.trigger?.('refresh', 'item', [parent.id]);
-    } catch (error) { Logger.warn(`Reading bookmark saved; refresh the item to see its current position: ${String(error)}`); }
+    } catch (error) { Logger.warn(`Could not refresh the reading bookmark display: ${String(error)}`); }
+  }
+
+  private refreshControl(box: HTMLElement, paint: () => void) {
+    try {
+      if (box.isConnected === false) this.controlsToRefresh.delete(box);
+      else paint();
+    } catch (error) {
+      Logger.warn(`Could not refresh a reading bookmark control: ${String(error)}`);
+    }
   }
 
   private refreshControls() {
-    for (const [box, paint] of this.controlsToRefresh) {
-      if (box.isConnected === false) this.controlsToRefresh.delete(box);
-      else paint();
-    }
+    for (const [box, paint] of this.controlsToRefresh) this.refreshControl(box, paint);
   }
 
   private current(parent: any, reader?: any): { pdf: any; position: { page: number; pageCount: number | null } } | null {
