@@ -401,3 +401,43 @@ for (const outcome of ['changed-position', 'failed-open'] as const) {
     f.manager.unregister();
   });
 }
+
+test('same-item native callbacks keep a pending PDF lookup alive without another render callback', async () => {
+  const f = fixture(); let finish!: (pdf: any) => void;
+  f.paper.getBestAttachment = () => new Promise(resolve => { finish = resolve; });
+  const rendering = f.view(); await tick();
+  f.hooks().onItemChange({ ...f.props });
+  finish(f.pdf); await rendering;
+  assert.doesNotMatch(f.body.text(), /Checking PDF availability/);
+  assert.ok(f.body.querySelectorAll('button').find(button => button.textContent === 'Open PDF'));
+  f.manager.unregister();
+});
+
+test('same-item native callbacks leave an already rendered PDF action usable', async () => {
+  const f = fixture(); await f.view();
+  const button = f.body.querySelectorAll('button').find(button => button.textContent === 'Open PDF')!;
+  f.hooks().onItemChange({ ...f.props });
+  await button.listeners.click();
+  assert.equal(f.opens.length, 1);
+  f.manager.unregister();
+});
+
+for (const reuseProps of [false, true]) {
+  test(`a real selection change clears the previous mutation lock with ${reuseProps ? 'reused' : 'fresh'} native props`, async () => {
+    const f = fixture(); const props = { ...f.props };
+    await f.hooks().onRender(props);
+    let finish!: (saved: boolean) => void;
+    f.store.setStatus = () => new Promise<boolean>(resolve => { finish = resolve; });
+    const select = f.body.querySelectorAll('select')[0]; select.value = 'reading'; select.listeners.change();
+    assert.equal(select.disabled, true);
+    const other = { ...f.paper, id: 5, getBestAttachment: async () => null }; f.items.set(5, other);
+    const nextProps = reuseProps ? props : { ...props };
+    nextProps.item = other;
+    f.hooks().onItemChange(nextProps); await f.hooks().onRender(nextProps);
+    assert.equal(f.body.querySelectorAll('select')[0].disabled, false);
+    finish(false); await tick();
+    assert.equal(f.body.querySelector('[data-reading-flow-error]')!.textContent, '');
+    assert.equal(f.counts().saves, 0);
+    f.manager.unregister();
+  });
+}

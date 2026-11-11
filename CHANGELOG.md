@@ -7,7 +7,7 @@
 - Report successful bookmark saves accurately when another observer edits unrelated Extra fields, and retain Undo.
 - Keep the last successful statistics filters and stale warning after a refresh fails.
 - Sort recently viewed PDFs by their last activity time within the selected period.
-- Suppress cancelled PDF-action errors after selecting a different paper.
+- Suppress cancelled PDF-action errors after selecting a different paper, and keep PDF lookup and actions working when reopening Reading Flow on the same paper.
 - Cancel obsolete startup work and drain pending column registration when disabling or re-enabling the plugin.
 
 This update retains the existing metadata format and preferences. Automatic PDF positions and reading bookmarks remain separate; Read is still a manual choice.
