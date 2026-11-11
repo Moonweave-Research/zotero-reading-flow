@@ -357,3 +357,87 @@ test('bookmark and automatic position in different PDFs show independent filenam
   assert.doesNotMatch(f.body.text(), /Last viewed PDF.*replacement.pdf/);
   f.manager.unregister();
 });
+
+for (const outcome of ['changed-selection', 'failed-open'] as const) {
+  test(`last-viewed action does not display ${outcome} errors on a newly selected paper`, async () => {
+    const f = fixture(payload({ v: 5, important: false, bookmark: { attachmentKey: 'ABCD2345', page: 4, pageCount: 10, at: 100 } }));
+    f.reader.getResumeDisplayTarget = async (paper, kind) => ({
+      action: 'resume', sourceId: paper.id, attachmentId: 2,
+      lastPage: kind === 'last-viewed' ? 3 : 4, positionKind: kind,
+      canResume: true, filename: 'chosen.pdf', fallbackLabel: 'Resume', reason: ''
+    });
+    let finish!: (opened: boolean) => void, fail!: (error: Error) => void;
+    f.reader.executeTarget = () => new Promise<boolean>((resolve, reject) => { finish = resolve; fail = reject; });
+    await f.view();
+    const button = f.body.querySelectorAll('button').find(b => b.textContent === 'Open last viewed · page 3')!;
+    const opening = button.listeners.click();
+    const other = { ...f.paper, id: 5 }; f.items.set(5, other);
+    await f.view(other);
+    if (outcome === 'changed-selection') finish(false); else fail(new Error('reader closed'));
+    await opening;
+    assert.equal(f.body.querySelector('[data-reading-flow-error]')!.textContent, '');
+    f.manager.unregister();
+  });
+}
+
+for (const outcome of ['changed-position', 'failed-open'] as const) {
+  test(`last-viewed action still reports ${outcome} for the current paper`, async () => {
+    const f = fixture(payload({ v: 5, important: false, bookmark: { attachmentKey: 'ABCD2345', page: 4, pageCount: 10, at: 100 } }));
+    f.reader.getResumeDisplayTarget = async (paper, kind) => ({
+      action: 'resume', sourceId: paper.id, attachmentId: 2,
+      lastPage: kind === 'last-viewed' ? 3 : 4, positionKind: kind,
+      canResume: true, filename: 'chosen.pdf', fallbackLabel: 'Resume', reason: ''
+    });
+    f.reader.executeTarget = async () => {
+      if (outcome === 'failed-open') throw new Error('reader closed');
+      return false;
+    };
+    await f.view();
+    const button = f.body.querySelectorAll('button').find(b => b.textContent === 'Open last viewed · page 3')!;
+    await button.listeners.click();
+    assert.equal(f.body.querySelector('[data-reading-flow-error]')!.textContent,
+      outcome === 'failed-open' ? 'The PDF could not be opened.' : 'The last viewed position changed. Refresh to try again.');
+    assert.equal(button.disabled, false);
+    f.manager.unregister();
+  });
+}
+
+test('same-item native callbacks keep a pending PDF lookup alive without another render callback', async () => {
+  const f = fixture(); let finish!: (pdf: any) => void;
+  f.paper.getBestAttachment = () => new Promise(resolve => { finish = resolve; });
+  const rendering = f.view(); await tick();
+  f.hooks().onItemChange({ ...f.props });
+  finish(f.pdf); await rendering;
+  assert.doesNotMatch(f.body.text(), /Checking PDF availability/);
+  assert.ok(f.body.querySelectorAll('button').find(button => button.textContent === 'Open PDF'));
+  f.manager.unregister();
+});
+
+test('same-item native callbacks leave an already rendered PDF action usable', async () => {
+  const f = fixture(); await f.view();
+  const button = f.body.querySelectorAll('button').find(button => button.textContent === 'Open PDF')!;
+  f.hooks().onItemChange({ ...f.props });
+  await button.listeners.click();
+  assert.equal(f.opens.length, 1);
+  f.manager.unregister();
+});
+
+for (const reuseProps of [false, true]) {
+  test(`a real selection change clears the previous mutation lock with ${reuseProps ? 'reused' : 'fresh'} native props`, async () => {
+    const f = fixture(); const props = { ...f.props };
+    await f.hooks().onRender(props);
+    let finish!: (saved: boolean) => void;
+    f.store.setStatus = () => new Promise<boolean>(resolve => { finish = resolve; });
+    const select = f.body.querySelectorAll('select')[0]; select.value = 'reading'; select.listeners.change();
+    assert.equal(select.disabled, true);
+    const other = { ...f.paper, id: 5, getBestAttachment: async () => null }; f.items.set(5, other);
+    const nextProps = reuseProps ? props : { ...props };
+    nextProps.item = other;
+    f.hooks().onItemChange(nextProps); await f.hooks().onRender(nextProps);
+    assert.equal(f.body.querySelectorAll('select')[0].disabled, false);
+    finish(false); await tick();
+    assert.equal(f.body.querySelector('[data-reading-flow-error]')!.textContent, '');
+    assert.equal(f.counts().saves, 0);
+    f.manager.unregister();
+  });
+}

@@ -7,7 +7,7 @@ import { Logger } from './Logger';
 export const READING_FLOW_PANE_ID = 'reading-flow-details';
 const HTML = 'http://www.w3.org/1999/xhtml';
 type Props = { body: HTMLElement; doc: Document; item: any; editable: boolean; setEnabled: (enabled: boolean) => void; refresh?: () => void };
-type Instance = { props: Props; generation: number; observer?: any; refresh?: () => void; busy: boolean; mutation?: symbol };
+type Instance = { props: Props; item: any; generation: number; observer?: any; refresh?: () => void; busy: boolean; mutation?: symbol };
 
 /** Earliest surviving activity DATE, never the history container's creation time. */
 export function firstRecordedPDFActivity(data: FlowData): string | null {
@@ -44,7 +44,9 @@ export class ReadingFlowItemPaneManager {
       onInit: (props: Props) => this.init(props),
       onDestroy: (props: Props) => this.destroy(props.body),
       onItemChange: (props: Props) => {
-        const state = this.state(props); state.generation++; state.busy = false; state.mutation = undefined;
+        const previousItem = this.instances.get(props.body)?.item;
+        const state = this.state(props);
+        if (previousItem !== props.item) { state.generation++; state.busy = false; state.mutation = undefined; }
         props.setEnabled(Boolean(this.parent(props.item)));
       },
       onRender: (props: Props) => this.render(props)
@@ -83,8 +85,9 @@ export class ReadingFlowItemPaneManager {
   }
   private state(props: Props): Instance {
     let state = this.instances.get(props.body);
-    if (!state) { state = { props, generation: 0, busy: false }; this.instances.set(props.body, state); }
+    if (!state) { state = { props, item: props.item, generation: 0, busy: false }; this.instances.set(props.body, state); }
     state.props = props;
+    state.item = props.item;
     return state;
   }
   private init(props: Props) {
@@ -247,10 +250,14 @@ export class ReadingFlowItemPaneManager {
           const button = this.element(props, 'button', last.action === 'resume' ? `Open last viewed · page ${last.lastPage}` : 'Open PDF without bookmark');
           button.type = 'button'; button.style.setProperty('font', 'inherit');
           button.addEventListener('click', async () => {
+            if (!this.current(state, generation, item)) return;
             button.disabled = true;
-            try { if (!await this.reader.executeTarget(last, () => this.current(state, generation, item))) this.error(state, 'The last viewed position changed. Refresh to try again.'); }
-            catch (_) { this.error(state, 'The PDF could not be opened.'); }
-            finally { button.disabled = false; }
+            try {
+              const opened = await this.reader.executeTarget(last, () => this.current(state, generation, item));
+              if (!opened && this.current(state, generation, item)) this.error(state, 'The last viewed position changed. Refresh to try again.');
+            }
+            catch (_) { if (this.current(state, generation, item)) this.error(state, 'The PDF could not be opened.'); }
+            finally { if (this.current(state, generation, item)) button.disabled = false; }
           });
           region.append(button);
         }

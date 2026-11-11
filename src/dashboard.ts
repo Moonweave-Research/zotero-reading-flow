@@ -161,6 +161,7 @@ export class DashboardApp {
   private latestSnapshot: StatisticsSnapshot | null = null;
   private latestQuery: DashboardQuery | null = null;
   private lastUpdatedAt: number | null = null;
+  private lastRefreshError: string | null = null;
   private recentProgressExpanded = false;
   private selectedActivityDay: string | null = null;
   private activityDayDetail: ActivityDayDetailResult | null = null;
@@ -244,6 +245,7 @@ export class DashboardApp {
       this.latestSnapshot = snapshot;
       this.latestQuery = query;
       this.lastUpdatedAt = this.now();
+      this.lastRefreshError = null;
       this.clearActivityDayDetail();
       this.renderLatestSnapshot();
       this.setError(null);
@@ -264,6 +266,7 @@ export class DashboardApp {
   }
 
   private renderError(message: string) {
+    this.lastRefreshError = message;
     if (this.latestSnapshot && this.lastUpdatedAt !== null) {
       const queryLabel = this.latestQuery ? formatQueryLabel(this.latestQuery) : 'the previous filters';
       setText(
@@ -285,15 +288,15 @@ export class DashboardApp {
   }
 
   private renderLatestSnapshot() {
-    if (!this.latestSnapshot || this.lastUpdatedAt === null) return;
+    if (!this.latestSnapshot || !this.latestQuery || this.lastUpdatedAt === null) return;
     renderDashboard(
       this.doc,
       this.latestSnapshot,
-      this.statusFilter,
+      this.latestQuery.statusFilter,
       this.lastUpdatedAt,
-      this.dataset,
+      this.latestQuery.dataset,
       {
-        importantOnly: this.latestQuery?.importantOnly,
+        importantOnly: this.latestQuery.importantOnly,
         onResumeItem: this.bridge?.getPDFTarget ? undefined : (id, title) => { void this.resumeItem(id, title); },
         onResumeActivityDayItem: this.bridge?.getPDFTarget ? undefined : (id, title) => { void this.resumeItem(id, title, 'dashboard-activity-day-action-status'); },
         recentProgressExpanded: this.recentProgressExpanded,
@@ -312,6 +315,7 @@ export class DashboardApp {
 
       }
     );
+    if (this.lastRefreshError) this.renderError(this.lastRefreshError);
     if (!this.bridge?.getPDFTarget) return;
     for (const button of Array.from(this.doc.querySelectorAll?.<HTMLButtonElement>('button[data-pdf-item]') ?? [])) {
       const id = button.getAttribute('data-pdf-item')!;

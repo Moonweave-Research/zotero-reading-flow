@@ -220,3 +220,44 @@ test('a rejected bookmark write reports failure and preserves the previous bookm
   assert.equal(toolbar.querySelectorAll('span').find(node => node.attributes.role === 'status')?.textContent,
     'Could not save the reading bookmark.');
 });
+
+for (const selection of ['last-view', 'focus-flag'] as const) {
+  test(`bookmark here follows the active split pane using ${selection}, including focus returning to primary`, async () => {
+    const f = readerFixture(), manager = new ReadingBookmarkManager(f.store);
+    const view = (page: number) => ({ _iframeWindow: { PDFViewerApplication: {
+      pdfViewer: { currentPageNumber: page }, pdfDocument: { numPages: 30 }
+    } } });
+    const internal: any = { _primaryView: view(3), _secondaryView: view(17), _lastViewPrimary: false };
+    if (selection === 'last-view') Object.defineProperty(internal, '_lastView', {
+      get: () => internal._lastViewPrimary ? internal._primaryView : internal._secondaryView
+    });
+    f.live._internalReader = internal;
+    assert.equal(await manager.saveCurrent(f.parent, f.live), true);
+    assert.equal(f.store.getData(f.parent).bookmark?.page, 17);
+    internal._lastViewPrimary = true;
+    assert.equal(await manager.saveCurrent(f.parent, f.live), true);
+    assert.equal(f.store.getData(f.parent).bookmark?.page, 3);
+  });
+}
+
+test('bookmark save and Undo succeed when another writer changes only unrelated Extra text during persistence', async () => {
+  const f = readerFixture(), manager = new ReadingBookmarkManager(f.store);
+  let edit = 0;
+  f.parent.saveTx = async () => {
+    const persisted = f.parent.getField('extra').replace(/^Custom:.*$/m, `Custom: concurrent edit ${++edit}`);
+    f.parent.setField('extra', persisted);
+  };
+  assert.equal(await manager.saveCurrent(f.parent, f.live), true);
+  assert.equal(f.store.getData(f.parent).bookmark?.page, 12);
+  assert.match(f.extra(), /Custom: concurrent edit 1/);
+  assert.equal(await manager.undoChange(f.parent), true);
+  assert.equal(f.store.getData(f.parent).bookmark, undefined);
+  assert.match(f.extra(), /Custom: concurrent edit 2/);
+});
+
+test('an initializing active split never borrows the primary pane or an old opening page for a bookmark', () => {
+  const primaryApp = { pdfViewer: { currentPageNumber: 3 }, pdfDocument: { numPages: 30 } };
+  const reader = { _type: 'pdf', PDFViewerApplication: primaryApp, _state: { pageIndex: 2 },
+    _internalReader: { _lastViewPrimary: false, _primaryView: { _iframeWindow: { PDFViewerApplication: primaryApp } }, _secondaryView: {} } };
+  assert.equal(visiblePDFPosition(reader), null);
+});

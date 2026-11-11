@@ -86,6 +86,7 @@ export interface RecentProgressSnapshot {
   positionChangeText?: string;
   lastActivityAt?: number | null;
   lastProgressDay: string;
+  lastProgressAt?: number | null;
   resetCount: number;
 }
 
@@ -296,7 +297,9 @@ export function calculateHistorySnapshot(
   const recentProgress = papers
     .map((paper) => buildRecentProgressSnapshot(paper, window))
     .filter((entry): entry is RecentProgressSnapshot => entry !== null)
-    .sort((a, b) => b.lastProgressDay.localeCompare(a.lastProgressDay) || a.title.localeCompare(b.title));
+    .sort((a, b) => b.lastProgressDay.localeCompare(a.lastProgressDay)
+      || (b.lastProgressAt ?? 0) - (a.lastProgressAt ?? 0)
+      || a.title.localeCompare(b.title));
 
   return {
     range: selectedRange,
@@ -374,6 +377,9 @@ function buildRecentProgressSnapshot(
   if (progressDays.length === 0) return null;
 
   const latest = progressDays[progressDays.length - 1];
+  const recordedAt = history.days[latest.day].lastReadAt;
+  const lastProgressAt = typeof recordedAt === 'number' && Number.isFinite(recordedAt) && recordedAt > 0
+    ? recordedAt : null;
   const display = getDisplayState(paper.flowData);
   const resetCount = Object.entries(history.days)
     .filter(([day, rollup]) => isInWindow(day, window) && rollup.reset)
@@ -394,6 +400,7 @@ function buildRecentProgressSnapshot(
     ...(positionChange ? { positionChange, positionChangeText: `${formatPDFLocation(positionChange.from, comparisonPageCount)} → ${formatPDFLocation(positionChange.to, comparisonPageCount)}` } : {}),
     lastActivityAt: getLastActivityAt(paper.flowData),
     lastProgressDay: latest.day,
+    lastProgressAt,
     resetCount
   };
 }
