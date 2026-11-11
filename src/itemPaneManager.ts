@@ -247,10 +247,14 @@ export class ReadingFlowItemPaneManager {
           const button = this.element(props, 'button', last.action === 'resume' ? `Open last viewed · page ${last.lastPage}` : 'Open PDF without bookmark');
           button.type = 'button'; button.style.setProperty('font', 'inherit');
           button.addEventListener('click', async () => {
+            if (!this.current(state, generation, item)) return;
             button.disabled = true;
-            try { if (!await this.reader.executeTarget(last, () => this.current(state, generation, item))) this.error(state, 'The last viewed position changed. Refresh to try again.'); }
-            catch (_) { this.error(state, 'The PDF could not be opened.'); }
-            finally { button.disabled = false; }
+            try {
+              const opened = await this.reader.executeTarget(last, () => this.current(state, generation, item));
+              if (!opened && this.current(state, generation, item)) this.error(state, 'The last viewed position changed. Refresh to try again.');
+            }
+            catch (_) { if (this.current(state, generation, item)) this.error(state, 'The PDF could not be opened.'); }
+            finally { if (this.current(state, generation, item)) button.disabled = false; }
           });
           region.append(button);
         }

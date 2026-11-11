@@ -5,6 +5,43 @@ import { ColumnManager } from '../src/columnManager';
 import { DataStore } from '../src/dataStore';
 import { resolveReadingStatus } from '../src/flowData';
 
+for (const tick of [1000, 0]) {
+ test(`shutdown flush keeps the newest PDF observation after A-B-A navigation with ${tick}ms ticks`, async () => {
+  const originalZotero = (globalThis as any).Zotero;
+  const originalNow = Date.now;
+  let extra = '';
+  const parent = { id: 804, getField: () => extra, setField: (_: string, value: string) => { extra = value; }, saveTx: async () => {} };
+  const pdfs = [901, 902].map((id, i) => ({ id, parentID: parent.id, key: ['AAAABBBB', 'CCCCDDDD'][i], isPDFAttachment: () => true }));
+  const readers = pdfs.map((pdf, i) => ({ itemID: pdf.id, _type: 'pdf', PDFViewerApplication: { pdfViewer: { currentPageNumber: [2, 4][i] }, pdfDocument: { numPages: 10 } } }));
+  const store = new DataStore(), tracker = new ReaderTracker(store);
+  (globalThis as any).Zotero = {
+    Items: { get: (id: number) => pdfs.find(pdf => pdf.id === id), getAsync: async () => parent },
+    Reader: { _readers: readers }, ItemTreeManager: { refreshColumns() {} },
+    Notifier: { registerObserver: () => 'qa', unregisterObserver() {}, trigger() {} }
+  };
+  const base = new Date(2026, 10, 11, 12).getTime();
+  let at = base;
+  Date.now = () => at;
+  try {
+    tracker.register();
+    tracker.notify('pageChange', 'file', [901]);
+    at += tick; tracker.notify('pageChange', 'file', [902]);
+    at += tick; readers[0].PDFViewerApplication.pdfViewer.currentPageNumber = 8;
+    tracker.notify('pageChange', 'file', [901]);
+    await tracker.flushPending();
+    const saved = store.getData(parent);
+    assert.equal(saved.lastAttachmentId, 'key:AAAABBBB');
+    assert.equal(saved.lastPage, 8);
+    assert.equal(saved.lastReadAt, at);
+    assert.deepEqual(saved.p, { 'key:AAAABBBB': .8, 'key:CCCCDDDD': .4 });
+    assert.equal(saved.history?.days['2026-11-11'].lastReadAt, at);
+  } finally {
+    tracker.unregister(); Date.now = originalNow; (globalThis as any).Zotero = originalZotero;
+  }
+});
+
+}
+
 function deferred<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
   let reject!: (reason?: unknown) => void;
@@ -724,4 +761,52 @@ test('a timer cancelled by shutdown cannot keep the flush pending', async () => 
     globalThis.setTimeout = originalSetTimeout;
     (globalThis as any).Services = originalServices;
   }
+});
+
+for (const selection of ['last-view', 'focus-flag'] as const) {
+  test(`automatic last viewed follows the active split pane using ${selection}`, async () => {
+    const originalZotero = (globalThis as any).Zotero;
+    let extra = '';
+    const parent = { id: 20, getField: () => extra, setField: (_: string, value: string) => { extra = value; }, saveTx: async () => {} };
+    const pdf = { parentID: 20, key: 'ABCD2345', isPDFAttachment: () => true, getField: () => null, getAttachmentLastPageIndex: () => 2 };
+    const view = (page: number) => ({ _iframeWindow: { PDFViewerApplication: {
+      pdfViewer: { currentPageNumber: page }, pdfDocument: { numPages: 30 }
+    } } });
+    const internal: any = { _primaryView: view(3), _secondaryView: view(17), _lastViewPrimary: false };
+    if (selection === 'last-view') Object.defineProperty(internal, '_lastView', {
+      get: () => internal._lastViewPrimary ? internal._primaryView : internal._secondaryView
+    });
+    const reader = { itemID: 10, _type: 'pdf', _internalReader: internal };
+    (globalThis as any).Zotero = { Reader: { _readers: [reader] },
+      Items: { get: () => pdf, getAsync: async () => parent },
+      Notifier: { registerObserver: () => 'tracker', unregisterObserver() {}, trigger() {} },
+      ItemTreeManager: { refreshColumns() {} } };
+    const store = new DataStore(), tracker = new ReaderTracker(store);
+    try {
+      tracker.register(); tracker.notify('pageChange', 'file', 10); await tracker.flushPending();
+      assert.equal(store.getData(parent).lastPage, 17);
+      internal._lastViewPrimary = true;
+      tracker.notify('pageChange', 'file', 10); await tracker.flushPending();
+      assert.equal(store.getData(parent).lastPage, 3);
+    } finally { tracker.unregister(); (globalThis as any).Zotero = originalZotero; }
+  });
+}
+
+test('an initializing active secondary PDF view cannot save stale primary or synthetic page-one activity', async () => {
+  const originalZotero = (globalThis as any).Zotero;
+  let extra = '', saves = 0;
+  const parent = { id: 20, getField: () => extra, setField: (_: string, value: string) => { extra = value; }, saveTx: async () => { saves++; } };
+  const pdf = { parentID: 20, key: 'ABCD2345', isPDFAttachment: () => true, getField: () => null, getAttachmentLastPageIndex: () => 2 };
+  const reader = { itemID: 10, _type: 'pdf', _state: { pageIndex: 2 }, _internalReader: {
+    _lastViewPrimary: false, _primaryView: { _iframeWindow: { PDFViewerApplication: { pdfViewer: { currentPageNumber: 3 }, pdfDocument: { numPages: 30 } } } },
+    _secondaryView: {}
+  } };
+  (globalThis as any).Zotero = { Reader: { _readers: [reader] }, Items: { get: () => pdf, getAsync: async () => parent },
+    Notifier: { registerObserver: () => 'tracker', unregisterObserver() {}, trigger() {} }, ItemTreeManager: { refreshColumns() {} } };
+  const tracker = new ReaderTracker(new DataStore());
+  try {
+    tracker.register(); tracker.notify('pageChange', 'file', 10); await tracker.flushPending();
+    assert.equal(saves, 0);
+    assert.equal(extra, '');
+  } finally { tracker.unregister(); (globalThis as any).Zotero = originalZotero; }
 });

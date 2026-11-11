@@ -4,6 +4,36 @@ import { calculateActivityDayDetail } from '../src/statistics';
 import { DataStore } from '../src/dataStore';
 import { FLOW_PREFIX, getLocalDayKey } from '../src/flowData';
 
+test('late older observations preserve the newest location while retaining both days', async () => {
+  const item = memoryItem(9901), store = new DataStore();
+  const newer = new Date(2026, 10, 11, 12).getTime();
+  const older = new Date(2026, 10, 10, 12).getTime();
+  await store.setStatus(item, 'to-read', older - 100);
+  await store.recordProgress(item, { attachmentId: 'key:AAAABBBB', progress: .8, lastPage: 8, pageCount: 10, at: newer });
+  await store.recordProgress(item, { attachmentId: 'key:CCCCDDDD', progress: .4, lastPage: 4, pageCount: 10, at: older });
+  const saved = store.getData(item);
+  assert.equal(saved.lastAttachmentId, 'key:AAAABBBB');
+  assert.equal(saved.lastPage, 8);
+  assert.equal(saved.lastReadAt, newer);
+  assert.equal(saved.s, 'to-read');
+  assert.equal(saved.history?.days['2026-11-10'].lastReadAt, older);
+  assert.equal(saved.history?.days['2026-11-11'].lastReadAt, newer);
+  assert.equal(saved.p['key:CCCCDDDD'], .4);
+});
+
+test('saved metadata and removal succeed when an observer changes only unrelated Extra', async () => {
+  for (const remove of [false, true]) {
+    const item = memoryItem(9902, 'Custom: retained'), store = new DataStore();
+    if (remove) await store.initializeStatusIfUnowned(item, 'to-read');
+    item.saveTx = async () => { item.setField('extra', item.getExtra().replace('Custom: retained', 'Custom: newer')); };
+    const saved = remove ? await store.clearManualStatus(item) : await store.setStatus(item, 'reading');
+    assert.equal(saved, true);
+    assert.match(item.getExtra(), /^Custom: newer/);
+    assert.equal(store.getData(item).s, remove ? null : 'reading');
+    assert.equal(store.hasReadingFlowNamespace(item), !remove);
+  }
+});
+
 function memoryItem(id: number, initialExtra = '') {
   let extra = initialExtra;
   let saves = 0;

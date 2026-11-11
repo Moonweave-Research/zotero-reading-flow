@@ -1071,3 +1071,77 @@ test('recent activity uses shared local timestamps and explicitly manual status 
   assert.equal(cells[3].textContent, '2026-10-24 14:11');
   assert.equal(cells[4].textContent, 'Read (manual)');
 });
+
+test('local redraws keep the last successful query and stale warning until refresh succeeds', async () => {
+  const doc = documentFixture();
+  doc.add('dashboard-active-filters');
+  const recentProgress = Array.from({ length: 9 }, (_, index) => ({
+    id: index + 1, title: `Paper ${index + 1}`, status: 'reading' as const,
+    currentProgress: 0.3, delta: null, lastProgressDay: '2026-07-28', resetCount: 0
+  }));
+  const initial = snapshot({ history: history({ recentProgress,
+    days: [{ day: '2026-07-28', activePapers: 9, completedPapers: 0, resetPapers: 0, progressPapers: 9 }]
+  }) });
+  let mode: 'success' | 'failure' | 'pending' = 'success';
+  let resolvePending!: (value: StatisticsSnapshot) => void;
+  const app = new DashboardApp(doc as any, {
+    getSnapshot() {
+      if (mode === 'failure') return Promise.reject(new Error('fixture refresh failure'));
+      if (mode === 'pending') return new Promise<StatisticsSnapshot>(resolve => { resolvePending = resolve; });
+      return Promise.resolve(initial);
+    }
+  }, () => 0);
+  app.start(); await flush();
+
+  doc.getElementById('dashboard-status-filter')!.value = 'read';
+  doc.getElementById('dashboard-dataset')!.value = 'all';
+  doc.getElementById('dashboard-scope')!.value = 'entire-library';
+  doc.getElementById('dashboard-history-range')!.value = '30d';
+  mode = 'failure'; await app.refresh();
+  const assertOriginalSnapshot = () => {
+    assert.equal(doc.getElementById('dashboard-papers')!.textContent, '10');
+    assert.equal(doc.getElementById('dashboard-active-filters')!.textContent, 'Reading Flow items · All statuses');
+    assert.equal(doc.getElementById('dashboard-updated')!.getAttribute('data-stale'), 'true');
+    assert.match(doc.getElementById('dashboard-state')!.textContent, /last successful snapshot/);
+    assert.match(doc.getElementById('dashboard-filter-note')!.textContent, /Current View · Reading Flow items · all statuses · 7 days/);
+    assert.match(doc.getElementById('dashboard-error')!.textContent, /fixture refresh failure/);
+  };
+  assertOriginalSnapshot();
+  doc.getElementById('dashboard-recent-progress-toggle')!.click();
+  assertOriginalSnapshot();
+  doc.getElementById('dashboard-history-calendar')!.children[0].children[0].click();
+  await flush(); assertOriginalSnapshot();
+
+  mode = 'pending';
+  const refresh = app.refresh();
+  doc.getElementById('dashboard-recent-progress-toggle')!.click();
+  assertOriginalSnapshot();
+  assert.equal(doc.documentElement!.getAttribute('aria-busy'), 'true');
+  resolvePending(snapshot({ totalPapers: 2, read: 2 })); await refresh;
+  assert.equal(doc.getElementById('dashboard-papers')!.textContent, '2');
+  assert.equal(doc.getElementById('dashboard-active-filters')!.textContent, 'All items (inventory) · Read');
+  assert.equal(doc.getElementById('dashboard-updated')!.getAttribute('data-stale'), null);
+  assert.equal(doc.getElementById('dashboard-error')!.hidden, true);
+});
+
+test('an older failed refresh cannot mark a newer successful query stale', async () => {
+  const doc = documentFixture(); doc.add('dashboard-active-filters');
+  let rejectOlder!: (reason: Error) => void;
+  let calls = 0;
+  const app = new DashboardApp(doc as any, {
+    getSnapshot() {
+      calls++;
+      if (calls === 2) return new Promise<StatisticsSnapshot>((_, reject) => { rejectOlder = reject; });
+      return Promise.resolve(snapshot({ totalPapers: calls }));
+    }
+  }, () => 0);
+  app.start(); await flush();
+  const older = app.refresh();
+  doc.getElementById('dashboard-status-filter')!.value = 'read';
+  await app.refresh();
+  rejectOlder(new Error('late older failure')); await older;
+  assert.equal(doc.getElementById('dashboard-papers')!.textContent, '3');
+  assert.equal(doc.getElementById('dashboard-active-filters')!.textContent, 'Reading Flow items · Read');
+  assert.equal(doc.getElementById('dashboard-updated')!.getAttribute('data-stale'), null);
+  assert.equal(doc.getElementById('dashboard-error')!.hidden, true);
+});

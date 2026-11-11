@@ -357,3 +357,47 @@ test('bookmark and automatic position in different PDFs show independent filenam
   assert.doesNotMatch(f.body.text(), /Last viewed PDF.*replacement.pdf/);
   f.manager.unregister();
 });
+
+for (const outcome of ['changed-selection', 'failed-open'] as const) {
+  test(`last-viewed action does not display ${outcome} errors on a newly selected paper`, async () => {
+    const f = fixture(payload({ v: 5, important: false, bookmark: { attachmentKey: 'ABCD2345', page: 4, pageCount: 10, at: 100 } }));
+    f.reader.getResumeDisplayTarget = async (paper, kind) => ({
+      action: 'resume', sourceId: paper.id, attachmentId: 2,
+      lastPage: kind === 'last-viewed' ? 3 : 4, positionKind: kind,
+      canResume: true, filename: 'chosen.pdf', fallbackLabel: 'Resume', reason: ''
+    });
+    let finish!: (opened: boolean) => void, fail!: (error: Error) => void;
+    f.reader.executeTarget = () => new Promise<boolean>((resolve, reject) => { finish = resolve; fail = reject; });
+    await f.view();
+    const button = f.body.querySelectorAll('button').find(b => b.textContent === 'Open last viewed · page 3')!;
+    const opening = button.listeners.click();
+    const other = { ...f.paper, id: 5 }; f.items.set(5, other);
+    await f.view(other);
+    if (outcome === 'changed-selection') finish(false); else fail(new Error('reader closed'));
+    await opening;
+    assert.equal(f.body.querySelector('[data-reading-flow-error]')!.textContent, '');
+    f.manager.unregister();
+  });
+}
+
+for (const outcome of ['changed-position', 'failed-open'] as const) {
+  test(`last-viewed action still reports ${outcome} for the current paper`, async () => {
+    const f = fixture(payload({ v: 5, important: false, bookmark: { attachmentKey: 'ABCD2345', page: 4, pageCount: 10, at: 100 } }));
+    f.reader.getResumeDisplayTarget = async (paper, kind) => ({
+      action: 'resume', sourceId: paper.id, attachmentId: 2,
+      lastPage: kind === 'last-viewed' ? 3 : 4, positionKind: kind,
+      canResume: true, filename: 'chosen.pdf', fallbackLabel: 'Resume', reason: ''
+    });
+    f.reader.executeTarget = async () => {
+      if (outcome === 'failed-open') throw new Error('reader closed');
+      return false;
+    };
+    await f.view();
+    const button = f.body.querySelectorAll('button').find(b => b.textContent === 'Open last viewed · page 3')!;
+    await button.listeners.click();
+    assert.equal(f.body.querySelector('[data-reading-flow-error]')!.textContent,
+      outcome === 'failed-open' ? 'The PDF could not be opened.' : 'The last viewed position changed. Refresh to try again.');
+    assert.equal(button.disabled, false);
+    f.manager.unregister();
+  });
+}

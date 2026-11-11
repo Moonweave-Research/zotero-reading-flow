@@ -239,3 +239,93 @@ test('importance and status intersection also bounds the activity drill-down cac
     assert.equal(detail.papers[0].important, true); assert.equal(detail.papers[0].status, 'read');
   }
 });
+
+function startupLifecycleFixture(options: { delayMigration?: boolean; delayFirstColumn?: boolean } = {}) {
+  const previous = (globalThis as any).Zotero;
+  const migrations: Array<ReturnType<typeof deferred<any>>> = [];
+  const columns: string[] = [];
+  const firstColumn = deferred<string>();
+  let observerID = 0;
+  const runtime: any = {
+    initializationPromise: Promise.resolve(), uiReadyPromise: Promise.resolve(),
+    Prefs: {
+      get(name: string) {
+        if (name === 'extensions.readingflow.sidebarSearchKey') return '{"1":"SEARCH01"}';
+        if (name === 'extensions.readingflow.displayDensity') return 'compact';
+      },
+      set() {}, clear() {}
+    },
+    Searches: { getByLibraryAndKeyAsync() {
+      if (!options.delayMigration) return Promise.resolve({ name: 'Reading Flow — Tracked Papers' });
+      const request = deferred<any>(); migrations.push(request); return request.promise;
+    } },
+    ItemTreeManager: { registerColumn(column: any) {
+      columns.push(column.dataKey);
+      return options.delayFirstColumn && columns.length === 1 ? firstColumn.promise : column.dataKey;
+    } },
+    Notifier: { registerObserver() { return `observer-${++observerID}`; }, unregisterObserver() {} },
+    getMainWindow: () => ({ document: {} }), getActiveZoteroPane: () => ({}), debug() {}, logError() {}
+  };
+  (globalThis as any).Zotero = runtime;
+  const bootstrap = new Bootstrap();
+  (bootstrap as any).registerDashboardChrome = () => ({ destruct() {} });
+  (bootstrap as any).styleManager = { injectCSS() {}, injectLocale() {}, unregister() {} };
+  const start = () => bootstrap.startup({ id: 'readingflow@moon.com', version: '1.3.13', rootURI: 'test://' });
+  const tick = () => new Promise(resolve => setImmediate(resolve));
+  return { bootstrap, runtime, columns, migrations, firstColumn, start, tick,
+    restore() { (globalThis as any).Zotero = previous; } };
+}
+
+test('shutdown cancels column registration waiting for sidebar migration', async () => {
+  const f = startupLifecycleFixture({ delayMigration: true });
+  try {
+    await f.start(); await f.tick(); assert.equal(f.migrations.length, 1);
+    await f.bootstrap.shutdown();
+    f.migrations[0].resolve({ name: 'Reading Flow — Tracked Papers' }); await f.tick();
+    assert.deepEqual(f.columns, []);
+  } finally { f.restore(); }
+});
+
+test('an earlier startup cannot register columns in a later enabled lifecycle', async () => {
+  const f = startupLifecycleFixture({ delayMigration: true });
+  try {
+    await f.start(); await f.tick(); await f.bootstrap.shutdown();
+    await f.start(); await f.tick(); assert.equal(f.migrations.length, 2);
+    f.migrations[1].resolve({ name: 'Reading Flow — Tracked Papers' }); await f.tick();
+    assert.equal(f.columns.length, 4);
+    const currentManager = f.runtime.ReadingFlowColumnManager;
+    f.migrations[0].resolve({ name: 'Reading Flow — Tracked Papers' }); await f.tick();
+    assert.equal(f.columns.length, 4);
+    assert.equal(f.runtime.ReadingFlowColumnManager, currentManager);
+    await f.bootstrap.shutdown();
+  } finally { f.restore(); }
+});
+
+test('shutdown drains in-flight column registration before allowing re-enable', async () => {
+  const f = startupLifecycleFixture({ delayFirstColumn: true });
+  try {
+    await f.start(); await f.tick(); assert.equal(f.columns.length, 1);
+    const oldStore = f.bootstrap.dataStore;
+    let stopped = false;
+    const stopping = f.bootstrap.shutdown().then(() => { stopped = true; });
+    const restarting = f.start(); await f.tick();
+    assert.equal(stopped, false);
+    assert.equal(f.bootstrap.dataStore, oldStore);
+    f.firstColumn.resolve('readingFlowProgress');
+    await stopping; await restarting; await f.tick();
+    assert.notEqual(f.bootstrap.dataStore, oldStore);
+    assert.equal(f.columns.length, 8);
+    await f.bootstrap.shutdown();
+  } finally { f.firstColumn.resolve('readingFlowProgress'); f.restore(); }
+});
+
+test('shutdown cancels startup still waiting for Zotero initialization', async () => {
+  const f = startupLifecycleFixture(); const initialization = deferred<void>();
+  f.runtime.initializationPromise = initialization.promise;
+  try {
+    const starting = f.start(); await f.bootstrap.shutdown();
+    initialization.resolve(); await starting; await f.tick();
+    assert.equal(f.bootstrap.dataStore, undefined);
+    assert.deepEqual(f.columns, []);
+  } finally { initialization.resolve(); f.restore(); }
+});

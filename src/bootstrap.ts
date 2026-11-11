@@ -84,6 +84,9 @@ export class Bootstrap {
   private dashboardManager?: DashboardManager;
   private preferencePaneID: string | null = null;
   private started = false;
+  private lifecycle = 0;
+  private columnRegistration?: Promise<void>;
+  private shutdownPending?: Promise<void>;
   private rootURI: string | null = null;
   private dashboardChromeHandle: { destruct?: () => void } | null = null;
 
@@ -94,7 +97,10 @@ export class Bootstrap {
   install() {}
 
   async startup({ id, version, rootURI }: { id: string; version: string; rootURI: string }) {
+    const lifecycle = ++this.lifecycle;
+    await this.shutdownPending;
     await Zotero.initializationPromise;
+    if (lifecycle !== this.lifecycle) return;
     this.rootURI = rootURI;
     this.started = true;
     clearLegacyReadingFlowPreferenceAliases();
@@ -130,15 +136,26 @@ export class Bootstrap {
       Logger.log('readerTracker OK');
     } catch (e) { Logger.error('readerTracker FAIL', e); }
 
+    const dataStore = this.dataStore;
+    const isCurrent = () => this.started && lifecycle === this.lifecycle;
     void runWhenUIReady(Zotero, async () => {
-      if (!this.started || !this.dataStore) return;
+      if (!isCurrent()) return;
       try {
         await sidebarSearchManager.migrateTrackedSearches();
       } catch (error) {
         Logger.warn(`ReadingFlow: sidebar search migration skipped: ${String(error)}`);
       }
-      this.columnManager = new ColumnManager(this.dataStore);
-      await this.columnManager.register();
+      if (!isCurrent()) return;
+      const manager = new ColumnManager(dataStore);
+      this.columnManager = manager;
+      const registration = manager.register();
+      this.columnRegistration = registration;
+      try {
+        await registration;
+      } finally {
+        if (this.columnRegistration === registration) this.columnRegistration = undefined;
+      }
+      if (!isCurrent()) return;
       Logger.log('columnManager OK');
     }).catch((e) => Logger.error('columnManager FAIL', e));
 
@@ -171,13 +188,26 @@ export class Bootstrap {
   }
 
   async shutdown(reason?: number) {
+    this.lifecycle++;
     this.started = false;
+    if (this.shutdownPending) return this.shutdownPending;
+    const stopping = this.shutdownResources(reason);
+    this.shutdownPending = stopping;
+    try {
+      await stopping;
+    } finally {
+      if (this.shutdownPending === stopping) this.shutdownPending = undefined;
+    }
+  }
+
+  private async shutdownResources(reason?: number) {
     this.itemPaneManager?.unregister();
     this.itemPaneManager = undefined;
     this.dashboardManager?.close();
     this.dashboardManager = undefined;
     this.rootURI = null;
     await this.readerTracker?.flushPending();
+    await this.columnRegistration?.catch(error => Logger.error('columnManager shutdown wait failed', error));
     this.readerTracker?.unregister();
     this.dataStore?.close();
     this.notifierManager?.unregister();

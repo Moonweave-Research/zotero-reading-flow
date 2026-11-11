@@ -419,7 +419,7 @@ test('activity day detail keeps every real progress update, excludes status/rese
     papersWithProgressActivity: 2,
     firstCompletions: 0
   });
-  assert.deepEqual(daySnapshot.recentProgress.map((entry) => entry.id), [2, 1]);
+  assert.deepEqual(daySnapshot.recentProgress.map((entry) => entry.id), [1, 2]);
 });
 
 test('Recent Progress preserves every matching paper for the UI to disclose or expand', () => {
@@ -649,4 +649,45 @@ test('daily endpoint pages and current activity timestamp keep their separate me
   assert.equal(recent.positionChangeText, 'Page 9 / 10 → Page 4 / 10');
   assert.equal(recent.lastActivityAt, at);
   assert.equal(calculateActivityDayDetail([item], '2026-07-28')[0].recordedPositionText, 'Page 4 / 10');
+});
+
+test('recent PDFs use in-range activity time so the newest same-day paper stays in the first eight', () => {
+  const day = '2026-07-28';
+  const makePaper = (id: number, title: string, hour: number) => ({
+    ...paper(id, {
+      lastReadAt: localTimestamp(day, hour),
+      history: { startedAt: localTimestamp(day, hour), completedAt: null, activeDaysTotal: 1, days: {
+        [day]: { activity: true, lastReadAt: localTimestamp(day, hour), progress: { a: 0.3 },
+          status: 'reading', reset: false, completed: false }
+      } }
+    }), title
+  });
+  const papers = Array.from({ length: 8 }, (_, index) => makePaper(index + 1, `A${index}`, 8));
+  papers.push(makePaper(9, 'Z newest', 15));
+  const rows = calculateHistorySnapshot(papers, '7d', localTimestamp(day, 16)).recentProgress;
+  assert.equal(rows[0].id, 9);
+  assert.equal(rows.slice(0, 8).some(entry => entry.id === 9), true);
+});
+
+test('recent PDF ordering ignores current activity outside the period and keeps legacy missing times unknown', () => {
+  const day = '2026-07-28';
+  const makePaper = (id: number, title: string, recordedAt: number | null, currentAt: number): StatisticsPaper => ({
+    ...paper(id, {
+      lastReadAt: currentAt,
+      history: { startedAt: localTimestamp(day), completedAt: null, activeDaysTotal: 1, days: {
+        [day]: { activity: true, lastReadAt: recordedAt, progress: { a: 0.3 },
+          status: 'reading', reset: false, completed: false }
+      } }
+    }), title
+  });
+  const rows = calculateHistorySnapshot([
+    makePaper(1, 'A later outside period', localTimestamp(day, 8), localTimestamp('2026-07-30', 18)),
+    makePaper(2, 'Z later inside period', localTimestamp(day, 15), localTimestamp(day, 15)),
+    makePaper(3, 'A legacy missing time', null, localTimestamp('2026-07-30', 19)),
+    makePaper(4, 'Z legacy missing time', null, localTimestamp('2026-07-30', 20))
+  ], '7d', localTimestamp(day, 16)).recentProgress;
+  assert.deepEqual(rows.map(entry => entry.id), [2, 1, 3, 4]);
+  assert.equal(rows[0].lastProgressDay, day);
+  assert.equal(rows.find(entry => entry.id === 3)?.lastProgressAt, null);
+  assert.equal(rows.find(entry => entry.id === 1)?.lastActivityAt, localTimestamp('2026-07-30', 18));
 });

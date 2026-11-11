@@ -6,6 +6,7 @@ import {
   DEFAULT_FLOW_DATA,
   FLOW_PREFIX,
   FlowData,
+  getLastActivityAt,
   getLocalDayKey,
   inferStatus,
   isFlowDataSame,
@@ -127,11 +128,13 @@ export class DataStore {
         ? (currentProgress === 1 && comparableCurrent === 1 && pageCount && pageCount > 1 ? pageCount : currentProgress)
         : observed;
       const updates: Partial<FlowData> = {
-        p: { [input.attachmentId]: nextProgress },
-        lastAttachmentId: input.attachmentId,
-        lastPage: input.lastPage ?? null,
-        lastReadAt: at
+        p: { [input.attachmentId]: nextProgress }
       };
+      if (at >= (getLastActivityAt(current) ?? 0)) {
+        updates.lastAttachmentId = input.attachmentId;
+        updates.lastPage = input.lastPage ?? null;
+        updates.lastReadAt = at;
+      }
       if (typeof input.pageCount === 'number' && Number.isFinite(input.pageCount) && input.pageCount > 0) {
         updates.pageCount = { [input.attachmentId]: Math.round(input.pageCount) };
       }
@@ -365,7 +368,10 @@ export class DataStore {
       }
 
       const persistedExtra = item.getField('extra') || '';
-      if (persistedExtra === attemptedExtra) {
+      if (persistedExtra === attemptedExtra || this.areStringArraysEqual(
+        this.getFlowLinesFromExtra(persistedExtra),
+        this.getFlowLinesFromExtra(attemptedExtra)
+      )) {
         this.cache.delete(item.id);
         return true;
       }
@@ -508,12 +514,13 @@ export class DataStore {
     at: number
   ): ReadingHistory {
     const history = this.cloneOrCreateHistory(current, at);
+    history.startedAt = Math.min(history.startedAt, at);
     const dayKey = getLocalDayKey(at);
     const day = this.cloneOrCreateDay(history.days[dayKey]);
     const wasActive = day.activity;
 
     day.activity = true;
-    day.lastReadAt = at;
+    day.lastReadAt = Math.max(day.lastReadAt ?? 0, at);
     const previous = day.progress[attachmentId];
     const pageCount = next.pageCount?.[attachmentId];
     const previousFraction = normalizeComparableProgress(previous, pageCount);
@@ -525,7 +532,7 @@ export class DataStore {
     day.status = inferStatus(next);
     history.activeDaysTotal += wasActive ? 0 : 1;
     history.days[dayKey] = day;
-    return pruneReadingHistory(history, at);
+    return pruneReadingHistory(history, Math.max(at, next.lastReadAt ?? 0));
   }
 
   private recordStatusHistory(

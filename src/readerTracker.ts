@@ -1,3 +1,4 @@
+import { activePDFView, activePDFApplication } from './pdfView';
 import { DataStore } from './dataStore';
 import { Logger } from './Logger';
 import { keyedAttachmentReference } from './flowData';
@@ -116,7 +117,8 @@ export class ReaderTracker {
     let progress = 0;
     let pdfNumPages = 0;
     if (reader?._type === 'pdf' || item.isPDFAttachment?.()) {
-      const pageIndex = this.getCurrentPageIndex(reader, item) ?? 0;
+      const pageIndex = this.getCurrentPageIndex(reader, item);
+      if (pageIndex === null) return;
       pdfNumPages = this.getPDFPageCount(reader, item);
       Logger.log('pdf pageIndex=' + pageIndex + ' numPages=' + pdfNumPages);
       if (pdfNumPages > 0) {
@@ -151,7 +153,10 @@ export class ReaderTracker {
   ) {
     const key = `${parentId}:${attachmentId}`;
     const existing = this.pendingSaves.get(key);
-    if (existing) clearTimeout(existing.timeout);
+    if (existing) {
+      clearTimeout(existing.timeout);
+      this.pendingSaves.delete(key);
+    }
     const generation = this.generation;
     const scheduledAt = Date.now();
     let allowShutdown = false;
@@ -240,12 +245,13 @@ export class ReaderTracker {
 
   private getCurrentPageIndex(reader: any, item: any): number | null {
     // PDFViewer updates its visible page before Zotero's asynchronous synced setting.
-    const view = reader?._internalReader?._primaryView?._iframeWindow;
-    const outer = reader?._iframeWindow;
-    const app = (view?.wrappedJSObject ?? view)?.PDFViewerApplication
-      ?? (outer?.wrappedJSObject ?? outer)?.PDFViewerApplication ?? reader?.PDFViewerApplication;
+    const view = activePDFView(reader);
+    const app = activePDFApplication(reader);
     const page = app?.pdfViewer?.currentPageNumber ?? app?.page;
     if (typeof page === 'number' && Number.isInteger(page) && page > 0) return page - 1;
+    const visibleIndex = view?._state?.pageIndex;
+    if (Number.isInteger(visibleIndex) && visibleIndex >= 0) return visibleIndex;
+    if (reader?._internalReader?._lastView || typeof reader?._internalReader?._lastViewPrimary === 'boolean') return null;
     // Reader._state may still describe the initial opening location.
     const currentPageIndex = item.getAttachmentLastPageIndex?.();
     if (typeof currentPageIndex === 'number' && Number.isFinite(currentPageIndex) && currentPageIndex >= 0) {

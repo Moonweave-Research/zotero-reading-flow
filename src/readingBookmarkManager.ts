@@ -1,3 +1,4 @@
+import { activePDFView, activePDFApplication } from './pdfView';
 import { Logger } from './Logger';
 import { DataStore } from './dataStore';
 import { ReadingBookmark } from './flowData';
@@ -8,9 +9,8 @@ const HTML = 'http://www.w3.org/1999/xhtml';
 /** Capture the visible reader page; never substitute an old saved/opening location. */
 export function visiblePDFPosition(reader: any): { page: number; pageCount: number | null } | null {
   if (reader?._type !== 'pdf') return null;
-  const view = reader?._internalReader?._primaryView;
-  const win = view?._iframeWindow ?? reader?._iframeWindow;
-  const app = (win?.wrappedJSObject ?? win)?.PDFViewerApplication ?? reader?.PDFViewerApplication;
+  const view = activePDFView(reader);
+  const app = activePDFApplication(reader);
   const number = app?.pdfViewer?.currentPageNumber ?? app?.page;
   const index = view?._state?.pageIndex;
   const page = number ?? (Number.isInteger(index) && index >= 0 ? index + 1 : null);
