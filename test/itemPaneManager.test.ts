@@ -53,6 +53,30 @@ function fixture(extra = '', editable = true) {
 }
 const payload = (updates: any) => FLOW_PREFIX + JSON.stringify({ ...DEFAULT_FLOW_DATA, ...updates });
 
+test('snapshot-only pane separates the opening timestamp from absent PDF activity and positions', async () => {
+  const f = fixture(payload({ v: 6, important: false, snapshotOpenedAt: 100 }));
+  f.pdf.isPDFAttachment = () => false;
+  await f.view();
+  assert.match(f.body.text(), /Last snapshot opened/);
+  assert.match(f.body.text(), /Last PDF activity.*Not recorded/);
+  assert.match(f.body.text(), /Snapshot openings affect automatic status/);
+  assert.equal(f.body.querySelectorAll('select')[0].value, '');
+  assert.match(f.body.querySelectorAll('select')[0].text(), /Automatic \(Reading\)/);
+  assert.equal(f.counts().saves, 0);
+  f.manager.unregister();
+});
+
+test('a selected snapshot attachment shows its parent reading controls without PDF actions', async () => {
+  const f = fixture(payload({ v: 6, important: false, snapshotOpenedAt: 100 }));
+  f.pdf.isPDFAttachment = () => false;
+  f.pdf.attachmentReaderType = 'snapshot';
+  await f.view(f.pdf);
+  assert.equal(f.props.enabled, true);
+  assert.match(f.body.text(), /Last snapshot opened/);
+  assert.match(f.body.text(), /No accessible PDF/);
+  f.manager.unregister();
+});
+
 test('official section lifecycle, native menu focus, notifier refresh and reload release resources; viewing writes zero', async () => {
   const f = fixture(); f.manager.register(); await f.view(); await f.view();
   assert.equal(f.body.attributes.lang, 'en'); assert.match(f.body.text(), /Not recorded/);
@@ -94,7 +118,7 @@ for (const [name, extra, reason] of [
 test('direct pane controls share queued stage/importance writes and preserve PDF state across all four PRs', async () => {
   const f = fixture(); await f.store.recordProgress(f.paper, { attachmentId: '2', lastPage: 100, pageCount: 100, progress: 1, at: 100 });
   await f.store.recordProgress(f.paper, { attachmentId: '2', lastPage: 1, pageCount: 100, progress: 0.01, at: 200 });
-  await f.view(); assert.match(f.body.text(), /based on recorded PDF activity/);
+  await f.view(); assert.match(f.body.text(), /recorded PDF activity, or a loaded web snapshot opening/);
   let select = f.body.querySelectorAll('select')[0]; select.value = 'read'; select.listeners.change(); await tick();
   let check = f.body.querySelectorAll('input')[0]; check.checked = true; check.listeners.change(); await tick();
   let data = f.store.getData(f.paper); assert.equal(data.s, 'read'); assert.equal(data.important, true);

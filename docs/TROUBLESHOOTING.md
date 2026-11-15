@@ -37,6 +37,10 @@ That is expected. Advanced → Reset tracked PDF positions clears automatic posi
 
 ## Data and sync
 
+Unreleased snapshot support records Last snapshot opened after the internal reader loads, with the same five-second save delay as PDF tracking. Opening a snapshot in an external browser does not count. Choose Automatic in the status control to remove a manual override; closing a snapshot never marks Read. EPUB tracking is unchanged. Snapshot-only items appear in the tracked set but do not add PDF calendar activity or page counts.
+
+Snapshot openings upgrade the item to v6 metadata. Released 1.3.14 safely refuses edits to those records; use snapshot-capable clients on every editing device. Do not remove the record or lower its version to work around this protection. Existing PDF-only records are not upgraded by this change.
+
 Metadata lives in a ReadingFlow: JSON line in the parent item's Extra field. Do not edit it manually for routine use. Unrelated Extra content, PDFs, and annotations are preserved; uninstalling does not remove this metadata.
 
 Use compatible clients (1.3.8 or newer) for bookmark records on every editing device. Records with Reading started use v5 and require 1.3.9 or a later v5-compatible release on every editing device. Version 1.3.8 safely preserves v5 records but shows them as unsupported, without their details or editing controls. The PDF must be available there too. Actual device-to-device delivery has not been verified. Never lower a record's schema version to make an old writer accept it.

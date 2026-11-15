@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Derive automatic Reading after a loaded web snapshot opens, while preserving every manual stage. Closing a snapshot never marks it Read.
+- Show Last snapshot opened separately from PDF activity. Snapshot openings do not create page positions, bookmarks, PDF activity history, or inferred reading-start dates.
+- Write v6 metadata only when snapshot opening is recorded. Released 1.3.14 refuses edits to v6 records and preserves their bytes; every editing device needs a snapshot-capable client for those items. Existing PDF-only records keep their current schema.
+
 ## 1.3.14 - 2026-11-11
 
 - Keep the latest automatic PDF position and activity time when pending observations finish out of order.

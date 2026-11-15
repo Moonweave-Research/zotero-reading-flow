@@ -24,7 +24,7 @@ export function recordProblem(item: any, data: FlowData): string {
   if (lines.length > 1) return 'Multiple Reading Flow records were found. They cannot be displayed or edited safely.';
   try {
     const raw = JSON.parse(lines[0].replace(/^ReadingFlow:\s*/, ''));
-    if (Number.isInteger(raw.v) && raw.v > 5) return 'This Reading Flow record uses an unsupported version. Use a compatible newer Reading Flow client to edit it.';
+    if (Number.isInteger(raw.v) && raw.v > 6) return 'This Reading Flow record uses an unsupported version. Use a compatible newer Reading Flow client to edit it.';
   } catch (_) { /* The shared parser has already classified this record as unavailable. */ }
   return 'The Reading Flow record is damaged or invalid. It cannot be displayed or edited safely.';
 }
@@ -80,7 +80,7 @@ export class ReadingFlowItemPaneManager {
 
   private parent(item: any): any {
     if (!item || item.deleted) return null;
-    const parent = item.isPDFAttachment?.() ? Zotero.Items.get(item.parentID) : item;
+    const parent = item.isPDFAttachment?.() || item.attachmentReaderType === 'snapshot' ? Zotero.Items.get(item.parentID) : item;
     return parent?.isRegularItem?.() && !parent.parentID && !parent.deleted ? parent : null;
   }
   private state(props: Props): Instance {
@@ -182,6 +182,9 @@ export class ReadingFlowItemPaneManager {
       ['Reading started', problem ? 'Unavailable' : data.readingStartedAt ? formatActivityTimestamp(data.readingStartedAt) : 'Not recorded'],
       ['Last PDF activity', problem ? 'Unavailable' : recent]
     ]));
+    if (data.snapshotOpenedAt) props.body.append(this.facts(props, [
+      ['Last snapshot opened', formatActivityTimestamp(data.snapshotOpenedAt)]
+    ]));
     const target = this.element(props, 'div', 'Checking PDF availability…');
     target.dataset.readingFlowTarget = 'true'; props.body.append(target);
     const note = add("Bookmarks are set by you. Last viewed is saved automatically; neither measures pages read.");
@@ -190,9 +193,9 @@ export class ReadingFlowItemPaneManager {
     details.append(this.element(props, 'summary', 'About this record'));
     if (resolveReadingAvailability(data) === 'no-record') details.append(this.element(props, 'p', 'No Reading Flow record.'));
     if (data.v < 3 && data.important) details.append(this.element(props, 'p', 'Legacy Important records do not preserve the earlier manual reading status. It cannot be recovered from PDF positions.'));
-    details.append(this.element(props, 'p', 'Automatic Reading is based on recorded PDF activity. Choosing a manual status overrides it; choosing the automatic option clears that override. Neither activity nor a saved position confirms that the item was read.'));
+    details.append(this.element(props, 'p', 'Automatic Reading is based on a bookmark, recorded PDF activity, or a loaded web snapshot opening. Choosing a manual status overrides it; choosing the automatic option clears that override. Neither activity nor a saved position confirms that the item was read.'));
     details.append(this.element(props, 'p', 'Reading started is recorded when the status changes to Reading, including a configured default for new items, and updates when you start Reading again. Existing records are not backfilled. Last PDF activity is the latest saved PDF page position; it does not confirm that you read the page. Detailed history retains at most 366 days; older activity may be missing. Status changes and resets are not PDF activity.'));
-    details.append(this.element(props, 'p', 'Position tracking supports PDFs only. Manual status and Important also work for books and items without a PDF; EPUB positions are not tracked.'));
+    details.append(this.element(props, 'p', 'Position tracking supports PDFs only. Snapshot openings affect automatic status, but do not create PDF positions, PDF activity history, or completion. Manual status and Important also work for books and items without a PDF; EPUB positions are not tracked.'));
     props.body.append(details);
     const error = add(''); error.setAttribute('role', 'status'); error.dataset.readingFlowError = 'true';
     return this.renderTarget(props);
