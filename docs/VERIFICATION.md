@@ -1,6 +1,6 @@
 # Verification
 
-## Unreleased snapshot support (#50)
+## Snapshot support in 1.3.15 (#50)
 
 On November 15, 2026, `npm run verify` passed 366 tests with no failures or skips, type checking, XPI validation, and previous-writer compatibility checks. The snapshot opening test failed on the 1.3.14 baseline with Unassigned instead of Reading. Additional failing cases covered snapshot attachment selection in the pane and context menu. Regression coverage retains PDF locations/history, bookmarks, manual stages, explicit start dates, Important, unrelated Extra content, shutdown flushing, and unsupported/read-only record protection. The pinned released 1.3.14 writer refuses eight v6 mutation paths with byte retention; its v5 positive control succeeds.
 
@@ -8,7 +8,7 @@ The Gecko layout harness passed five states at three widths and two font sizes, 
 
 The unmodified candidate XPI was installed in an isolated Zotero 10.0.9 macOS profile with synthetic HTML attachments. A separate QA companion plugin drove the real Reader lifecycle and inspected stored metadata and the native pane. Automatic, manual To Read, and manual Read cases recorded snapshot openings without fabricating PDF activity; closing did not mark Read. Reopening advanced the timestamp, and the native pane displayed Last snapshot opened. After restarting, all three records retained identical Extra bytes. Adding a ten-page PDF to a v6 snapshot item still recorded page 3; the production toolbar saved and undid its bookmark while preserving the snapshot timestamp. The QA process then quit normally. Installed and built candidate XPI SHA-256 both matched `3f574b94377df3bafffeb93482153082a453dacc2e500e228dabb2f56f64ac73`.
 
-The companion plugin and synthetic library are local test fixtures, excluded from the production archive. No personal profile was used for the tests. Windows, Zotero 9, external-browser snapshot openings, and real device-to-device sync were not tested. Snapshot records use v6; PDF-only records retain their existing schema. These changes are not yet released.
+The companion plugin and synthetic library are local test fixtures, excluded from the production archive. No personal profile was used for the tests. Windows, Zotero 9, external-browser snapshot openings, and real device-to-device sync were not tested. Snapshot records use v6; PDF-only records retain their existing schema. These checks covered the feature candidate before version 1.3.15 release preparation; the hash above identifies that earlier candidate, not the versioned release archive.
 
 ## Repeatable checks
 
