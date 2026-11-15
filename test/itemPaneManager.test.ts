@@ -53,6 +53,27 @@ function fixture(extra = '', editable = true) {
 }
 const payload = (updates: any) => FLOW_PREFIX + JSON.stringify({ ...DEFAULT_FLOW_DATA, ...updates });
 
+test('automatic Read is labelled separately and can be cleared without changing PDF or snapshot facts', async () => {
+  const f = fixture(payload({ v: 7, important: true, snapshotOpenedAt: 100, automaticRead: { attachmentKey: 'AAAABBBB', at: 200 } }));
+  await f.view();
+  assert.match(f.body.querySelectorAll('select')[0].text(), /Automatic \(Read\)/);
+  assert.match(f.body.text(), /Automatically marked Read/);
+  const clear = f.body.querySelectorAll('button').find(b => b.textContent === 'Clear automatic Read')!;
+  assert.equal(clear.disabled, false); clear.listeners.click(); await tick(); await tick();
+  assert.equal(f.store.getData(f.paper).automaticRead, undefined);
+  assert.equal(f.store.getData(f.paper).snapshotOpenedAt, 100);
+  assert.equal(f.store.getData(f.paper).important, true);
+  assert.match(f.body.querySelectorAll('select')[0].text(), /Automatic \(Reading\)/);
+  f.manager.unregister();
+});
+
+test('read-only automatic completion can be inspected but not cleared', async () => {
+  const f = fixture(payload({ v: 7, important: false, automaticRead: { attachmentKey: 'AAAABBBB', at: 200 } }), false);
+  await f.view();
+  const clear = f.body.querySelectorAll('button').find(b => b.textContent === 'Clear automatic Read')!;
+  assert.equal(clear.disabled, true); assert.equal(f.counts().saves, 0); f.manager.unregister();
+});
+
 test('snapshot-only pane separates the opening timestamp from absent PDF activity and positions', async () => {
   const f = fixture(payload({ v: 6, important: false, snapshotOpenedAt: 100 }));
   f.pdf.isPDFAttachment = () => false;

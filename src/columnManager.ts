@@ -108,7 +108,8 @@ function accessibleText(value: CompositeValue): string {
   const lastRead = value.lastReadAt && value.lastReadAt > 0
     ? `last PDF activity ${formatActivityTimestamp(value.lastReadAt)}`
     : value.positionText === 'No last viewed position' || !value.positionText ? 'no PDF activity recorded' : 'PDF activity date unknown';
-  const source = value.source === 'manual' ? 'manual status' : value.source === 'automatic' ? 'PDF activity based status' : 'no status assigned';
+  const source = value.source === 'manual' ? 'manual status' : value.source === 'automatic'
+    ? value.status === 'read' ? 'automatic final-page tab-close rule' : 'PDF activity based status' : 'no status assigned';
   return `${STATUS_LABELS[value.status] ?? STATUS_LABELS['to-read']}, ${source}, ${value.positionText ?? progressText(value.progress)}, ${value.maximumText ?? ""}, ${lastRead}${value.important ? ', Important' : ''}`;
 }
 
@@ -272,7 +273,8 @@ export class ColumnManager {
     const status = statusValue as ReadingStatus;
     const badge = doc.createElement('span');
     badge.textContent = `${STATUS_LABELS[statusValue as DisplayReadingStatus]}${important ? ' ⭐' : ''}`;
-    const sourceLabel = source === 'manual' ? 'manual status' : source === 'automatic' ? 'PDF activity based status' : '';
+    const sourceLabel = source === 'manual' ? 'manual status' : source === 'automatic'
+      ? status === 'read' ? 'automatic final-page tab-close rule' : 'PDF activity based status' : '';
     badge.title = sourceLabel ? `${STATUS_LABELS[statusValue as DisplayReadingStatus]} — ${sourceLabel}` : STATUS_LABELS[statusValue as DisplayReadingStatus];
     if (important) badge.title += ', Important';
     cell.title = badge.title;

@@ -2,6 +2,7 @@ import { activePDFView, activePDFApplication } from './pdfView';
 import { DataStore } from './dataStore';
 import { Logger } from './Logger';
 import { keyedAttachmentReference } from './flowData';
+import { getGlobalPreference, READING_FLOW_PREFS } from './preferences';
 
 interface PendingReaderSave {
   timeout: ReturnType<typeof setTimeout>;
@@ -13,6 +14,7 @@ export class ReaderTracker {
   private notifierId: string | null = null;
   private readerOpenListener?: (event: any) => void;
   private openedReaders = new WeakSet<object>();
+  private readyReaders = new WeakSet<object>();
   private pendingSaves = new Map<string, PendingReaderSave>();
   private inFlightSaves = new Set<PendingReaderSave>();
   private flushPromise: Promise<void> | null = null;
@@ -27,10 +29,11 @@ export class ReaderTracker {
   public register() {
     this.generation += 1;
     this.active = true;
-    this.notifierId = Zotero.Notifier.registerObserver(this, ['file'], 'ReadingFlowTracker');
+    this.notifierId = (Zotero.Notifier as any).registerObserver(this, ['file', 'tab'], 'ReadingFlowTracker', 50);
     const api = (Zotero as any).Reader;
     const generation = this.generation;
     this.openedReaders = new WeakSet<object>();
+    this.readyReaders = new WeakSet<object>();
     if (api?.registerEventListener) {
       this.readerOpenListener = ({ reader }: any) => {
         void this.trackOpenedReader(reader, generation).catch(error => Logger.error('reader-open tracking failed', error));
@@ -76,13 +79,17 @@ export class ReaderTracker {
     }
   }
 
-  public notify(action: string, type: string, ids: number[] | number) {
+  public notify(action: string, type: string, ids: Array<number | string> | number | string) {
     Logger.log('notify: action=' + action + ' type=' + type + ' ids=' + JSON.stringify(ids));
     if (!this.active || this.isZoteroShuttingDown()) return;
+    if (type === 'tab' && action === 'close') {
+      this.handleClosedTabs(Array.isArray(ids) ? ids : [ids]);
+      return;
+    }
     if (type !== 'file' || action !== 'pageChange') return;
     const attachmentIds = Array.isArray(ids) ? ids : [ids];
     for (const attachmentId of attachmentIds) {
-      this.handlePageChange(attachmentId);
+      if (typeof attachmentId === 'number') this.handlePageChange(attachmentId);
     }
   }
 
@@ -92,6 +99,7 @@ export class ReaderTracker {
     await reader._initPromise;
     await reader._internalReader?._primaryView?.initializedPromise;
     if (this.shouldSkipSave(generation) || !(Zotero as any).Reader?._readers?.includes(reader)) return;
+    this.readyReaders.add(reader);
     if (reader._type === 'snapshot') {
       const attachment = Zotero.Items.get(reader.itemID);
       if (attachment?.parentID) {
@@ -101,6 +109,35 @@ export class ReaderTracker {
       return;
     }
     this.handlePageChange(reader.itemID);
+  }
+
+  private handleClosedTabs(ids: Array<number | string>) {
+    if (getGlobalPreference(READING_FLOW_PREFS.autoComplete) !== true) return;
+    const readers = (Zotero as any).Reader?._readers;
+    if (!Array.isArray(readers)) return;
+    for (const reader of readers) {
+      if (reader._type !== 'pdf' || !ids.includes(reader.tabID) || !this.readyReaders.has(reader)) continue;
+      const pdf = Zotero.Items.get(reader.itemID) as any;
+      if (!pdf?.parentID || !keyedAttachmentReference(pdf.key)) continue;
+      const parent = Zotero.Items.get(pdf.parentID) as any;
+      if (!parent || parent.deleted || parent.isEditable?.() === false) continue;
+      this.dataStore.invalidateCache(parent.id);
+      const closingData = this.dataStore.getData(parent);
+      if (closingData.availability || closingData.s !== null) continue;
+      // Only live visible pages count; saved/farthest positions are not a closing-page observation.
+      const app = activePDFApplication(reader);
+      const page = app?.pdfViewer?.currentPageNumber, count = app?.pdfDocument?.numPages;
+      if (!Number.isInteger(page) || !Number.isInteger(count) || count <= 0
+        || count > ReaderTracker.MAX_REASONABLE_PAGE_COUNT || page !== count) continue;
+      if (readers.some(other => other !== reader && !ids.includes(other.tabID)
+        && (Zotero.Items.get(other.itemID) as any)?.parentID === pdf.parentID)) continue;
+      const generation = this.generation;
+      const isCurrent = () => generation === this.generation && this.active
+        && getGlobalPreference(READING_FLOW_PREFS.autoComplete) === true && !this.isZoteroShuttingDown();
+      this.scheduleSave(pdf.parentID, `complete:${reader.itemID}`, (parent, at) =>
+        getGlobalPreference(READING_FLOW_PREFS.autoComplete) === true && !this.isZoteroShuttingDown()
+          ? this.dataStore.recordAutomaticRead(parent, { attachmentKey: pdf.key, at }, isCurrent) : Promise.resolve(false));
+    }
   }
 
   private handlePageChange(attachmentId: number) {

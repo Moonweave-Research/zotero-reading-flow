@@ -49,7 +49,7 @@ Right-click a **column heading** in the library, such as **Title**, and choose *
 | Page to return to | [Bookmark here](docs/assets/reading-bookmark-button.jpg), then the [panel](docs/assets/reading-bookmark-panel.jpg) | A bookmark changes only when you set or remove it. |
 | Most recently viewed page | Library row or panel | Saved automatically when you visit a PDF page; a brief visit counts. |
 | When you started Reading | [Reading started example](docs/assets/reading-started.png) | Recorded when you choose Reading, or a Reading default is applied to a new item; earlier dates are not guessed. |
-| PDF activity and manual Read count | [Reading Statistics](#reading-statistics) | PDF activity describes saved page positions. **Read** is always your manual choice. |
+| PDF activity and manual Read count | [Reading Statistics](#reading-statistics) | PDF activity describes saved page positions. **Marked Read** counts manual choices; optional automatic completion is counted separately. |
 | Papers with Reading Flow data | [Tracked-papers list](docs/assets/reading-list-sidebar.jpg) | A native Zotero Saved Search, not a folder for one status. |
 
 **A page visit is not proof that you read it.** Reading Flow does not calculate pages read or mark an item Read when you reach the last page.
@@ -83,7 +83,7 @@ Select a paper and open its panel: click the **book-shaped Reading Flow icon** o
 
 *The icon key explains the current symbols; it is not a second screenshot. Enable the optional **Reading Flow** column with Zotero's native column chooser to see the books. The separate **Status** column uses text labels. Zotero's item-type icon beside the paper title stays the same. Book emoji artwork varies by operating system.*
 
-**Unassigned** means no stage has been chosen or inferred. **Reading (automatic)** can appear after PDF activity or a bookmark when no manual stage is set; the open book alone does not tell you whether the stage was set manually. Check the panel's Status label for that distinction. Reaching the last page never changes the book to **Read**.
+**Unassigned** means no stage has been chosen or inferred. **Reading (automatic)** can appear after PDF activity or a bookmark when no manual stage is set; the open book alone does not tell you whether the stage was set manually. Check the panel's Status label for that distinction. Reaching the last page alone does not change the book to **Read**. The unreleased optional completion rule also requires closing that PDF tab.
 
 **A start date is separate from PDF activity:**
 
@@ -181,6 +181,14 @@ Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Pape
 *The selected Saved Search includes papers with Reading Flow metadata. It is not a folder for one status. Untouched, unassigned papers stay outside it; an unassigned paper with Important metadata can appear.*
 
 </details>
+
+## Optional automatic completion (unreleased)
+
+In **Settings → Zotero Reading Flow**, enable **Automatic Read on final-page tab close** only if you want that rule. It is **off by default**. A loaded PDF tab must be on its actual final visible page when it closes, with no other reader for the same item remaining open. A saved farthest position or a previous visit to the end is insufficient. Manual stages are preserved; snapshots, EPUBs, and app shutdown do not complete items.
+
+The pane labels the result **Automatic (Read)** and shows **Automatically marked Read**. **Clear automatic Read** removes that mark while preserving manual choices, bookmarks, PDF history and snapshot openings. Statistics keep **Marked Read** manual-only and show **Automatic Read** separately. This is an automation rule, not proof of reading.
+
+Turning the option off stops future marks but does not remove saved ones. Only recording an automatic completion upgrades an item to v7. Every editing device needs a v7-capable client for upgraded items; released 1.3.15 preserves those bytes but cannot edit them. Items without automatic completion keep their existing format. This feature is not included in the published 1.3.15 release.
 
 ## Reading statistics
 

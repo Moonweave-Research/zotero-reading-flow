@@ -24,7 +24,7 @@ export function recordProblem(item: any, data: FlowData): string {
   if (lines.length > 1) return 'Multiple Reading Flow records were found. They cannot be displayed or edited safely.';
   try {
     const raw = JSON.parse(lines[0].replace(/^ReadingFlow:\s*/, ''));
-    if (Number.isInteger(raw.v) && raw.v > 6) return 'This Reading Flow record uses an unsupported version. Use a compatible newer Reading Flow client to edit it.';
+    if (Number.isInteger(raw.v) && raw.v > 7) return 'This Reading Flow record uses an unsupported version. Use a compatible newer Reading Flow client to edit it.';
   } catch (_) { /* The shared parser has already classified this record as unavailable. */ }
   return 'The Reading Flow record is damaged or invalid. It cannot be displayed or edited safely.';
 }
@@ -160,7 +160,8 @@ export class ReadingFlowItemPaneManager {
     select.style.setProperty('display', 'block');
     select.style.setProperty('max-width', '100%');
     select.style.setProperty('width', '100%');
-    const automatic = resolveReadingStatus({ ...data, s: null }).status === 'reading' ? 'Reading' : 'Unassigned';
+    const automaticStatus = resolveReadingStatus({ ...data, s: null }).status;
+    const automatic = automaticStatus === 'read' ? 'Read' : automaticStatus === 'reading' ? 'Reading' : 'Unassigned';
     for (const [value, text] of [['', `Automatic (${automatic})`], ['to-read', 'To Read (manual)'], ['reading', 'Reading (manual)'], ['skimmed', 'Skimmed (manual)'], ['read', 'Read (manual)']]) {
       const option = this.element(props, 'option', text); option.value = value; select.append(option);
     }
@@ -185,6 +186,18 @@ export class ReadingFlowItemPaneManager {
     if (data.snapshotOpenedAt) props.body.append(this.facts(props, [
       ['Last snapshot opened', formatActivityTimestamp(data.snapshotOpenedAt)]
     ]));
+    if (data.automaticRead) {
+      props.body.append(this.facts(props, [['Automatically marked Read', formatActivityTimestamp(data.automaticRead.at)]]));
+      const clear = this.element(props, 'button', 'Clear automatic Read');
+      clear.type = 'button'; clear.disabled = !writable;
+      clear.style.setProperty('height', 'auto'); clear.style.setProperty('white-space', 'normal');
+      clear.style.setProperty('max-width', '100%'); clear.style.setProperty('overflow-wrap', 'anywhere');
+      clear.addEventListener('click', () => {
+        if (!this.current(state, generation, props.item)) return;
+        void this.mutate(state, parent, () => this.store.clearAutomaticRead(parent), () => !this.store.getData(parent).automaticRead);
+      });
+      props.body.append(clear);
+    }
     const target = this.element(props, 'div', 'Checking PDF availability…');
     target.dataset.readingFlowTarget = 'true'; props.body.append(target);
     const note = add("Bookmarks are set by you. Last viewed is saved automatically; neither measures pages read.");
@@ -194,6 +207,7 @@ export class ReadingFlowItemPaneManager {
     if (resolveReadingAvailability(data) === 'no-record') details.append(this.element(props, 'p', 'No Reading Flow record.'));
     if (data.v < 3 && data.important) details.append(this.element(props, 'p', 'Legacy Important records do not preserve the earlier manual reading status. It cannot be recovered from PDF positions.'));
     details.append(this.element(props, 'p', 'Automatic Reading is based on a bookmark, recorded PDF activity, or a loaded web snapshot opening. Choosing a manual status overrides it; choosing the automatic option clears that override. Neither activity nor a saved position confirms that the item was read.'));
+    details.append(this.element(props, 'p', 'Optional automatic completion marks Read when a loaded PDF tab closes on its final visible page. Manual stages take precedence. This is your chosen rule, not proof of reading; Clear automatic Read removes that mark without changing PDF history or manual stages.'));
     details.append(this.element(props, 'p', 'Reading started is recorded when the status changes to Reading, including a configured default for new items, and updates when you start Reading again. Existing records are not backfilled. Last PDF activity is the latest saved PDF page position; it does not confirm that you read the page. Detailed history retains at most 366 days; older activity may be missing. Status changes and resets are not PDF activity.'));
     details.append(this.element(props, 'p', 'Position tracking supports PDFs only. Snapshot openings affect automatic status, but do not create PDF positions, PDF activity history, or completion. Manual status and Important also work for books and items without a PDF; EPUB positions are not tracked.'));
     props.body.append(details);

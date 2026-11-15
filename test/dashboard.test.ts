@@ -81,6 +81,8 @@ class FakeDocument {
 
 function documentFixture() {
   const doc = new FakeDocument();
+  doc.add('dashboard-automatic-read');
+  doc.add('dashboard-automatic-read-metric');
   doc.documentElement = doc.add('reading-flow-dashboard', 'main');
   doc.add('dashboard-scope', 'select', 'current-view');
   doc.add('dashboard-dataset', 'select', 'tracked');
@@ -237,6 +239,16 @@ test('renderDashboard keeps current summary honest and uses semantic status colo
   assert.equal(findBar(doc, 'dashboard-status-composition', 'Read')?.children[2]?.textContent, '2 (20%)');
   assert.equal(doc.getElementById('dashboard-progress-distribution')?.children.length, 7);
   assert.equal(doc.getElementById('dashboard-filter-note')?.textContent, 'Reading Flow items: items with Reading Flow data · all statuses · selected Zotero scope. Important: 0 matching items (independent of reading status). Showing 10 of 10 items; scope total = 10 classifiable + 0 unavailable. Status percentages use 10 classifiable items in scope. Position percentages use classifiable matching items.');
+});
+
+test('automatic completion count is displayed separately and disappears after clearing', () => {
+  const doc = documentFixture();
+  renderDashboard(doc as any, snapshot({ read: 2, automaticRead: 3 }));
+  assert.equal(doc.getElementById('dashboard-read')?.textContent, '2');
+  assert.equal(doc.getElementById('dashboard-automatic-read')?.textContent, '3');
+  assert.equal(doc.getElementById('dashboard-automatic-read-metric')?.hidden, false);
+  renderDashboard(doc as any, snapshot());
+  assert.equal(doc.getElementById('dashboard-automatic-read-metric')?.hidden, true);
 });
 
 test('no-history state shows one onboarding callout and hides every retained-history detail panel', () => {

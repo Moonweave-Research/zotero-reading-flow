@@ -11,11 +11,13 @@
         <html:button type="button" onclick="void Zotero.ReadingFlowPreferences?.removeSidebarSearch()">Remove from Selected Library</html:button>
       </html:div>
       <html:p id="readingflow-pref-sidebar-message" role="status" aria-live="polite" style="margin: 8px 0 0;"></html:p>
-      <html:p style="margin: 8px 0 0; opacity: .8;">This is a tracked-papers list, not an exact status-filtered folder. Automatic Reading is based on recorded PDF activity. Read is always a manual choice. Zotero Saved Searches cannot derive automatic status from PDF activity.</html:p>
+      <html:p style="margin: 8px 0 0; opacity: .8;">This is a tracked-papers list, not an exact status-filtered folder. Zotero Saved Searches cannot derive automatic reading status from the stored activity.</html:p>
     </html:section>
     <html:div style="display: grid; grid-template-columns: 160px 1fr; gap: 12px; align-items: center; max-width: 420px;">
       <html:label for="readingflow-pref-debug">Debug logging</html:label>
       <html:input id="readingflow-pref-debug" type="checkbox" preference="extensions.readingflow.debug"/>
+      <html:label for="readingflow-pref-auto-complete">Automatic Read on final-page tab close</html:label>
+      <html:input id="readingflow-pref-auto-complete" type="checkbox" preference="extensions.readingflow.autoComplete" aria-describedby="readingflow-pref-auto-complete-help"/>
       <html:label for="readingflow-pref-density">Reading Flow column density</html:label>
       <html:select id="readingflow-pref-density" preference="extensions.readingflow.displayDensity" onchange="Zotero.ReadingFlowColumnManager?.setDisplayDensity(this.value)">
         <html:option value="compact">Compact</html:option>
@@ -30,6 +32,7 @@
         <html:option value="read">Read</html:option>
       </html:select>
     </html:div>
+    <description id="readingflow-pref-auto-complete-help">Off by default. Applies only to Automatic items when a loaded PDF tab closes on its final visible page and no other reader for that item remains open. Manual stages, snapshots, EPUBs, and app shutdown do not trigger completion. This rule does not prove reading. Turning it off stops future marks; remove an existing mark with Clear automatic Read in the item pane.</description>
     <description><html:span id="readingflow-pref-density-message" data-l10n-id="reading-flow-density-help">This changes only the contents of the Reading Flow column. Use Zotero's native column chooser to show or hide it.</html:span></description>
     <description>Unassigned writes nothing. Another choice applies only to eligible papers added after you enable it. Existing papers, historical sync items, attachments, and any item already containing Reading Flow metadata are left unchanged.</description>
   </groupbox>

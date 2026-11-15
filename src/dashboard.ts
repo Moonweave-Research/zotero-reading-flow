@@ -130,6 +130,9 @@ export function renderDashboard(
   setText(doc, 'dashboard-papers', String(snapshot.totalPapers));
   setText(doc, 'dashboard-in-progress', String(snapshot.inProgress));
   setText(doc, 'dashboard-read', String(snapshot.read));
+  setText(doc, 'dashboard-automatic-read', String(snapshot.automaticRead ?? 0));
+  const automaticReadMetric = doc.getElementById('dashboard-automatic-read-metric');
+  if (automaticReadMetric) automaticReadMetric.hidden = !snapshot.automaticRead;
 
   setText(doc, 'dashboard-updated', `Snapshot updated: ${formatUpdatedAt(updatedAt)}`);
   doc.getElementById('dashboard-updated')?.removeAttribute('data-stale');

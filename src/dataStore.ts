@@ -1,4 +1,4 @@
-import { isReadingBookmark, ReadingBookmark } from './flowData';
+import { isAutomaticRead, isReadingBookmark, ReadingBookmark } from './flowData';
 import { LRUCache } from './lruCache';
 import { Logger } from './Logger';
 import {
@@ -32,6 +32,7 @@ export class DataStore {
   private static readonly EXTRA_MERGE_RETRY_COUNT = 3;
   private cache = new LRUCache<number, FlowData>(2000);
   private resetTimestamps = new Map<number, number>();
+  private automaticReadClearedAt = new Map<number, number>();
   private mutationQueues = new Map<number, Promise<void>>();
   private closed = false;
 
@@ -96,6 +97,25 @@ export class DataStore {
       if (at <= (current.snapshotOpenedAt ?? 0)) return current;
       return mergeFlowData(current, { v: 6, snapshotOpenedAt: at }, Math.max(current.ts, at));
     }, allowDuringShutdown));
+  }
+
+  public async recordAutomaticRead(item: any, completion: NonNullable<FlowData['automaticRead']>, isCurrent: () => boolean = () => true): Promise<boolean> {
+    if (!isAutomaticRead(completion)) return false;
+    return this.enqueueMutation(item, () => this.executeTransition(item, current => {
+      if (!isCurrent() || current.s !== null || (this.resetTimestamps.get(item.id) ?? 0) >= completion.at
+        || (this.automaticReadClearedAt.get(item.id) ?? 0) >= completion.at
+        || (current.automaticRead?.at ?? 0) >= completion.at) return current;
+      return mergeFlowData(current, { v: 7, automaticRead: completion }, Math.max(current.ts, completion.at));
+    }));
+  }
+
+  public async clearAutomaticRead(item: any): Promise<boolean> {
+    return this.enqueueMutation(item, async () => {
+      const saved = await this.executeTransition(item, current => current.automaticRead
+        ? normalizeFlowData({ ...current, automaticRead: undefined, ts: Date.now() }) : current);
+      if (saved) this.automaticReadClearedAt.set(item.id, Date.now());
+      return saved;
+    });
   }
 
   public async recordProgressUnlessResetAfter(
@@ -274,6 +294,7 @@ export class DataStore {
   public clearCache(itemId: number) {
     this.cache.delete(itemId);
     this.resetTimestamps.delete(itemId);
+    this.automaticReadClearedAt.delete(itemId);
   }
 
   public invalidateCache(itemId: number) {
@@ -288,6 +309,7 @@ export class DataStore {
     this.closed = true;
     this.cache.clear();
     this.resetTimestamps.clear();
+    this.automaticReadClearedAt.clear();
   }
 
   private isClosedOrShuttingDown(allowDuringShutdown = false): boolean {
@@ -465,13 +487,14 @@ export class DataStore {
     try {
       const parsed = JSON.parse(line.trimStart().substring('ReadingFlow:'.length));
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-      if (parsed.v !== 1 && parsed.v !== 2 && parsed.v !== 3 && parsed.v !== 4 && parsed.v !== 5 && parsed.v !== 6) return null;
+      if (parsed.v !== 1 && parsed.v !== 2 && parsed.v !== 3 && parsed.v !== 4 && parsed.v !== 5 && parsed.v !== 6 && parsed.v !== 7) return null;
       if ((parsed.v >= 3 && (typeof parsed.important !== 'boolean' || parsed.s === 'important'))
         || (parsed.v < 3 && parsed.important !== undefined)) return null;
       if (parsed.bookmark !== undefined && (parsed.v < 4 || !isReadingBookmark(parsed.bookmark))) return null;
       if (parsed.readingStartedAt != null && (parsed.v < 5 || !Number.isFinite(parsed.readingStartedAt) || parsed.readingStartedAt <= 0)) return null;
-      if (parsed.snapshotOpenedAt !== undefined && (parsed.v !== 6 || typeof parsed.snapshotOpenedAt !== 'number'
+      if (parsed.snapshotOpenedAt !== undefined && ((parsed.v !== 6 && parsed.v !== 7) || typeof parsed.snapshotOpenedAt !== 'number'
         || !Number.isFinite(parsed.snapshotOpenedAt) || parsed.snapshotOpenedAt <= 0)) return null;
+      if (parsed.automaticRead !== undefined && (parsed.v !== 7 || !isAutomaticRead(parsed.automaticRead))) return null;
       if ((parsed.s != null && !['to-read', 'reading', 'skimmed', 'read', 'important'].includes(parsed.s))
         || (parsed.p != null && (typeof parsed.p !== 'object' || Array.isArray(parsed.p)
           || Object.values(parsed.p).some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0)))
@@ -573,7 +596,7 @@ export class DataStore {
   }
 
   private hasMeaningfulData(data: FlowData): boolean {
-    if (data.bookmark || data.readingStartedAt || data.snapshotOpenedAt || data.important || data.s !== null || data.c !== null || Object.keys(data.p).length > 0) return true;
+    if (data.automaticRead || data.bookmark || data.readingStartedAt || data.snapshotOpenedAt || data.important || data.s !== null || data.c !== null || Object.keys(data.p).length > 0) return true;
     if (data.lastAttachmentId !== null || data.lastPage !== null || data.lastReadAt !== null) return true;
     if (!data.history) return false;
     if (data.history.completedAt !== null || data.history.activeDaysTotal > 0) return true;

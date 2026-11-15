@@ -17,6 +17,7 @@ import { DEFAULT_FLOW_DATA, FlowData } from '../../src/flowData';
     data.readingStartedAt = undefined; data.s = null; data.v = 6; data.snapshotOpenedAt = Date.UTC(2026, 10, 15, 12);
   }
   if (scenario === 'unavailable') data.availability = 'unavailable';
+  if (scenario === 'automatic-read') { data.v = 7; data.s = null; data.automaticRead = { attachmentKey: 'ABCDEFGH', at: Date.UTC(2026, 10, 15, 12) }; }
   (globalThis as any).Zotero = {
     ItemPaneManager: { registerSection: (options: any) => { hooks = options; return 'reading-flow-details'; } },
     Items: { get: () => paper }, Reader: {}, Notifier: { registerObserver: () => 1 }
