@@ -22,7 +22,7 @@ import { DEFAULT_FLOW_DATA, FlowData } from '../../src/flowData';
     ItemPaneManager: { registerSection: (options: any) => { hooks = options; return 'reading-flow-details'; } },
     Items: { get: () => paper }, Reader: {}, Notifier: { registerObserver: () => 1 }
   };
-  const store: any = { getData: () => data, invalidateCache: () => {} };
+  const store: any = { getData: () => data, invalidateCache: () => {}, usesPrivateRecords: () => scenario === 'private-group', canEdit: () => scenario !== 'readonly' };
   const reader: any = {
     getResumeDisplayTarget: async (_item: any, kind: string) => ({
       action: ['empty', 'unavailable', 'snapshot'].includes(scenario) ? 'none' : 'resume', reason: 'No accessible PDF attachment is available.', attachmentId: 2, positionKind: kind === 'last-viewed' ? 'last-viewed' : 'bookmark',
@@ -31,7 +31,7 @@ import { DEFAULT_FLOW_DATA, FlowData } from '../../src/flowData';
   };
   const manager = new ReadingFlowItemPaneManager(store, reader);
   manager.register();
-  const props = { body: document.querySelector('[data-type="body"]'), doc: document, item: paper, editable: scenario !== 'readonly', setEnabled: () => {} };
+  const props = { body: document.querySelector('[data-type="body"]'), doc: document, item: paper, editable: !['readonly', 'private-group'].includes(scenario), setEnabled: () => {} };
   hooks.onInit(props);
   await hooks.onRender(props);
 };
@@ -43,7 +43,7 @@ import { DEFAULT_FLOW_DATA, FlowData } from '../../src/flowData';
   let data: any = { ...DEFAULT_FLOW_DATA, bookmark: { attachmentKey: 'ABCDEFGH', page: 4, pageCount: 10, at: 100 } };
   (globalThis as any).Zotero = { Items: { get: () => pdf } };
   const store: any = {
-    getData: () => data, invalidateCache: () => {},
+    getData: () => data, invalidateCache: () => {}, canEdit: () => true,
     setReadingBookmark: async (_item: any, bookmark: any) => { data = { ...data, bookmark }; return true; }
   };
   const manager = new ReadingBookmarkManager(store);

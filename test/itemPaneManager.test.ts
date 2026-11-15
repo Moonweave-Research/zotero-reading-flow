@@ -486,3 +486,17 @@ for (const reuseProps of [false, true]) {
     f.manager.unregister();
   });
 }
+
+test('read-only group pane edits a private record, discloses its scope and never saves the shared item', async () => {
+  const f = fixture(payload({ s: 'read' }), false);
+  f.paper.libraryID = 2; f.paper.key = 'AAAABBBB';
+  (globalThis as any).Zotero.Libraries = { get: () => ({ libraryType: 'group', groupID: 99 }) };
+  (globalThis as any).PathUtils = { profileDir: '/profile', join: (...p: string[]) => p.join('/') };
+  (globalThis as any).IOUtils = { exists: async () => false, writeUTF8: async () => {} };
+  await f.store.initialize(); await f.view();
+  assert.match(f.body.text(), /Your private group record/); assert.match(f.body.text(), /not shared with members or synced/);
+  const select = f.body.querySelectorAll('select')[0]; assert.equal(select.value, ''); assert.equal(select.disabled, false);
+  select.value = 'reading'; select.listeners.change(); await tick(); await tick();
+  assert.equal(f.store.getData(f.paper).s, 'reading'); assert.equal(f.counts().saves, 0); assert.equal(f.counts().setters, 0);
+  f.manager.unregister();
+});

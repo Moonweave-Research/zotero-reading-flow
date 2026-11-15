@@ -120,7 +120,7 @@ export class ReaderTracker {
       const pdf = Zotero.Items.get(reader.itemID) as any;
       if (!pdf?.parentID || !keyedAttachmentReference(pdf.key)) continue;
       const parent = Zotero.Items.get(pdf.parentID) as any;
-      if (!parent || parent.deleted || parent.isEditable?.() === false) continue;
+      if (!parent || parent.deleted || !this.dataStore.canEdit(parent)) continue;
       this.dataStore.invalidateCache(parent.id);
       const closingData = this.dataStore.getData(parent);
       if (closingData.availability || closingData.s !== null) continue;

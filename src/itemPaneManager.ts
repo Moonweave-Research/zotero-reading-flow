@@ -18,8 +18,9 @@ export function firstRecordedPDFActivity(data: FlowData): string | null {
   return dates.sort()[0] ?? null;
 }
 
-export function recordProblem(item: any, data: FlowData): string {
+export function recordProblem(item: any, data: FlowData, privateRecord = false): string {
   if (!data.availability) return '';
+  if (privateRecord) return 'Your private group Reading Flow record is unavailable. Its local storage and the shared item have been left unchanged.';
   const lines = String(item.getField('extra') || '').split(/\r?\n/).map(line => line.trimStart()).filter(line => /^ReadingFlow:\s*/.test(line));
   if (lines.length > 1) return 'Multiple Reading Flow records were found. They cannot be displayed or edited safely.';
   try {
@@ -147,8 +148,8 @@ export class ReadingFlowItemPaneManager {
     this.store.invalidateCache(parent.id);
     const generation = state.generation;
     const data = this.store.getData(parent);
-    const problem = recordProblem(parent, data);
-    const writable = props.editable && parent.isEditable?.() !== false && !problem && !state.busy;
+    const problem = recordProblem(parent, data, this.store.usesPrivateRecords(parent));
+    const writable = (props.editable || this.store.usesPrivateRecords(parent)) && this.store.canEdit(parent) && !problem && !state.busy;
     const add = (text: string) => { const p = this.element(props, 'p', text); p.style.setProperty('margin', '0.6em 0'); props.body.append(p); return p; };
     if (problem) add(problem);
     const controls = this.element(props, 'div');
@@ -176,7 +177,8 @@ export class ReadingFlowItemPaneManager {
     important.type = 'checkbox'; important.indeterminate = Boolean(problem); important.checked = Boolean(data.important); important.disabled = !writable;
     importantLabel.prepend(important); controls.append(importantLabel); props.body.append(controls);
     important.addEventListener('change', () => { if (!this.current(state, generation, props.item)) return; void this.mutate(state, parent, () => this.store.setImportant(parent, important.checked), () => Boolean(this.store.getData(parent).important) === important.checked); });
-    if (!props.editable || parent.isEditable?.() === false) add('Read-only item.');
+    if (this.store.usesPrivateRecords(parent)) add('Your private group record. Saved only in this Zotero profile; not shared with members or synced to other devices. Shared Extra records are not used.');
+    else if (!props.editable || !this.store.canEdit(parent)) add('Read-only item.');
     const last = getLastActivityAt(data);
     const recent = formatActivityTimestamp(last);
     props.body.append(this.facts(props, [
@@ -292,7 +294,7 @@ export class ReadingFlowItemPaneManager {
     } catch (error) { Logger.warn(`Reading Flow status saved; the library row could not be refreshed: ${String(error)}`); }
   }
   private async mutate(state: Instance, parent: any, operation: () => Promise<boolean>, achieved?: () => boolean) {
-    if (state.busy || !state.props.editable || parent.isEditable?.() === false || parent.deleted
+    if (state.busy || (!state.props.editable && !this.store.usesPrivateRecords(parent)) || !this.store.canEdit(parent) || parent.deleted
       || this.parent(state.props.item)?.id !== parent.id || this.store.getData(parent).availability) return;
     const item = state.props.item, mutation = Symbol('pane-mutation');
     state.mutation = mutation; state.busy = true;

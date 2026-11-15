@@ -71,3 +71,16 @@ These are installed-package runtime checks, not a new visual certification of ev
 The five review regressions cover cancelled shutdown work, repeat statistics expansion and collapse, independent daily observations, a confirmed final page, and automatic resume after a local attachment ID changes. The pinned 1.3.11 writer also preserved a new keyed record and its history during a manual status edit.
 
 The complete 1.3.12 XPI was exercised in an isolated Zotero 10.0.8 profile on macOS. The installed statistics window expanded and collapsed before and after refresh. The calendar showed page 1 for today's observation after a previous day reached page 8, and page 10 of 10 for a separate PDF. Keyed resume opened the expected PDF and page. Legacy numeric resume preserved its stored bytes. A pending page 6 survived normal quit and restart alongside the manual status and bookmark. The precise cancelled-timer race and changed local IDs were tested with fixtures. Windows, Zotero 9, and transfer between actual devices were outside this run.
+
+
+## Private group records candidate (2026-11-15, issue #17)
+
+Unreleased source build based on 1.3.16. No release or device-sync claim is implied.
+
+- `npm run verify`: 402 tests passed, zero failures/skips; type checking, build, XPI validation and pinned previous-writer compatibility passed.
+- `npm run test:layout`: 84 pane conditions (seven scenarios, three widths, two font sizes, collapsed/expanded details) plus two PDF-toolbar save/Undo cases. The new private-group notice and enabled controls fit the shared pane at 280px and 26px font; the rendered PNG was inspected.
+- Seven private-store/integration cases cover shared Extra isolation, read-only groups, profile/group/item identity, durable reload, concurrent different-item saves, save failure recovery, corrupt/future file and record refusal, defaults, removal, completion/clear/reset guards, menu writes and statistics. Panel and sidebar tests cover private scope disclosure and avoiding misleading Extra-based group searches.
+- Negative control: a temporary bundle routing groups through the old shared Extra path fails the privacy test (`read` from shared Extra versus private `null`). The production bundle passes; no mutation was left in source.
+- Exact candidate XPI SHA-256: `3a386abb5d6e9ed092833da8eeb04896eeb1f72d947d2dfb1a2abd3b290155d6`.
+- In an isolated macOS Zotero 10.0.9 profile, the exact candidate passed 35 native checks using synthetic groups/items/PDF/snapshot. Actual read-only group controls saved private status and Important, the real PDF toolbar captured a bookmark, PDF activity/history and snapshot openings were private, automatic completion stayed off until opted in, clearing kept a pending page-4 save and page-3 bookmark, another group remained independent, and My Library still used Extra. Shared Extra bytes and dateModified stayed unchanged on all three group parents. Native checks do not use a live account or change group permissions on the server.
+- Windows, Zotero 9, live group-server sync and device-to-device sync were not exercised. Private group records intentionally have no sync transport, do not import prior shared Extra, and remain in the profile after uninstall, deletion or leaving a group.

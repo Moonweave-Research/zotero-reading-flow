@@ -110,7 +110,7 @@ test('shutdown flushes pending reader progress before unregistering and closing 
   const events: string[] = [];
   const originalZotero = (globalThis as any).Zotero;
   const bootstrap = new Bootstrap();
-  bootstrap.dataStore = { close() { events.push('close'); } } as any;
+  bootstrap.dataStore = { async flush() { events.push('store-flush'); }, close() { events.push('close'); } } as any;
   (bootstrap as any).readerTracker = {
     async flushPending() { events.push('flush'); },
     unregister() { events.push('unregister'); }
@@ -120,7 +120,7 @@ test('shutdown flushes pending reader progress before unregistering and closing 
 
   try {
     await bootstrap.shutdown();
-    assert.deepEqual(events.slice(0, 3), ['flush', 'unregister', 'close']);
+    assert.deepEqual(events.slice(0, 4), ['flush', 'unregister', 'store-flush', 'close']);
   } finally {
     (globalThis as any).Zotero = originalZotero;
   }

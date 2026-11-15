@@ -38,11 +38,19 @@ Detailed daily history retains at most 366 days. Brief page visits count as acti
 
 ## Persistence and compatibility
 
-One ReadingFlow: JSON line in the parent item's Extra field holds plugin metadata. PDFs, annotations, user tags, and unrelated Extra lines are preserved. Unsupported, malformed, or duplicate namespaces must not be silently overwritten.
+For My Library, one ReadingFlow: JSON line in the parent item's Extra field holds plugin metadata. PDFs, annotations, user tags, and unrelated Extra lines are preserved. Unsupported, malformed, or duplicate namespaces must not be silently overwritten.
 
 The current source writes v5 records when it first records Reading started, supports v4 bookmarks, and reads earlier supported formats. No bulk startup migration or inferred completion dates. Bookmark clients require 1.3.8 or newer; v5 reading-start records require 1.3.9 or a later compatible release. Older writers must refuse unsupported records without changing their bytes. Keep the pinned previous-writer checks and their positive controls. Do not lower schema versions to work around refusal.
 
 Automatic PDF positions written by 1.3.12 use attachment keys. Legacy numeric references remain readable locally and are not bulk migrated. Actual delivery between two devices remains unverified. Metadata sync transport belongs to Zotero. Every editing client must support the stored format; do not generalize tested refusal to arbitrary old releases.
+
+## Private group records (unreleased, issue #17)
+
+Group libraries use profile-local `reading-flow-private.json` (envelope v1), keyed by stable group ID and item key. Each value uses the same guarded ReadingFlow format as personal Extra. Load the private store before registering consumers, serialize durable writes across items, replace the file through IOUtils tmpPath with flush, and drain mutations before shutdown. Memory changes only after disk success. Unreadable/corrupt/future storage or unsupported records must remain untouched; never fall back to shared Extra.
+
+Shared Extra is ignored, never imported or rewritten, even if editable. Read-only group metadata does not prevent private mutations. Existing deletion, parent-item, unsupported-data, queued-write, reset and generation guards still apply. Private records participate in columns, item panes, bookmarks, tracking and statistics. They do not sync or leave this profile, and uninstall/trash/group departure does not remove them. Shared metadata sync remains Zotero's responsibility and has no authority over private state. My Library retains the existing Extra path.
+
+Do not create or automatically rename group Extra-based saved searches: they cannot represent private records. Explain this in preferences and use the statistics Tracked papers dataset instead.
 
 ## Preferences and scope
 

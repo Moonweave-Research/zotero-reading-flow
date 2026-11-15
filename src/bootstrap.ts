@@ -115,6 +115,8 @@ export class Bootstrap {
 
     try {
       this.dataStore = new DataStore();
+      await this.dataStore.initialize();
+      if (lifecycle !== this.lifecycle) return;
       Logger.log('dataStore OK');
     } catch (e) { Logger.error('dataStore FAIL', e); return; }
 
@@ -209,6 +211,7 @@ export class Bootstrap {
     await this.readerTracker?.flushPending();
     await this.columnRegistration?.catch(error => Logger.error('columnManager shutdown wait failed', error));
     this.readerTracker?.unregister();
+    await this.dataStore?.flush();
     this.dataStore?.close();
     this.notifierManager?.unregister();
     if (!this.isAppShutdown(reason)) {
