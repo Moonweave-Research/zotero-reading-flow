@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.18 - 2026-11-15
 
 - Filter Reading Statistics by one exact parent-item tag, including automatic tags, within the selected view or library. Combine it with dataset, status, Important and activity-period filters without editing item data.
 - Keep selected absent tags as empty results, disclose successful/stale tag conditions, and wrap long tag names. Verify native saved-search and collection scopes together with private group records.

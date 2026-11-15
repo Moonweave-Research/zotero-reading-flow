@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> Current release: **1.3.17**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
+> Current release: **1.3.18**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read, and Unassigned with Important states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
@@ -205,7 +205,7 @@ Open **Tools → Reading Statistics**, or right-click a paper and choose **Readi
 The dashboard brings together **reading bookmarks, automatic positions, last PDF activity, and status**. Its calendar shows days with recorded PDF page changes. Select an active day to inspect the matching papers; **Show in Zotero** selects a paper, and the PDF action opens the displayed bookmark or saved position.
 
 - **Check Scope first.** A newly opened dashboard starts at **Current View**. Choose **Selected Library** for the whole active library. Reopening an existing statistics window preserves its filters.
-- **Tag filter (unreleased source build).** Open **Filter items → Tag** to select one exact parent-item tag, including automatic tags. It combines with Items, Status, Important and the activity period. Attachment-only tags do not match the parent. To use a saved search or collection, select it in Zotero, keep **Current View**, then Refresh; **Selected Library** uses the whole selected library. A tag absent from the new scope stays selected and gives an empty result until cleared.
+- **Tag filter (1.3.18).** Open **Filter items → Tag** to select one exact parent-item tag, including automatic tags. It combines with Items, Status, Important and the activity period. Attachment-only tags do not match the parent. To use a saved search or collection, select it in Zotero, keep **Current View**, then Refresh; **Selected Library** uses the whole selected library. A tag absent from the new scope stays selected and gives an empty result until cleared.
 - **Use the activity period for activity.** Current status and position describe the item now. The period controls which retained activity is shown.
 - **Treat Marked Read as your judgment.** It counts papers explicitly marked **Read**, not papers that reached the last page.
 - **Expand details when needed.** **Position history** contains available daily farthest-position comparisons and reset counts. **Status and saved positions** contains the optional breakdowns.
