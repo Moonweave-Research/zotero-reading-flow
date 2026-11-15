@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.17 - 2026-11-15
 
 - Keep group-library reading records private to the local Zotero profile instead of shared Extra, including read-only groups. Preserve My Library storage and leave existing shared metadata untouched. Group records are not synced between devices.
 - Use private records throughout status controls, Important, bookmarks, PDF/snapshot tracking, automatic completion and statistics. Explain their scope in the pane and avoid Extra-based group sidebar searches.

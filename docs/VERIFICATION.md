@@ -75,7 +75,7 @@ The complete 1.3.12 XPI was exercised in an isolated Zotero 10.0.8 profile on ma
 
 ## Private group records candidate (2026-11-15, issue #17)
 
-Unreleased source build based on 1.3.16. No release or device-sync claim is implied.
+Pre-release feature candidate based on 1.3.16, subsequently included in 1.3.17. Its hash below is not the versioned 1.3.17 release archive. No device-sync claim is implied.
 
 - `npm run verify`: 402 tests passed, zero failures/skips; type checking, build, XPI validation and pinned previous-writer compatibility passed.
 - `npm run test:layout`: 84 pane conditions (seven scenarios, three widths, two font sizes, collapsed/expanded details) plus two PDF-toolbar save/Undo cases. The new private-group notice and enabled controls fit the shared pane at 280px and 26px font; the rendered PNG was inspected.
