@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add an off-by-default automatic Read option for loaded PDF tabs closed on their final visible page. Manual stages, other open readers for the same item, unknown locations, snapshots, EPUBs, and app shutdown do not trigger automatic completion.
+- Label automatic Read separately from manual Read, keep Marked Read statistics manual-only, and provide Clear automatic Read in the item pane. Clearing preserves PDF positions, bookmarks, snapshot openings and manual choices.
+- Persist automatic completion in v7 metadata only when the rule runs. The released 1.3.15 writer refuses v7 edits without changing bytes; all editing devices need a v7-capable client for those records. Turning the option off stops future marks without rewriting existing records.
+
 ## 1.3.15 - 2026-11-15
 
 - Derive automatic Reading after a loaded web snapshot opens, while preserving every manual stage. Closing a snapshot never marks it Read.

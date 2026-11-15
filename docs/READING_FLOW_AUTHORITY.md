@@ -10,10 +10,14 @@ Only a snapshot opening upgrades its parent record to v6; PDF-only items retain 
 
 ## Reading meaning
 
+Unreleased optional completion (#43): `autoComplete` defaults to false. When enabled, closing a loaded PDF tab on its live final page can store `automaticRead: { attachmentKey, at }` in v7 and derive Read with an automatic source. Manual stages always take precedence. Do not use a persisted/farthest position or metadata page-count fallback to infer completion. Another open reader for that parent, a non-PDF, missing initialization/key/page count, disabled tracking, or app shutdown prevents completion. Capture the live view before Zotero's default tab observer destroys it.
+
+No completion history or manual Read counts are fabricated. Show Automatic Read separately in current statistics. Clear automatic Read removes only the completion marker, preserves every independent fact and prevents an older pending completion from restoring it. Disabling the option stops future marks without modifying existing records. A v7 record needs a compatible client on every editing device; the pinned released 1.3.15 writer must refuse edits with exact byte retention. Preserve the existing v1–v6 read/write path for records without automatic completion. No bulk migration or schema downgrade.
+
 - A reading bookmark is a deliberate user choice for one PDF attachment and page. Navigation never moves it. Setting, removing, and undoing a bookmark are explicit actions.
 - Last viewed is the most recently displayed PDF page, including a brief visit. It can move backward. Historical farthest positions are optional navigation history, never measured reading coverage.
 - Neither reaching the final page nor spending time on a page proves reading or completion. Do not label automatic positions as pages read, reading percentage, or completion.
-- Manual stages are To Read, Reading, Skimmed, and Read. Without a manual stage, a bookmark or recorded PDF activity can derive Reading; otherwise the item is Unassigned. A loaded PDF opening records its visible position even when it matches the previously saved page. Manual stages remain unchanged; reaching the end or closing a tab never marks Read.
+- Manual stages are To Read, Reading, Skimmed, and Read. Without a manual stage, a bookmark or recorded PDF activity can derive Reading; otherwise the item is Unassigned. A loaded PDF opening records its visible position even when it matches the previously saved page. Manual stages remain unchanged; by default, reaching the end or closing a tab never marks Read.
 - Important is independent of the stage. Clearing either preserves the other. Legacy Important does not recover a lost earlier manual stage.
 
 ## Surfaces and actions

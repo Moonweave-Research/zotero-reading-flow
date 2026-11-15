@@ -135,6 +135,7 @@ export interface StatisticsSnapshot {
   statusDenominator?: number;
   inProgress: number;
   read: number;
+  automaticRead?: number;
   importantCount?: number;
   statusCounts: Record<DisplayReadingStatus, number>;
   progressDistribution: Record<ProgressBucket, number>;
@@ -179,10 +180,13 @@ export function calculateStatisticsSnapshot(
   const progressDistribution = emptyProgressDistribution();
   let knownRemainingPages = 0;
   let knownRemainingPapers = 0;
+  let automaticRead = 0;
 
   for (const paper of selectedPapers) {
     const display = getDisplayState(paper.flowData);
-    const status = resolveReadingStatus(paper.flowData).status;
+    const resolved = resolveReadingStatus(paper.flowData);
+    const status = resolved.status;
+    if (status === 'read' && resolved.source === 'automatic') automaticRead++;
     const bucket = resolveProgressBucket(display);
     const remainingPages = resolveRemainingPages(display);
 
@@ -204,7 +208,8 @@ export function calculateStatisticsSnapshot(
     unavailableItems: scopePapers.filter(paper => paper.flowData.availability).length,
     statusDenominator: scopePapers.filter(paper => !paper.flowData.availability).length,
     inProgress: statusCounts.reading,
-    read: statusCounts.read,
+    read: selectedPapers.filter(paper => !paper.flowData.availability && paper.flowData.s === 'read').length,
+    ...(automaticRead ? { automaticRead } : {}),
     statusCounts,
     progressDistribution,
     knownRemainingPages,

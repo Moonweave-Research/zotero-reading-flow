@@ -105,6 +105,37 @@ function item(payload) {
   assert.deepEqual(new New().getData(newPeer).bookmark, started.bookmark);
   assert.equal(new New().getData(newPeer).readingStartedAt, started.readingStartedAt);
   console.log(`Compatibility PASS: ${oldWrites.length} released 1.3.14-writer refusals for v6 with byte retention; v5 positive control; v6 round trip.`);
+  const v6Dir = path.join(dir, 'v6');
+  fs.mkdirSync(v6Dir, { recursive: true });
+  const v1315 = 'd9b36d5229ecf59b258182a414ca9f62853cbd5d';
+  for (const name of ['dataStore', 'flowData', 'lruCache', 'Logger', 'preferences']) {
+    fs.writeFileSync(path.join(v6Dir, `${name}.ts`), execFileSync('git', ['show', `${v1315}:src/${name}.ts`]));
+  }
+  const v6Bundle = path.join(v6Dir, 'store.cjs');
+  esbuild.buildSync({ entryPoints: [path.join(v6Dir, 'dataStore.ts')], outfile: v6Bundle, bundle: true, platform: 'node' });
+  const V6 = require(v6Bundle).DataStore;
+  const automatic = item({ ...snapshotPayload, s: null });
+  assert.equal(await new New().recordAutomaticRead(automatic, { attachmentKey: 'ABCD2345', at: 1000 }), true);
+  const completed = JSON.parse(automatic.getField().split('ReadingFlow: ')[1]);
+  const v6Writes = [...oldWrites,
+    (store, target) => store.recordSnapshotOpening(target, 1000),
+    (store, target) => store.recordProgressUnlessResetAfter(target, { attachmentId: '9', progress: .5, at: 1000 }, 1000),
+    (store, target) => store.initializeStatusIfUnowned(target, 'read')];
+  for (const write of v6Writes) {
+    const target = item(completed), before = target.getField();
+    assert.equal(await write(new V6(), target), false);
+    assert.equal(target.getField(), before); assert.equal(target.saves, 0);
+  }
+  assert.equal(await new V6().setStatus(item(snapshotPayload), 'read'), true);
+  const completionPeer = item(completed);
+  assert.equal(await new New().setImportant(completionPeer, true), true);
+  assert.deepEqual(new New().getData(completionPeer).automaticRead, completed.automaticRead);
+  assert.equal(await new New().clearAutomaticRead(completionPeer), true);
+  const cleared = new New().getData(completionPeer);
+  assert.equal(cleared.v, 7); assert.equal(cleared.automaticRead, undefined);
+  assert.equal(cleared.snapshotOpenedAt, snapshotPayload.snapshotOpenedAt);
+  assert.deepEqual(cleared.bookmark, completed.bookmark);
+  console.log(`Compatibility PASS: ${v6Writes.length} released 1.3.15-writer refusals for v7 with byte retention; v6 positive control; v7 round trip and clear.`);
   console.log('Compatibility PASS: released 1.3.11 preserves keyed positions and daily observations during a manual status edit.');
   console.log(`Compatibility PASS: ${refusals} v3-writer refusals for v4; ${v4Refusals} released v1.3.8-writer refusals for v5, all with exact byte retention; v3/v4 positive controls; v5 round trip.`);
 })().catch(e=>{console.error(e);process.exitCode=1;});

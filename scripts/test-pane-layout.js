@@ -13,7 +13,7 @@ buildSync({ entryPoints: ['test/layout/itemPane.fixture.ts'], bundle: true, plat
     const page = await browser.newPage({ viewport: { width: 1000, height: 1600 } });
     for (const fontSize of [13, 26]) {
       for (const width of [280, 320, 480]) {
-        for (const scenario of ['bookmark', 'empty', 'readonly', 'unavailable', 'snapshot']) {
+        for (const scenario of ['bookmark', 'empty', 'readonly', 'unavailable', 'snapshot', 'automatic-read']) {
           await page.setContent(`<style>
             body { font: ${fontSize}px Arial; }
             #preferred { display: inline-flex; flex-direction: column; }
@@ -45,6 +45,7 @@ buildSync({ entryPoints: ['test/layout/itemPane.fixture.ts'], bundle: true, plat
           if (scenario === 'bookmark' || scenario === 'readonly') assert.match(await page.locator('[data-type="body"]').textContent(), /Reading bookmark.*page 4.*Last viewed.*page 8/s);
           if (scenario === 'empty') assert.match(await page.locator('[data-type="body"]').textContent(), /No reading bookmark/);
           if (scenario === 'snapshot') assert.match(await page.locator('[data-type="body"]').textContent(), /Last snapshot opened/);
+          if (scenario === 'automatic-read') assert.match(await page.locator('[data-type="body"]').textContent(), /Automatically marked Read.*Clear automatic Read/s);
           if (scenario === 'unavailable') assert.match(await page.locator('[data-type="body"]').textContent(), /damaged or invalid/);
           assert.equal(await page.locator('select').isDisabled(), scenario === 'readonly' || scenario === 'unavailable');
           if (scenario === 'bookmark') {
