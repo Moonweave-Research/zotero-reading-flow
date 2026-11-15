@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> Current release: **1.3.13**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
+> Current release: **1.3.15**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read, and Unassigned with Important states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
@@ -184,7 +184,7 @@ Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Pape
 
 ## Reading statistics
 
-**Unreleased snapshot support:** a loaded web snapshot opening can derive **Reading (automatic)** when no manual stage is set. **Last snapshot opened** is separate from PDF activity; snapshots do not create PDF page positions or calendar activity, and closing one never marks it Read. Items with this record use v6 metadata and need a snapshot-capable client on every editing device; released 1.3.14 preserves those records but cannot edit them. This behavior is not part of the published 1.3.14 release.
+**Snapshot support (1.3.15):** a loaded web snapshot opening can derive **Reading (automatic)** when no manual stage is set. **Last snapshot opened** is separate from PDF activity; snapshots do not create PDF page positions or calendar activity, and closing one never marks it Read. Items with this record use v6 metadata and need 1.3.15 or a later snapshot-capable client on every editing device; released 1.3.14 preserves those records but cannot edit them.
 
 <img src="docs/assets/workflows/statistics-position-detail.png" alt="Actual statistics row: reading bookmark page 4 of 10, automatic last viewed page 8 of 10, Last PDF activity 2026-10-26 14:01, and Reading automatic with Important" width="920">
 
