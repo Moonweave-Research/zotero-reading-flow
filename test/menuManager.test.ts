@@ -155,6 +155,7 @@ function setupMenu(
   };
 
   const dataStore = {
+    canEdit: (item: any) => item.isEditable?.() !== false,
     invalidateCache() {},
     getData(item: any) {
       const data = dataById[item.id];

@@ -71,6 +71,7 @@ test('new-item default is opt-in and applies only to editable untracked regular 
     Items: { getAsync: async (id: number) => items.get(id) }
   };
   const store = {
+    canEdit: (item: any) => item.isEditable?.() !== false,
     hasReadingFlowNamespace: (item: any) => item.id === 53,
     initializeStatusIfUnowned: async (item: any, status: string) => {
       calls.push([item.id, status]);
@@ -98,6 +99,7 @@ test('Unassigned new-item default performs no writes', async () => {
     Items: { getAsync: async () => ({ id: 60, dateAdded: 2000, isRegularItem: () => true, isEditable: () => true }) }
   };
   const store = {
+    canEdit: (item: any) => item.isEditable?.() !== false,
     hasReadingFlowNamespace: () => false,
     initializeStatusIfUnowned: async () => { writes += 1; return true; },
     invalidateCache() {},
@@ -122,6 +124,7 @@ test('one failed new-item default does not prevent later eligible papers from be
     Items: { getAsync: async (id: number) => items.get(id) }
   };
   const store = {
+    canEdit: (item: any) => item.isEditable?.() !== false,
     hasReadingFlowNamespace: () => false,
     async initializeStatusIfUnowned(item: any) {
       calls.push(item.id);
@@ -151,6 +154,7 @@ test('new-item default skips historical sync items and any occupied namespace', 
     Items: { getAsync: async (id: number) => items.get(id) }
   };
   const store = {
+    canEdit: (item: any) => item.isEditable?.() !== false,
     hasReadingFlowNamespace: (item: any) => item.id === 81,
     async initializeStatusIfUnowned(item: any) { initialized.push(item.id); return true; },
     invalidateCache() {},
@@ -173,6 +177,7 @@ test('an async item lookup failure does not prevent later new items', async () =
     }
   };
   const store = {
+    canEdit: (item: any) => item.isEditable?.() !== false,
     hasReadingFlowNamespace: () => false,
     async initializeStatusIfUnowned(item: any) { initialized.push(item.id); return true; },
     invalidateCache() {},
@@ -204,6 +209,7 @@ test('a large add notification loads all items in one Zotero lookup and initiali
     }
   };
   const store = {
+    canEdit: (item: any) => item.isEditable?.() !== false,
     hasReadingFlowNamespace: () => false,
     async initializeStatusIfUnowned() {
       activeWrites += 1;

@@ -279,7 +279,7 @@ export class ReadingFlowMenuManager {
         skipped.add(`unsupported:${normalized?.id ?? index}`);
         continue;
       }
-      if (candidate.isEditable?.() === false) {
+      if (!this.dataStore.canEdit(candidate)) {
         skipped.add(`readonly:${candidate.id}`);
         continue;
       }

@@ -13,7 +13,7 @@ const LEGACY_SIDEBAR_SEARCH_NAMES = new Set(['Reading Flow Metadata', 'Reading F
 export class SidebarSearchManager {
   public async migrateTrackedSearches(): Promise<void> {
     for (const libraryID of Object.keys(this.getReferences()).map(Number)) {
-      await this.getTrackedSearch(libraryID);
+      if (!this.isGroup(libraryID)) await this.getTrackedSearch(libraryID);
     }
   }
 
@@ -29,6 +29,7 @@ export class SidebarSearchManager {
     const libraryID = getSelectedLibraryID(Zotero.getActiveZoteroPane?.());
     if (!libraryID) return this.report('Select an editable Zotero library first.');
     const library = (Zotero as any).Libraries?.get?.(libraryID);
+    if (this.isGroup(libraryID)) return this.report(this.privateGroupMessage());
     if (library?.editable === false) {
       return this.report(`“${this.libraryName(libraryID)}” is read-only. Select an editable library.`);
     }
@@ -63,6 +64,7 @@ export class SidebarSearchManager {
     try {
       const libraryID = getSelectedLibraryID(Zotero.getActiveZoteroPane?.());
       if (!libraryID) return this.report('Select a Zotero library to check its sidebar list.');
+      if (this.isGroup(libraryID)) return this.report(this.privateGroupMessage());
       const libraryName = this.libraryName(libraryID);
       const search = await this.getTrackedSearch(libraryID);
       return this.report(search
@@ -86,6 +88,14 @@ export class SidebarSearchManager {
     } catch (error) {
       return this.report(`Could not remove the sidebar shortcut: ${this.errorMessage(error)}`);
     }
+  }
+
+  private isGroup(libraryID: number): boolean {
+    return (Zotero as any).Libraries?.get?.(libraryID)?.libraryType === 'group';
+  }
+
+  private privateGroupMessage(): string {
+    return 'Group reading records are private to this Zotero profile. Use Reading Statistics with Tracked papers; an Extra-based saved search cannot list your private records.';
   }
 
   private async getTrackedSearch(libraryID: number): Promise<any | null> {

@@ -239,11 +239,17 @@ No. It records navigation and a bookmark you explicitly choose. A short visit co
 
 ### Will it change my PDFs or replace my existing records?
 
-PDF files are not modified. Reading Flow keeps its data in one `ReadingFlow:` line in the parent item's **Extra** field and preserves unrelated Extra content. Existing automatic positions are not converted into reading bookmarks. Disabling or uninstalling the plugin leaves its metadata in place.
+PDF files are not modified. For My Library, Reading Flow keeps its data in one `ReadingFlow:` line in the parent item's **Extra** field and preserves unrelated Extra content. Existing automatic positions are not converted into reading bookmarks. Disabling or uninstalling the plugin leaves its metadata in place.
+
+### Can I use it in a group library?
+
+In this source build, group libraries use **your private local record**, including read-only groups. Status, Important, bookmarks, PDF activity, snapshot openings and optional automatic Read are saved only in your Zotero profile. They do not change the shared item or another member's record. Existing ReadingFlow lines in shared Extra are ignored and left unchanged; they are not imported as your own activity.
+
+Group records **do not sync between devices**. They are stored in `reading-flow-private.json` in the Zotero profile directory, not the data directory. Include this file in profile backups. Disabling or uninstalling leaves it in place. Deleted or departed group records are retained locally for recovery; this patch does not publish or migrate them. The Extra-based sidebar search cannot list private group records; use **Reading Statistics → Tracked papers** within the selected group instead. My Library continues to use Extra and Zotero metadata sync.
 
 ### Does it sync between devices?
 
-The Extra record follows Zotero's metadata sync. Bookmarks and automatic positions saved by 1.3.12 identify the PDF by its Zotero attachment key. Use 1.3.12 or newer on each device for automatic resume, and make sure the PDF is available there. Earlier automatic positions use local IDs and continue to work where the saved ID matches. Opening the PDF records a new position using its key.
+For My Library, the Extra record follows Zotero's metadata sync. Private group records stay in this profile. Bookmarks and automatic positions saved by 1.3.12 identify the PDF by its Zotero attachment key. Use 1.3.12 or newer on each device for automatic resume, and make sure the PDF is available there. Earlier automatic positions use local IDs and continue to work where the saved ID matches. Opening the PDF records a new position using its key.
 
 Use **1.3.8 or newer** on every device that needs to read or edit bookmark records. **Reading started** records require **1.3.9 or newer** on every device that needs to view or edit them. Version 1.3.8 preserves those newer records but shows them as unsupported, without their details or editing controls. Actual device-to-device delivery has **not yet been verified**; attachment-key resolution, supported-client round trips, and previous-writer refusal have been tested.
 

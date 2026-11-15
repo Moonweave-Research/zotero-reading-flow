@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Keep group-library reading records private to the local Zotero profile instead of shared Extra, including read-only groups. Preserve My Library storage and leave existing shared metadata untouched. Group records are not synced between devices.
+- Use private records throughout status controls, Important, bookmarks, PDF/snapshot tracking, automatic completion and statistics. Explain their scope in the pane and avoid Extra-based group sidebar searches.
+
 ## 1.3.16 - 2026-11-15
 
 - Add an off-by-default automatic Read option for loaded PDF tabs closed on their final visible page. Manual stages, other open readers for the same item, unknown locations, snapshots, EPUBs, and app shutdown do not trigger automatic completion.

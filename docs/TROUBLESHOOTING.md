@@ -27,7 +27,7 @@ The pane shows Automatic (Read) and its timestamp. Use Clear automatic Read to r
 
 ## Status changes do not apply
 
-Use the Reading Flow panel or item context menu. Read-only items cannot be changed. Bulk changes normalize PDF selections to their parent and report unchanged, skipped, or failed items. Unsupported, duplicate, or malformed ReadingFlow records are protected rather than overwritten. Do not delete their Extra line as a repair shortcut.
+Use the Reading Flow panel or item context menu. Read-only My Library items cannot be changed; read-only groups allow private Reading Flow changes. Bulk changes normalize PDF selections to their parent and report unchanged, skipped, or failed items. Unsupported, duplicate, or malformed ReadingFlow records are protected rather than overwritten. Do not delete their Extra line as a repair shortcut.
 
 An earlier capture session observed stale blank library rows for newly created items. A fresh native check of released 1.3.10 on macOS created a paper and changed it to To Read, then Reading, and toggled Important: the selected row updated without restarting or selecting another item. That earlier symptom did not recur in this check. If it occurs in your workflow, report the exact creation/import steps and versions; do not delete the saved record or reset your library.
 
@@ -47,9 +47,15 @@ Snapshot support in 1.3.15 records Last snapshot opened after the internal reade
 
 Snapshot openings upgrade the item to v6 metadata. Released 1.3.14 safely refuses edits to those records; use 1.3.15 or later snapshot-capable clients on every editing device. Do not remove the record or lower its version to work around this protection. Existing PDF-only records are not upgraded by this change.
 
-Metadata lives in a ReadingFlow: JSON line in the parent item's Extra field. Do not edit it manually for routine use. Unrelated Extra content, PDFs, and annotations are preserved; uninstalling does not remove this metadata.
+My Library metadata lives in a ReadingFlow: JSON line in the parent item's Extra field. Do not edit it manually for routine use. Unrelated Extra content, PDFs, and annotations are preserved; uninstalling does not remove this metadata.
 
 Use compatible clients (1.3.8 or newer) for bookmark records on every editing device. Records with Reading started use v5 and require 1.3.9 or a later v5-compatible release on every editing device. Version 1.3.8 safely preserves v5 records but shows them as unsupported, without their details or editing controls. The PDF must be available there too. Actual device-to-device delivery has not been verified. Never lower a record's schema version to make an old writer accept it.
+
+## Group-library records (unreleased source build)
+
+Group reading data is private to the current Zotero profile and is not synced to other devices or members. The shared Extra line is ignored without changing it. Read-only group items can still have private status, bookmarks and activity. An existing shared Read status therefore does not become your personal Read status automatically.
+
+The file `reading-flow-private.json` is in the profile directory (Help → Show Data Directory opens the separate data directory). Back up the profile file too. Uninstalling, deleting an item or leaving a group does not delete private records. Use Reading Statistics with Tracked papers in the selected group; an Extra-based saved search cannot find private records. A storage warning disables group changes while leaving My Library available. Preserve the file and report the error; do not overwrite it or move shared metadata into it manually.
 
 ## An update still shows an old version
 

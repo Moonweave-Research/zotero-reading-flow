@@ -179,3 +179,15 @@ test('rejects a read-only selected library before attempting to save', async () 
   assert.match(await new SidebarSearchManager().create(), /read-only/);
   assert.equal(searches.length, 0);
 });
+
+test('group shortcuts explain private records and never create or migrate shared Extra searches', async () => {
+  const f = runtime(JSON.stringify({ 1: 'OWNEDKEY' }));
+  (globalThis as any).Zotero.Libraries.get = () => ({ libraryType: 'group', editable: true });
+  let saves = 0;
+  (globalThis as any).Zotero.Searches.getByLibraryAndKey = () => ({ name: 'Reading Flow Metadata', saveTx: async () => { saves++; } });
+  const manager = new SidebarSearchManager();
+  await manager.migrateTrackedSearches();
+  assert.match(await manager.create(), /private to this Zotero profile/);
+  assert.match(await manager.status(), /Extra-based saved search cannot list your private records/);
+  assert.equal(saves, 0); assert.equal(f.searches.length, 0);
+});

@@ -64,7 +64,7 @@ export class NotifierManager {
 
     for (const item of items) {
       try {
-        if (!item?.isRegularItem?.() || item.isEditable?.() === false) continue;
+        if (!item?.isRegularItem?.() || !this.dataStore.canEdit(item)) continue;
         if (item.deleted === true || item.parentID) continue;
         const dateAdded = this.getDateAddedTimestamp(item);
         if (dateAdded === null || dateAdded < activationTimestamp) continue;

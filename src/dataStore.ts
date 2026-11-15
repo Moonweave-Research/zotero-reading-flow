@@ -1,3 +1,4 @@
+import { PrivateRecordStore } from './privateRecordStore';
 import { isAutomaticRead, isReadingBookmark, ReadingBookmark } from './flowData';
 import { LRUCache } from './lruCache';
 import { Logger } from './Logger';
@@ -36,12 +37,40 @@ export class DataStore {
   private mutationQueues = new Map<number, Promise<void>>();
   private closed = false;
 
+  private privateRecords = new PrivateRecordStore();
+
+  public async initialize(): Promise<void> { await this.privateRecords.initialize(); this.cache.clear(); }
+  public async flush(): Promise<void> {
+    await Promise.all([...this.mutationQueues.values()]);
+    await this.privateRecords.flush();
+  }
+
+  public usesPrivateRecords(item: any): boolean {
+    return (globalThis as any).Zotero?.Libraries?.get?.(item?.libraryID)?.libraryType === 'group';
+  }
+
+  private privateKey(item: any): string | null {
+    const library = (globalThis as any).Zotero?.Libraries?.get?.(item?.libraryID);
+    return Number.isSafeInteger(library?.groupID) && library.groupID > 0 && /^[A-Z0-9]{8}$/.test(item?.key)
+      ? `${library.groupID}/${item.key}` : null;
+  }
+
+  public canEdit(item: any): boolean {
+    if (this.usesPrivateRecords(item)) return Boolean(this.privateKey(item)) && this.privateRecords.available;
+    return (typeof item?.isEditable === 'function' ? item.isEditable() : item?.isEditable) !== false;
+  }
+
+  private readRecord(item: any): string {
+    return this.usesPrivateRecords(item) ? this.privateRecords.get(this.privateKey(item) ?? '') : item.getField('extra') || '';
+  }
+
   public getData(item: any): FlowData {
     const id = item.id;
     const cached = this.cache.get(id);
     if (cached) return cached;
 
-    const data = this.parseData(id, item.getField('extra') || '');
+    const data = this.usesPrivateRecords(item) && (!this.privateRecords.available || !this.privateKey(item))
+      ? { ...DEFAULT_FLOW_DATA, availability: 'unavailable' as const } : this.parseData(id, this.readRecord(item));
     this.cache.set(id, data);
     return data;
   }
@@ -56,14 +85,14 @@ export class DataStore {
   }
 
   private getStoredReadingFlowData(item: any): FlowData | null {
-    const extra = item.getField('extra') || '';
+    const extra = this.readRecord(item);
     return this.getLatestSupportedData(extra);
   }
 
   public async updateData(item: any, updates: Partial<FlowData>): Promise<boolean> {
     return this.enqueueMutation(item, async () => {
       if (!await this.prepareMutation(item)) return false;
-      const originalExtra = item.getField('extra') || '';
+      const originalExtra = this.readRecord(item);
       const current = this.getMutationBaseline(item.id, originalExtra);
       if (!current) return false;
 
@@ -222,7 +251,7 @@ export class DataStore {
     const timestamp = this.normalizeTimestamp(at);
     return this.enqueueMutation(item, async () => {
       if (!await this.prepareMutation(item)) return false;
-      const originalExtra = item.getField('extra') || '';
+      const originalExtra = this.readRecord(item);
       if (this.getFlowLinesFromExtra(originalExtra).length > 0) return false;
       const initial = normalizeFlowData({
         ...DEFAULT_FLOW_DATA,
@@ -242,7 +271,7 @@ export class DataStore {
   public async clearManualStatus(item: any): Promise<boolean> {
     return this.enqueueMutation(item, async () => {
       if (!await this.prepareMutation(item)) return false;
-      const originalExtra = item.getField('extra') || '';
+      const originalExtra = this.readRecord(item);
       const current = this.getMutationBaseline(item.id, originalExtra);
       if (!current) return false;
       if (current.s === null) return false;
@@ -330,7 +359,7 @@ export class DataStore {
     allowDuringShutdown = false
   ): Promise<boolean> {
     if (!await this.prepareMutation(item, allowDuringShutdown)) return false;
-    const originalExtra = item.getField('extra') || '';
+    const originalExtra = this.readRecord(item);
     const current = this.getMutationBaseline(item.id, originalExtra);
     if (!current) return false;
     const next = build(current);
@@ -349,7 +378,7 @@ export class DataStore {
       return false;
     }
 
-    if (!await this.waitUntilClean(item, allowDuringShutdown)) {
+    if (!this.usesPrivateRecords(item) && !await this.waitUntilClean(item, allowDuringShutdown)) {
       Logger.warn('ReadingFlow: Item remained dirty after retries, skipping write to prevent race condition');
       return false;
     }
@@ -376,6 +405,14 @@ export class DataStore {
     saveOptions?: { skipDateModifiedUpdate?: boolean },
     allowDuringShutdown = false
   ): Promise<boolean> {
+    if (this.usesPrivateRecords(item)) {
+      if (this.isClosedOrShuttingDown(allowDuringShutdown) || !this.isEligibleForMutation(item)) return false;
+      const key = this.privateKey(item);
+      if (!key) return false;
+      await this.privateRecords.set(key, this.composeExtra('', data));
+      this.cache.delete(item.id);
+      return true;
+    }
     let baselineExtra = originalExtra;
     for (let attempt = 0; attempt < DataStore.EXTRA_MERGE_RETRY_COUNT; attempt++) {
       if (this.isClosedOrShuttingDown(allowDuringShutdown)) {
@@ -429,7 +466,7 @@ export class DataStore {
   }
 
   public hasReadingFlowNamespace(item: any): boolean {
-    return this.getFlowLinesFromExtra(item.getField('extra') || '').length > 0;
+    return this.getFlowLinesFromExtra(this.readRecord(item)).length > 0;
   }
 
   private getFlowLinesFromExtra(extra: string): string[] {
@@ -529,8 +566,7 @@ export class DataStore {
 
   private isEligibleForMutation(item: any): boolean {
     if (!item || typeof item.id !== 'number') return false;
-    if (typeof item.isEditable === 'function' && item.isEditable() === false) return false;
-    if (typeof item.isEditable === 'boolean' && item.isEditable === false) return false;
+    if (!this.canEdit(item)) return false;
     if (item.deleted === true || item._deleted === true) return false;
     if (typeof item.isDeleted === 'function' && item.isDeleted()) return false;
     if (typeof item.isInTrash === 'function' && item.isInTrash()) return false;
