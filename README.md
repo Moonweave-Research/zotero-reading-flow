@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> Current release: **1.3.16**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
+> Current release: **1.3.17**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read, and Unassigned with Important states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
@@ -243,7 +243,7 @@ PDF files are not modified. For My Library, Reading Flow keeps its data in one `
 
 ### Can I use it in a group library?
 
-In this source build, group libraries use **your private local record**, including read-only groups. Status, Important, bookmarks, PDF activity, snapshot openings and optional automatic Read are saved only in your Zotero profile. They do not change the shared item or another member's record. Existing ReadingFlow lines in shared Extra are ignored and left unchanged; they are not imported as your own activity.
+Since 1.3.17, group libraries use **your private local record**, including read-only groups. Status, Important, bookmarks, PDF activity, snapshot openings and optional automatic Read are saved only in your Zotero profile. They do not change the shared item or another member's record. Existing ReadingFlow lines in shared Extra are ignored and left unchanged; they are not imported as your own activity.
 
 Group records **do not sync between devices**. They are stored in `reading-flow-private.json` in the Zotero profile directory, not the data directory. Include this file in profile backups. Disabling or uninstalling leaves it in place. Deleted or departed group records are retained locally for recovery; this patch does not publish or migrate them. The Extra-based sidebar search cannot list private group records; use **Reading Statistics → Tracked papers** within the selected group instead. My Library continues to use Extra and Zotero metadata sync.
 

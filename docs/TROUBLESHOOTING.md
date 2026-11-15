@@ -51,7 +51,7 @@ My Library metadata lives in a ReadingFlow: JSON line in the parent item's Extra
 
 Use compatible clients (1.3.8 or newer) for bookmark records on every editing device. Records with Reading started use v5 and require 1.3.9 or a later v5-compatible release on every editing device. Version 1.3.8 safely preserves v5 records but shows them as unsupported, without their details or editing controls. The PDF must be available there too. Actual device-to-device delivery has not been verified. Never lower a record's schema version to make an old writer accept it.
 
-## Group-library records (unreleased source build)
+## Group-library records (1.3.17)
 
 Group reading data is private to the current Zotero profile and is not synced to other devices or members. The shared Extra line is ignored without changing it. Read-only group items can still have private status, bookmarks and activity. An existing shared Read status therefore does not become your personal Read status automatically.
 
