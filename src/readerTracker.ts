@@ -119,6 +119,11 @@ export class ReaderTracker {
       if (reader._type !== 'pdf' || !ids.includes(reader.tabID) || !this.readyReaders.has(reader)) continue;
       const pdf = Zotero.Items.get(reader.itemID) as any;
       if (!pdf?.parentID || !keyedAttachmentReference(pdf.key)) continue;
+      const parent = Zotero.Items.get(pdf.parentID) as any;
+      if (!parent || parent.deleted || parent.isEditable?.() === false) continue;
+      this.dataStore.invalidateCache(parent.id);
+      const closingData = this.dataStore.getData(parent);
+      if (closingData.availability || closingData.s !== null) continue;
       // Only live visible pages count; saved/farthest positions are not a closing-page observation.
       const app = activePDFApplication(reader);
       const page = app?.pdfViewer?.currentPageNumber, count = app?.pdfDocument?.numPages;

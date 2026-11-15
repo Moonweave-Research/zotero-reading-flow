@@ -173,3 +173,14 @@ test('clearing automatic Read does not cancel an unrelated pending PDF position 
     assert.equal(data.snapshotOpenedAt, 100);
   } finally { f.restore(); }
 });
+
+test('a tab closed under a manual stage cannot complete after that stage is cleared', async () => {
+  const f = await fixture(true, 'to-read');
+  try {
+    f.tracker.notify('close', 'tab', ['reader-tab']);
+    await f.store.clearManualStatus(f.paper);
+    await f.tracker.flushPending();
+    assert.equal(f.store.getData(f.paper).automaticRead, undefined);
+    assert.deepEqual(resolveReadingStatus(f.store.getData(f.paper)), { status: 'reading', source: 'automatic' });
+  } finally { f.restore(); }
+});
