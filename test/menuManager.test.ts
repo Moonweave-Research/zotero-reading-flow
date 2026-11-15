@@ -48,6 +48,17 @@ function makeUnsupportedItem(id: number) {
   };
 }
 
+test('snapshot and parent selections share one manual-status action', async () => {
+  const parent = makeRegularItem(20);
+  const snapshot = { ...makeUnsupportedItem(21), parentID: 20, attachmentReaderType: 'snapshot' };
+  const f = setupMenu([parent, snapshot], {}, [parent, snapshot]);
+  await f.menuByL10nID('reading-flow-status-reading').onCommand(new Event('command'), { items: [parent, snapshot] });
+  assert.deepEqual(f.mutationCalls, ['setStatus', 'refreshColumns', 'notifier']);
+  const onlySnapshot = setupMenu([snapshot], {}, [parent, snapshot]);
+  await onlySnapshot.menuByL10nID('reading-flow-status-reading').onCommand(new Event('command'), { items: [snapshot] });
+  assert.deepEqual(onlySnapshot.mutationCalls, ['setStatus', 'refreshColumns', 'notifier']);
+});
+
 function enabledContext() {
   const menuElem: any = {
     label: undefined as string | undefined

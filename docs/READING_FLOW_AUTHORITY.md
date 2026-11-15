@@ -4,6 +4,10 @@ Source version: **1.3.13** (November 9, 2026). The [GitHub Releases page](https:
 
 The #43 reader-opening fix is included in 1.3.11. Published 1.3.10 only observes page changes for automatic position tracking.
 
+Unreleased snapshot support: opening a loaded web snapshot derives automatic Reading and records `snapshotOpenedAt` in v6 metadata. Manual stages take precedence. Closing a snapshot does not mark Read. The pane labels this timestamp Last snapshot opened; PDF activity dates, positions, bookmarks, explicit reading-start dates, and the PDF activity calendar remain independent. Snapshot opening alone creates no PDF activity history.
+
+Only a snapshot opening upgrades its parent record to v6; PDF-only items retain their existing format. Released 1.3.14 refuses v6 mutations without changing the stored bytes. All editing devices need a snapshot-capable client for upgraded items. No bulk migration or automatic schema downgrade is performed.
+
 ## Reading meaning
 
 - A reading bookmark is a deliberate user choice for one PDF attachment and page. Navigation never moves it. Setting, removing, and undoing a bookmark are explicit actions.

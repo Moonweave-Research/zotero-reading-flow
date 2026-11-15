@@ -77,6 +77,34 @@ function item(payload) {
   }
   assert.equal(afterLegacyEdit.readingStartedAt, started.readingStartedAt);
   assert.ok(updated.getField().startsWith('Custom: keep\n'));
+  const v5Dir = path.join(dir, 'v5');
+  fs.mkdirSync(v5Dir, { recursive: true });
+  const v1314 = '15de656579983e60400f85620fab32cefc7b1b1b';
+  for (const name of ['dataStore', 'flowData', 'lruCache', 'Logger', 'preferences']) {
+    fs.writeFileSync(path.join(v5Dir, `${name}.ts`), execFileSync('git', ['show', `${v1314}:src/${name}.ts`]));
+  }
+  const v5Bundle = path.join(v5Dir, 'store.cjs');
+  esbuild.buildSync({ entryPoints: [path.join(v5Dir, 'dataStore.ts')], outfile: v5Bundle, bundle: true, platform: 'node' });
+  const V5 = require(v5Bundle).DataStore;
+  const snapshotItem = item(started);
+  assert.equal(await new New().recordSnapshotOpening(snapshotItem, 100), true);
+  const snapshotPayload = JSON.parse(snapshotItem.getField().split('ReadingFlow: ')[1]);
+  const oldWrites = methods.map((method, i) => (store, target) => method(store)(target, values[i]));
+  oldWrites.push((store, target) => store.setReadingBookmark(target, payload.bookmark),
+    (store, target) => store.updateData(target, { s: 'read' }));
+  for (const write of oldWrites) {
+    const target = item(snapshotPayload), before = target.getField();
+    assert.equal(await write(new V5(), target), false);
+    assert.equal(target.getField(), before);
+    assert.equal(target.saves, 0);
+  }
+  assert.equal(await new V5().setStatus(item(started), 'read'), true);
+  const newPeer = item(snapshotPayload);
+  assert.equal(await new New().setStatus(newPeer, 'read'), true);
+  assert.equal(new New().getData(newPeer).snapshotOpenedAt, 100);
+  assert.deepEqual(new New().getData(newPeer).bookmark, started.bookmark);
+  assert.equal(new New().getData(newPeer).readingStartedAt, started.readingStartedAt);
+  console.log(`Compatibility PASS: ${oldWrites.length} released 1.3.14-writer refusals for v6 with byte retention; v5 positive control; v6 round trip.`);
   console.log('Compatibility PASS: released 1.3.11 preserves keyed positions and daily observations during a manual status edit.');
   console.log(`Compatibility PASS: ${refusals} v3-writer refusals for v4; ${v4Refusals} released v1.3.8-writer refusals for v5, all with exact byte retention; v3/v4 positive controls; v5 round trip.`);
 })().catch(e=>{console.error(e);process.exitCode=1;});

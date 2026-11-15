@@ -272,7 +272,7 @@ export class ReadingFlowMenuManager {
       const normalized = this.normalizeItem(selected);
       const candidate = normalized?.isRegularItem?.()
         ? normalized
-        : normalized?.isPDFAttachment?.() && typeof normalized.parentID === 'number'
+        : (normalized?.isPDFAttachment?.() || normalized?.attachmentReaderType === 'snapshot') && typeof normalized.parentID === 'number'
           ? this.normalizeItem({ id: normalized.parentID })
           : null;
       if (!candidate?.isRegularItem?.()) {

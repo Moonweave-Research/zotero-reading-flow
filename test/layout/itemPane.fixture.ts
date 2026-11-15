@@ -12,6 +12,10 @@ import { DEFAULT_FLOW_DATA, FlowData } from '../../src/flowData';
     lastAttachmentId: '2', lastPage: 8, pageCount: { '2': 10 }
   };
   if (scenario === 'empty') { delete data.bookmark; data.lastAttachmentId = null; data.lastPage = null; data.readingStartedAt = undefined; data.s = null; }
+  if (scenario === 'snapshot') {
+    delete data.bookmark; data.lastAttachmentId = null; data.lastPage = null; data.pageCount = undefined;
+    data.readingStartedAt = undefined; data.s = null; data.v = 6; data.snapshotOpenedAt = Date.UTC(2026, 10, 15, 12);
+  }
   if (scenario === 'unavailable') data.availability = 'unavailable';
   (globalThis as any).Zotero = {
     ItemPaneManager: { registerSection: (options: any) => { hooks = options; return 'reading-flow-details'; } },
@@ -20,8 +24,8 @@ import { DEFAULT_FLOW_DATA, FlowData } from '../../src/flowData';
   const store: any = { getData: () => data, invalidateCache: () => {} };
   const reader: any = {
     getResumeDisplayTarget: async (_item: any, kind: string) => ({
-      action: scenario === 'empty' || scenario === 'unavailable' ? 'none' : 'resume', reason: 'No accessible PDF attachment is available.', attachmentId: 2, positionKind: kind === 'last-viewed' ? 'last-viewed' : 'bookmark',
-      lastPage: kind === 'last-viewed' ? 8 : 4, filename: scenario === 'empty' ? undefined : filename, fallbackLabel: 'Open sample paper'
+      action: ['empty', 'unavailable', 'snapshot'].includes(scenario) ? 'none' : 'resume', reason: 'No accessible PDF attachment is available.', attachmentId: 2, positionKind: kind === 'last-viewed' ? 'last-viewed' : 'bookmark',
+      lastPage: kind === 'last-viewed' ? 8 : 4, filename: ['empty', 'snapshot'].includes(scenario) ? undefined : filename, fallbackLabel: 'Open sample paper'
     })
   };
   const manager = new ReadingFlowItemPaneManager(store, reader);

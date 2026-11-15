@@ -184,6 +184,8 @@ Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Pape
 
 ## Reading statistics
 
+**Unreleased snapshot support:** a loaded web snapshot opening can derive **Reading (automatic)** when no manual stage is set. **Last snapshot opened** is separate from PDF activity; snapshots do not create PDF page positions or calendar activity, and closing one never marks it Read. Items with this record use v6 metadata and need a snapshot-capable client on every editing device; released 1.3.14 preserves those records but cannot edit them. This behavior is not part of the published 1.3.14 release.
+
 <img src="docs/assets/workflows/statistics-position-detail.png" alt="Actual statistics row: reading bookmark page 4 of 10, automatic last viewed page 8 of 10, Last PDF activity 2026-10-26 14:01, and Reading automatic with Important" width="920">
 
 [Open the full statistics dashboard](docs/assets/reading-bookmarks-statistics.jpg).

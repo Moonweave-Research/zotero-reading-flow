@@ -87,11 +87,19 @@ export class ReaderTracker {
   }
 
   private async trackOpenedReader(reader: any, generation: number) {
-    if (!reader || reader._type !== 'pdf' || this.shouldSkipSave(generation) || this.openedReaders.has(reader)) return;
+    if (!reader || !['pdf', 'snapshot'].includes(reader._type) || this.shouldSkipSave(generation) || this.openedReaders.has(reader)) return;
     this.openedReaders.add(reader);
     await reader._initPromise;
     await reader._internalReader?._primaryView?.initializedPromise;
     if (this.shouldSkipSave(generation) || !(Zotero as any).Reader?._readers?.includes(reader)) return;
+    if (reader._type === 'snapshot') {
+      const attachment = Zotero.Items.get(reader.itemID);
+      if (attachment?.parentID) {
+        this.scheduleSave(attachment.parentID, `snapshot:${reader.itemID}`,
+          (parent, at) => this.dataStore.recordSnapshotOpening(parent, at, true));
+      }
+      return;
+    }
     this.handlePageChange(reader.itemID);
   }
 
@@ -151,6 +159,12 @@ export class ReaderTracker {
     lastPage: number | null,
     pageCount: number | null
   ) {
+    this.scheduleSave(parentId, attachmentId, (parent, at) => this.dataStore.recordProgressUnlessResetAfter(
+      parent, { attachmentId, progress, pageCount, lastPage, at }, at, { allowDuringShutdown: true }
+    ));
+  }
+
+  private scheduleSave(parentId: number, attachmentId: string, persist: (parent: any, at: number) => Promise<boolean>) {
     const key = `${parentId}:${attachmentId}`;
     const existing = this.pendingSaves.get(key);
     if (existing) {
@@ -173,23 +187,14 @@ export class ReaderTracker {
             Logger.log('save skipped: tracker inactive or Zotero shutting down');
             return;
           }
-          Logger.log('saving progress=' + progress + ' for parent=' + parentId);
+          Logger.log('saving reader activity for parent=' + parentId);
           const parentItem = await Zotero.Items.getAsync(parentId);
           if (this.shouldSkipSave(generation, allowShutdown)) {
             Logger.log('save skipped after getAsync: tracker inactive or Zotero shutting down');
             return;
           }
           if (parentItem) {
-            const input = {
-              attachmentId,
-              progress,
-              pageCount,
-              lastPage,
-              at: scheduledAt
-            };
-            const saved = await this.dataStore.recordProgressUnlessResetAfter(
-              parentItem, input, scheduledAt, { allowDuringShutdown: true }
-            );
+            const saved = await persist(parentItem, scheduledAt);
             if (this.shouldSkipSave(generation, allowShutdown)) {
               Logger.log('post-save refresh skipped: tracker inactive or Zotero shutting down');
               return;
