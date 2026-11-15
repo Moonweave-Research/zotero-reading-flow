@@ -88,7 +88,7 @@ Pre-release feature candidate based on 1.3.16, subsequently included in 1.3.17. 
 
 ## Statistics tag-filter candidate (2026-11-15, issue #6 follow-up)
 
-Unreleased source build based on 1.3.17; no issue state or release was changed.
+Pre-release feature candidate based on 1.3.17, subsequently included in 1.3.18. Its hash below is not the versioned 1.3.18 release archive. No issue state was changed.
 
 - `npm run verify`: 405 tests passed, zero failures/skips; type check, build, XPI validation and pinned previous-writer compatibility passed. A pre-patch focused test failed with three papers instead of the one exact-tag match, then passed after the bridge filtering was connected.
 - Scope tests verify parent-tag loading and propagated load failures. Bridge tests verify exact/case-sensitive tags, status/Important intersections, the full unfiltered tag list and the filtered activity-day cache. Dashboard tests verify controls, absent-tag retention, stale labels, clearing and out-of-order tag options.

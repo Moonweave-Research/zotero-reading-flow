@@ -41,7 +41,7 @@ Reading bookmarks and automatic locations are separate. Check the displayed PDF 
 
 That is expected. Advanced → Reset tracked PDF positions clears automatic positions while preserving the bookmark, status, Important, reading start date, last PDF activity, and history. Use Remove bookmark for the deliberate bookmark.
 
-## Statistics tag filter (unreleased source build)
+## Statistics tag filter (1.3.18)
 
 Expand Filter items and select Tag. Names match exactly, including case; manual and automatic tags on parent items are included. Tags on a child PDF do not tag its parent for these statistics. The list comes from the current view/library before Items, Status or Important filtering. Choose All tags to clear it. If the selected tag is absent after changing scope, it stays selected with “not in this scope” and returns no matches.
 
