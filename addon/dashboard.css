@@ -148,6 +148,7 @@ button:focus-visible {
 }
 
 .dashboard-filter-note {
+  overflow-wrap: anywhere;
   margin: 0 0 0.85rem;
 }
 

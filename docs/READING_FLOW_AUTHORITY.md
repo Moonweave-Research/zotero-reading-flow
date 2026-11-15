@@ -32,6 +32,8 @@ The library, item pane, context menu, and statistics share conservative position
 
 ## Dates and statistics
 
+Unreleased statistics tag filter (#6): match one exact, case-sensitive parent-item tag (manual or automatic). Load tags before projecting a snapshot. Available tags come from all live parents in the selected scope, independent of dataset/status/Important. Apply the tag before current/history aggregation and activity-day caching; scope totals and denominators refer to the tag-matched scope. Current View honors the native collection/saved-search view; Selected Library uses the whole selected library. Child attachment tags are not inherited. Preserve a selected absent tag as an empty intersection. Stale and out-of-order responses must not relabel old figures or replace current tag options. Filtering never edits tags, metadata or private files.
+
 Reading started is recorded when the status changes to Reading, including a configured default for new items, and updates when Reading starts again. Never infer or backfill it from PDF history. Last PDF activity is the latest saved PDF page position, not proof that the page was read. Display local dates consistently, using YYYY-MM-DD and minute precision where appropriate.
 
 Detailed daily history retains at most 366 days. Brief page visits count as activity; status changes and resets alone do not. Period filters select retained activity; current status and saved positions still describe the item now. Marked Read counts manual Read choices. Missing legacy history must not be reconstructed as a reading judgment.

@@ -41,6 +41,12 @@ Reading bookmarks and automatic locations are separate. Check the displayed PDF 
 
 That is expected. Advanced → Reset tracked PDF positions clears automatic positions while preserving the bookmark, status, Important, reading start date, last PDF activity, and history. Use Remove bookmark for the deliberate bookmark.
 
+## Statistics tag filter (unreleased source build)
+
+Expand Filter items and select Tag. Names match exactly, including case; manual and automatic tags on parent items are included. Tags on a child PDF do not tag its parent for these statistics. The list comes from the current view/library before Items, Status or Important filtering. Choose All tags to clear it. If the selected tag is absent after changing scope, it stays selected with “not in this scope” and returns no matches.
+
+For a saved search or collection, select it in Zotero, choose Current View in the dashboard and Refresh. Selected Library includes the whole active library. A tag-loading failure keeps the last successful snapshot with a stale notice; its old tag is shown with those figures. Try Refresh after resolving the load error.
+
 ## Data and sync
 
 Snapshot support in 1.3.15 records Last snapshot opened after the internal reader loads, with the same five-second save delay as PDF tracking. Opening a snapshot in an external browser does not count. Choose Automatic in the status control to remove a manual override; closing a snapshot never marks Read. EPUB tracking is unchanged. Snapshot-only items appear in the tracked set but do not add PDF calendar activity or page counts.

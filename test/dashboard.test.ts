@@ -87,6 +87,7 @@ function documentFixture() {
   doc.add('dashboard-scope', 'select', 'current-view');
   doc.add('dashboard-dataset', 'select', 'tracked');
   doc.add('dashboard-status-filter', 'select', 'all');
+  doc.add('dashboard-tag-filter', 'select', '');
   doc.add('dashboard-history-range', 'select', '7d');
   doc.add('dashboard-refresh', 'button');
   for (const id of [
@@ -881,13 +882,14 @@ test('refresh race protection ignores an older response that completes last', as
   app.start();
   const latestRefresh = app.refresh();
   assert.equal(resolvers.length, 2);
-  resolvers[1](snapshot({ totalPapers: 2 }));
+  resolvers[1](snapshot({ totalPapers: 2, availableTags: ['new'] }));
   await latestRefresh;
   assert.equal(doc.getElementById('dashboard-papers')?.textContent, '2');
-  resolvers[0](snapshot({ totalPapers: 99 }));
+  resolvers[0](snapshot({ totalPapers: 99, availableTags: ['old'] }));
   await flush();
   assert.equal(doc.getElementById('dashboard-papers')?.textContent, '2');
   assert.equal(doc.getElementById('dashboard-refresh')?.disabled, false);
+  assert.deepEqual(doc.getElementById('dashboard-tag-filter')?.children.map(o => o.value), ['', 'new']);
 });
 
 test('bridge errors expose one alert message and leave refresh available', async () => {
@@ -1156,4 +1158,26 @@ test('an older failed refresh cannot mark a newer successful query stale', async
   assert.equal(doc.getElementById('dashboard-active-filters')!.textContent, 'Reading Flow items · Read');
   assert.equal(doc.getElementById('dashboard-updated')!.getAttribute('data-stale'), null);
   assert.equal(doc.getElementById('dashboard-error')!.hidden, true);
+});
+
+test('tag selector refreshes exactly, retains absent tags and names the last successful tag after failure', async () => {
+  const doc = documentFixture(); doc.add('dashboard-active-filters'); const calls: unknown[][] = []; let fail = false;
+  const app = new DashboardApp(doc as any, { async getSnapshot(...args) {
+    calls.push(args); if (fail) throw new Error('tag loading failed');
+    return snapshot({ totalPapers: args[5] === 'topic/A' ? 1 : 2, availableTags: ['topic/A', '<topic>'] });
+  } });
+  app.start(); await flush();
+  const tag = doc.getElementById('dashboard-tag-filter')!;
+  assert.deepEqual(tag.children.map(o => [o.value, o.textContent]), [['', 'All tags'], ['topic/A', 'topic/A'], ['<topic>', '<topic>']]);
+  assert.equal(tag.listeners.change.length, 1);
+  tag.value = 'topic/A'; tag.listeners.change[0](); await flush();
+  assert.deepEqual(calls.at(-1), ['current-view', '7d', undefined, 'tracked', false, 'topic/A']);
+  assert.match(doc.getElementById('dashboard-active-filters')!.textContent, /Tag: topic\/A/);
+  assert.equal(doc.getElementById('dashboard-papers')!.textContent, '1');
+  fail = true; tag.value = '<topic>'; await app.refresh();
+  assert.equal(tag.value, '<topic>'); assert.match(doc.getElementById('dashboard-state')!.textContent, /Tag: topic\/A/);
+  fail = false; tag.value = 'not in view'; await app.refresh();
+  assert.equal(tag.value, 'not in view'); assert.equal(tag.children.at(-1)?.textContent, 'not in view (not in this scope)');
+  tag.value = ''; await app.refresh();
+  assert.equal(calls.at(-1)?.length, 5); assert.equal(doc.getElementById('dashboard-papers')!.textContent, '2');
 });

@@ -40,7 +40,8 @@ export interface DashboardBridge {
     historyRange?: HistoryRange,
     statusFilter?: DashboardStatusFilter,
     dataset?: StatisticsDataset,
-    importantOnly?: boolean
+    importantOnly?: boolean,
+    tagFilter?: string
   ): Promise<StatisticsSnapshot>;
   getActivityDayDetail?(snapshotId: string, day: string): Promise<ActivityDayDetailResult>;
   beginActivityDayDetailCacheLifecycle?(): ActivityDayDetailCacheLifecycleToken;
@@ -98,6 +99,7 @@ const RECENT_PROGRESS_INITIAL_LIMIT = 8;
 
 interface DashboardRenderOptions {
   importantOnly?: boolean;
+  tagFilter?: string;
   recentProgressExpanded?: boolean;
   onToggleRecentProgress?: () => void;
   onFocusItem?: (id: number | string, title: string) => void;
@@ -114,6 +116,7 @@ interface DashboardQuery {
   historyRange: HistoryRange;
   statusFilter: DashboardStatusFilter;
   importantOnly?: boolean;
+  tagFilter?: string;
   dataset: StatisticsDataset;
 }
 
@@ -142,7 +145,7 @@ export function renderDashboard(
     formatDashboardState(snapshot, filter, selectedDataset)
   );
 
-  setText(doc, 'dashboard-active-filters', `${DATASET_LABELS[selectedDataset]} · ${filter === 'all' ? 'All statuses' : STATUS_LABELS[filter]}${options.importantOnly ? ' · Important only' : ''}`);
+  setText(doc, 'dashboard-active-filters', `${DATASET_LABELS[selectedDataset]} · ${filter === 'all' ? 'All statuses' : STATUS_LABELS[filter]}${options.importantOnly ? ' · Important only' : ''}${options.tagFilter ? ` · Tag: ${options.tagFilter}` : ''}`);
   renderStatusComposition(doc, snapshot, filter);
   renderProgressDistribution(doc, snapshot);
   renderHistory(doc, snapshot, options);
@@ -150,7 +153,7 @@ export function renderDashboard(
   setText(
     doc,
     'dashboard-filter-note',
-    `${formatFilterNote(selectedDataset, statusLabel)}${options.importantOnly ? ' Important only.' : ''} Important: ${snapshot.importantCount ?? 0} matching items (independent of reading status). Showing ${snapshot.totalPapers} of ${snapshot.scopeTotal ?? snapshot.totalPapers} items; scope total = ${snapshot.classifiableItems ?? snapshot.totalPapers} classifiable + ${snapshot.unavailableItems ?? 0} unavailable. Status percentages use ${snapshot.statusDenominator ?? snapshot.totalPapers} classifiable items in scope. Position percentages use classifiable matching items.`
+    `${formatFilterNote(selectedDataset, statusLabel)}${options.importantOnly ? ' Important only.' : ''}${options.tagFilter ? ` Parent tag: ${options.tagFilter} (exact match).` : ''} Important: ${snapshot.importantCount ?? 0} matching items (independent of reading status). Showing ${snapshot.totalPapers} of ${snapshot.scopeTotal ?? snapshot.totalPapers} items; scope total = ${snapshot.classifiableItems ?? snapshot.totalPapers} classifiable + ${snapshot.unavailableItems ?? 0} unavailable. Status percentages use ${snapshot.statusDenominator ?? snapshot.totalPapers} classifiable items in scope. Position percentages use classifiable matching items.`
   );
 }
 
@@ -184,6 +187,7 @@ export class DashboardApp {
     const dataset = this.doc.getElementById('dashboard-dataset') as HTMLSelectElement | null;
     const status = this.doc.getElementById('dashboard-status-filter') as HTMLSelectElement | null;
     const historyRange = this.doc.getElementById('dashboard-history-range') as HTMLSelectElement | null;
+    this.doc.getElementById('dashboard-tag-filter')?.addEventListener('change', () => { void this.refresh(); });
     this.doc.getElementById('dashboard-important-only')?.addEventListener('change', () => { void this.refresh(); });
     const refresh = this.doc.getElementById('dashboard-refresh') as HTMLButtonElement | null;
 
@@ -225,7 +229,8 @@ export class DashboardApp {
       historyRange: this.historyRange,
       statusFilter: this.statusFilter,
       importantOnly: this.importantOnly,
-      dataset: this.dataset
+      dataset: this.dataset,
+      tagFilter: (this.doc.getElementById('dashboard-tag-filter') as HTMLSelectElement | null)?.value ?? ''
     };
     const sequence = ++this.refreshSequence;
     this.setBusy(true);
@@ -242,9 +247,11 @@ export class DashboardApp {
         query.historyRange,
         query.statusFilter === 'all' ? undefined : query.statusFilter,
         query.dataset,
-        query.importantOnly
+        query.importantOnly,
+        ...(query.tagFilter ? [query.tagFilter] : [])
       );
       if (sequence !== this.refreshSequence) return;
+      this.renderTagOptions(snapshot.availableTags ?? [], query.tagFilter ?? '');
       this.latestSnapshot = snapshot;
       this.latestQuery = query;
       this.lastUpdatedAt = this.now();
@@ -259,6 +266,22 @@ export class DashboardApp {
     } finally {
       if (sequence === this.refreshSequence) this.setBusy(false);
     }
+  }
+
+  private renderTagOptions(tags: string[], selected: string) {
+    const control = this.doc.getElementById('dashboard-tag-filter') as HTMLSelectElement | null;
+    if (!control) return;
+    const available = new Set(tags);
+    const values = ['', ...available];
+    if (selected && !available.has(selected)) values.push(selected);
+    const options = values.map(value => {
+      const option = this.doc.createElement('option');
+      option.value = value;
+      option.textContent = value ? (available.has(value) ? value : `${value} (not in this scope)`) : 'All tags';
+      return option;
+    });
+    control.replaceChildren(...options);
+    control.value = selected;
   }
 
   private setBusy(busy: boolean) {
@@ -300,6 +323,7 @@ export class DashboardApp {
       this.latestQuery.dataset,
       {
         importantOnly: this.latestQuery.importantOnly,
+        tagFilter: this.latestQuery.tagFilter,
         onResumeItem: this.bridge?.getPDFTarget ? undefined : (id, title) => { void this.resumeItem(id, title); },
         onResumeActivityDayItem: this.bridge?.getPDFTarget ? undefined : (id, title) => { void this.resumeItem(id, title, 'dashboard-activity-day-action-status'); },
         recentProgressExpanded: this.recentProgressExpanded,
@@ -831,7 +855,7 @@ function formatQueryLabel(query: DashboardQuery): string {
   const scope = query.scope === 'entire-library' ? 'Selected Library' : 'Current View';
   const dataset = DATASET_LABELS[query.dataset];
   const status = query.statusFilter === 'all' ? 'all statuses' : STATUS_LABELS[query.statusFilter];
-  return `${scope} · ${dataset} · ${status}${query.importantOnly ? ' · Important only' : ''} · ${HISTORY_RANGE_LABELS[query.historyRange]}`;
+  return `${scope} · ${dataset} · ${status}${query.importantOnly ? ' · Important only' : ''}${query.tagFilter ? ` · Tag: ${query.tagFilter}` : ''} · ${HISTORY_RANGE_LABELS[query.historyRange]}`;
 }
 
 function formatUpdatedAt(timestamp: number): string {

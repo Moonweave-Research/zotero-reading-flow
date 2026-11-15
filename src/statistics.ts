@@ -128,6 +128,8 @@ export interface StatisticsPaper {
 export interface StatisticsSnapshot {
   /** Runtime-only opaque identity added by the dashboard bridge. */
   snapshotId?: string;
+  /** Exact parent-item tags in the unfiltered selected Zotero scope. */
+  availableTags?: string[];
   totalPapers: number;
   scopeTotal?: number;
   classifiableItems?: number;
