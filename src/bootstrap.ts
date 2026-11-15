@@ -321,6 +321,7 @@ export function createDashboardBridge({
       historyRange: HistoryRange;
       statusFilter: DashboardStatusFilter;
       importantOnly: boolean;
+      tagFilter: string;
       dataset: StatisticsDataset;
     };
     activeDays: Set<string>;
@@ -332,12 +333,15 @@ export function createDashboardBridge({
       historyRange: HistoryRange = '7d',
       statusFilter: DashboardStatusFilter = 'all',
       dataset: StatisticsDataset = 'tracked',
-      importantOnly = false
+      importantOnly = false,
+      tagFilter = ''
     ) {
       const requestSequence = ++latestRequestSequence;
       const requestLifecycle = currentLifecycle;
       const items = await scopeAdapter.getItems(scope);
-      const papers = items.map((item) => ({
+      const tags = new Map(items.map(item => [item.id, item.getTags?.().map(value => value.tag) ?? []]));
+      const availableTags = [...new Set([...tags.values()].flat())].filter(Boolean).sort();
+      const papers = items.filter(item => !tagFilter || tags.get(item.id)?.includes(tagFilter)).map((item) => ({
         id: item.id,
         title: item.getField?.('title') ?? undefined,
         tracked: dataStore.hasReadingFlowData(item),
@@ -363,7 +367,7 @@ export function createDashboardBridge({
         activityDayCache = {
           snapshotId,
           papers: selectedPapers,
-          query: { scope, historyRange, statusFilter, dataset, importantOnly },
+          query: { scope, historyRange, statusFilter, dataset, importantOnly, tagFilter },
           activeDays: new Set(
             snapshot.history.days
               .filter((day) => day.activePapers > 0)
@@ -371,7 +375,7 @@ export function createDashboardBridge({
           )
         };
       }
-      return { ...snapshot, snapshotId };
+      return { ...snapshot, snapshotId, availableTags };
     },
     async getActivityDayDetail(snapshotId, day): Promise<ActivityDayDetailResult> {
       const cache = activityDayCache;

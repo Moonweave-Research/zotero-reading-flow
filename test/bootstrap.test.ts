@@ -329,3 +329,22 @@ test('shutdown cancels startup still waiting for Zotero initialization', async (
     assert.deepEqual(f.columns, []);
   } finally { initialization.resolve(); f.restore(); }
 });
+
+test('exact parent tag filters every statistic and cached activity detail before status selection', async () => {
+  const a = { ...item(1, 'alpha', .5), getTags: () => [{ tag: 'topic/A' }, { tag: 'Auto', type: 1 }] };
+  a.flowData.important = true;
+  const b = { ...item(2, 'beta', .8), getTags: () => [{ tag: 'topic/B' }] };
+  const c = { ...item(3, 'case', .3), getTags: () => [{ tag: 'Topic/A' }] };
+  const bridge = createDashboardBridge({ scopeAdapter: { getItems: async () => [a, b, c] },
+    dataStore: { hasReadingFlowData: () => true, getData: (p: any) => p.flowData }, resumeReader: { resume: async () => false } });
+  const filtered = await bridge.getSnapshot('current-view', 'all-time', 'reading', 'tracked', false, 'topic/A');
+  assert.equal(filtered.totalPapers, 1); assert.equal(filtered.scopeTotal, 1);
+  assert.equal((await bridge.getSnapshot('current-view', 'all-time', 'read', 'tracked', true, 'topic/A')).totalPapers, 0);
+  const important = await bridge.getSnapshot('current-view', 'all-time', 'reading', 'tracked', true, 'topic/A');
+  assert.equal(important.totalPapers, 1);
+  assert.deepEqual(filtered.availableTags, ['Auto', 'Topic/A', 'topic/A', 'topic/B']);
+  const detail = await bridge.getActivityDayDetail(important.snapshotId!, DAY);
+  assert.equal(detail.state, 'available'); if (detail.state === 'available') assert.deepEqual(detail.papers.map(p => p.itemID), [1]);
+  assert.equal((await bridge.getSnapshot('current-view', 'all-time', 'reading', 'tracked', false, 'topic')).totalPapers, 0);
+  assert.equal((await bridge.getSnapshot('current-view', 'all-time')).totalPapers, 3);
+});

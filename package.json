@@ -11,7 +11,7 @@
     "verify": "npm run typecheck && npm run test:unit && npm run build && node scripts/verify-xpi.js && node scripts/verify-bookmark-compatibility.js",
     "verify:release-assets": "node scripts/verify-release-assets.js",
     "check:release-profile": "node scripts/check-release-profile.js",
-    "test:layout": "node scripts/test-pane-layout.js"
+    "test:layout": "node scripts/test-pane-layout.js && node scripts/test-dashboard-tags.js"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",

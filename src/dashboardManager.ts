@@ -17,7 +17,8 @@ export interface DashboardDataSource {
     historyRange?: HistoryRange,
     statusFilter?: DashboardStatusFilter,
     dataset?: StatisticsDataset,
-    importantOnly?: boolean
+    importantOnly?: boolean,
+    tagFilter?: string
   ): Promise<StatisticsSnapshot>;
 }
 

@@ -84,3 +84,15 @@ Pre-release feature candidate based on 1.3.16, subsequently included in 1.3.17. 
 - Exact candidate XPI SHA-256: `3a386abb5d6e9ed092833da8eeb04896eeb1f72d947d2dfb1a2abd3b290155d6`.
 - In an isolated macOS Zotero 10.0.9 profile, the exact candidate passed 35 native checks using synthetic groups/items/PDF/snapshot. Actual read-only group controls saved private status and Important, the real PDF toolbar captured a bookmark, PDF activity/history and snapshot openings were private, automatic completion stayed off until opted in, clearing kept a pending page-4 save and page-3 bookmark, another group remained independent, and My Library still used Extra. Shared Extra bytes and dateModified stayed unchanged on all three group parents. Native checks do not use a live account or change group permissions on the server.
 - Windows, Zotero 9, live group-server sync and device-to-device sync were not exercised. Private group records intentionally have no sync transport, do not import prior shared Extra, and remain in the profile after uninstall, deletion or leaving a group.
+
+
+## Statistics tag-filter candidate (2026-11-15, issue #6 follow-up)
+
+Unreleased source build based on 1.3.17; no issue state or release was changed.
+
+- `npm run verify`: 405 tests passed, zero failures/skips; type check, build, XPI validation and pinned previous-writer compatibility passed. A pre-patch focused test failed with three papers instead of the one exact-tag match, then passed after the bridge filtering was connected.
+- Scope tests verify parent-tag loading and propagated load failures. Bridge tests verify exact/case-sensitive tags, status/Important intersections, the full unfiltered tag list and the filtered activity-day cache. Dashboard tests verify controls, absent-tag retention, stale labels, clearing and out-of-order tag options.
+- Gecko layout: existing 84 pane conditions and two PDF-toolbar cases passed. The new dashboard interaction/layout gate passed eight viewport/font/theme combinations (360/900px, 16/26px, light/dark), including filtering/clearing, literal markup-like tags and long unbroken names. It first detected overflowing active-filter/method text; the focused wrapping fix passed, and rendered desktop/mobile output was inspected. This gate is included in `npm run test:layout` and CI.
+- Exact candidate XPI SHA-256: `713c5325c3c3dbcfad705907fe89487d5525b601bb30730b4564dca55139294a`.
+- The exact candidate passed 40 native checks in isolated macOS Zotero 10.0.9 using synthetic parents, a child PDF, manual/automatic tags, a real saved search/collection and a read-only group. Real controls verified parent-only/case-sensitive matches, tracked/inventory sets, activity detail, saved-search/collection intersections, absent-tag retention, Selected Library boundaries and private group data. Original Extra, tags, modification dates, shared Extra and private-file bytes were unchanged by statistics queries.
+- Windows, Zotero 9, live device sync and large-library latency were not directly tested. Storage/schema, PDF tracking and manual status behavior are unchanged.

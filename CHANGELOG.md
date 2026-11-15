@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Filter Reading Statistics by one exact parent-item tag, including automatic tags, within the selected view or library. Combine it with dataset, status, Important and activity-period filters without editing item data.
+- Keep selected absent tags as empty results, disclose successful/stale tag conditions, and wrap long tag names. Verify native saved-search and collection scopes together with private group records.
+
 ## 1.3.17 - 2026-11-15
 
 - Keep group-library reading records private to the local Zotero profile instead of shared Extra, including read-only groups. Preserve My Library storage and leave existing shared metadata untouched. Group records are not synced between devices.

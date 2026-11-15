@@ -10,6 +10,7 @@ export interface ScopeItem {
   isRegularItem?: () => boolean;
   isDeleted?: () => boolean;
   getField?: (field: string) => string | null;
+  getTags?: () => Array<{ tag: string; type?: number }>;
 }
 
 export interface StatisticsScopeRuntime {
@@ -23,6 +24,7 @@ export interface StatisticsScopeRuntime {
   } | null;
   Items?: {
     get?: (id: number | string) => ScopeItem | null;
+    loadDataTypes?: (items: ScopeItem[], types: string[]) => Promise<void>;
     getAll?: (
       libraryID: number,
       onlyTopLevel?: boolean,
@@ -46,7 +48,9 @@ export function createStatisticsScopeAdapter(
 
       if (scope === 'current-view') {
         const source = pane.getSortedItems?.() ?? pane.itemsView?.getSortedItems?.() ?? [];
-        return filterRegularParentItems(resolveItems(source, runtime));
+        const items = filterRegularParentItems(resolveItems(source, runtime));
+        await runtime.Items?.loadDataTypes?.(items, ['tags']);
+        return items;
       }
 
       if (scope === 'entire-library') {
@@ -55,7 +59,9 @@ export function createStatisticsScopeAdapter(
           return [];
         }
         const source = await runtime.Items.getAll(libraryID, true, false, false);
-        return filterRegularParentItems(resolveItems(source, runtime));
+        const items = filterRegularParentItems(resolveItems(source, runtime));
+        await runtime.Items?.loadDataTypes?.(items, ['tags']);
+        return items;
       }
 
       throw new Error(`Unsupported statistics scope: ${scope}`);

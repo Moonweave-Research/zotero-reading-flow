@@ -149,3 +149,12 @@ test('entire library resolves item IDs and fails closed without a selected libra
   assert.deepEqual(await adapter.getItems('entire-library'), []);
   assert.equal(getAllCalls, 0);
 });
+
+test('scope loads parent tags before returning a saved-search view and propagates tag load failures', async () => {
+  const a = regular(1); let loaded = false;
+  const r = runtime({ getSortedItems: () => [a, attachment(2, 1)] });
+  r.Items!.loadDataTypes = async (items, types) => { assert.deepEqual(items, [a]); assert.deepEqual(types, ['tags']); loaded = true; };
+  assert.deepEqual(await createStatisticsScopeAdapter(r).getItems('current-view'), [a]); assert.equal(loaded, true);
+  r.Items!.loadDataTypes = async () => { throw new Error('tags unavailable'); };
+  await assert.rejects(createStatisticsScopeAdapter(r).getItems('current-view'), /tags unavailable/);
+});
