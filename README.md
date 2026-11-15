@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> Current release: **1.3.15**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
+> Current release: **1.3.16**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read, and Unassigned with Important states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
@@ -83,7 +83,7 @@ Select a paper and open its panel: click the **book-shaped Reading Flow icon** o
 
 *The icon key explains the current symbols; it is not a second screenshot. Enable the optional **Reading Flow** column with Zotero's native column chooser to see the books. The separate **Status** column uses text labels. Zotero's item-type icon beside the paper title stays the same. Book emoji artwork varies by operating system.*
 
-**Unassigned** means no stage has been chosen or inferred. **Reading (automatic)** can appear after PDF activity or a bookmark when no manual stage is set; the open book alone does not tell you whether the stage was set manually. Check the panel's Status label for that distinction. Reaching the last page alone does not change the book to **Read**. The unreleased optional completion rule also requires closing that PDF tab.
+**Unassigned** means no stage has been chosen or inferred. **Reading (automatic)** can appear after PDF activity or a bookmark when no manual stage is set; the open book alone does not tell you whether the stage was set manually. Check the panel's Status label for that distinction. Reaching the last page alone does not change the book to **Read**. The optional completion rule also requires closing that PDF tab.
 
 **A start date is separate from PDF activity:**
 
@@ -182,13 +182,13 @@ Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Pape
 
 </details>
 
-## Optional automatic completion (unreleased)
+## Optional automatic completion (1.3.16)
 
 In **Settings → Zotero Reading Flow**, enable **Automatic Read on final-page tab close** only if you want that rule. It is **off by default**. A loaded PDF tab must be on its actual final visible page when it closes, with no other reader for the same item remaining open. A saved farthest position or a previous visit to the end is insufficient. Manual stages are preserved; snapshots, EPUBs, and app shutdown do not complete items.
 
 The pane labels the result **Automatic (Read)** and shows **Automatically marked Read**. **Clear automatic Read** removes that mark while preserving manual choices, bookmarks, PDF history and snapshot openings. Statistics keep **Marked Read** manual-only and show **Automatic Read** separately. This is an automation rule, not proof of reading.
 
-Turning the option off stops future marks but does not remove saved ones. Only recording an automatic completion upgrades an item to v7. Every editing device needs a v7-capable client for upgraded items; released 1.3.15 preserves those bytes but cannot edit them. Items without automatic completion keep their existing format. This feature is not included in the published 1.3.15 release.
+Turning the option off stops future marks but does not remove saved ones. Only recording an automatic completion upgrades an item to v7. Every editing device needs 1.3.16 or a later v7-capable client for upgraded items; released 1.3.15 preserves those bytes but cannot edit them. Items without automatic completion keep their existing format.
 
 ## Reading statistics
 
