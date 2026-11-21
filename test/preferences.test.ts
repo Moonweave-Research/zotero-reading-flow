@@ -55,3 +55,21 @@ test('packaged activation default is a string so Zotero does not lock the pref t
     /pref\("extensions\.readingflow\.newItemStatusActivatedAt", "0"\);/
   );
 });
+
+test('each option with help exposes its description before the next option', () => {
+  const pane = readFileSync('addon/prefs.xhtml', 'utf8');
+  for (const option of ['auto-complete', 'density', 'new-item-status']) {
+    const id = `readingflow-pref-${option}`;
+    const control = new RegExp(`<html:(?:input|select)\\b[^>]*\\sid="${id}"[^>]*>`).exec(pane);
+    assert.ok(control, `missing control ${id}`);
+    const description = /\baria-describedby="([^"]+)"/.exec(control[0])?.[1];
+    assert.ok(description, `missing accessible description for ${id}`);
+
+    const following = pane.slice(control.index + control[0].length);
+    const nextLabel = following.search(/<html:label\b/);
+    const optionContents = nextLabel < 0 ? following : following.slice(0, nextLabel);
+    const help = /<html:p\b[^>]*\sid="([^"]+)"[^>]*>([^<]+)<\/html:p>/.exec(optionContents);
+    assert.equal(help?.[1], description, `help for ${id} must appear before the next setting`);
+    assert.ok(help?.[2].trim(), `help for ${id} must be visible text`);
+  }
+});

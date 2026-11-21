@@ -69,6 +69,10 @@ export class NotifierManager {
         const dateAdded = this.getDateAddedTimestamp(item);
         if (dateAdded === null || dateAdded < activationTimestamp) continue;
         if (this.dataStore.hasReadingFlowNamespace(item)) continue;
+        // A preference change only applies to future additions. Do not write
+        // an obsolete default for this batch after an asynchronous lookup.
+        if (getGlobalPreference(READING_FLOW_PREFS.newItemStatus) !== configured
+          || getNewItemStatusActivationTimestamp() !== activationTimestamp) return;
         await this.dataStore.initializeStatusIfUnowned(item, status);
       } catch (error) {
         Logger.error(`ReadingFlow: failed to apply the new-item status default to item ${item?.id}`, error);

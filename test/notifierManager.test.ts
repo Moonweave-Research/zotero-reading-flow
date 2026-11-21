@@ -86,10 +86,11 @@ test('new-item default is opt-in and applies only to editable untracked regular 
   await flushAsyncWork();
 
   assert.deepEqual(calls, [[50, 'to-read']]);
-  assert.deepEqual(prefReads, [
-    ['extensions.readingflow.newItemStatus', true],
-    ['extensions.readingflow.newItemStatusActivatedAt', true]
+  assert.deepEqual([...new Set(prefReads.map(([name]) => name))], [
+    'extensions.readingflow.newItemStatus',
+    'extensions.readingflow.newItemStatusActivatedAt'
   ]);
+  assert.ok(prefReads.every(([, global]) => global === true));
 });
 
 test('Unassigned new-item default performs no writes', async () => {
@@ -259,4 +260,26 @@ test('registration replaces a Zotero-truncated numeric activation time with a st
     'extensions.readingflow.newItemStatusActivatedAt',
     true
   ]]);
+});
+
+test('changing the new-item default during a pending item lookup does not write the obsolete status', async () => {
+  let configured = 'to-read';
+  let writes = 0;
+  let finishLookup!: (items: any[]) => void;
+  (globalThis as any).Zotero = {
+    Prefs: { get: (name: string) => name.endsWith('ActivatedAt') ? '1000' : configured },
+    Items: { getAsync: () => new Promise((resolve) => { finishLookup = resolve; }) }
+  };
+  const notifier = new NotifierManager({
+    canEdit: () => true,
+    hasReadingFlowNamespace: () => false,
+    initializeStatusIfUnowned: async () => { writes += 1; return true; }
+  } as any);
+
+  const pending = notifier.notify('add', 'item', [61]);
+  configured = 'unassigned';
+  finishLookup([{ id: 61, dateAdded: 2000, isRegularItem: () => true }]);
+  await pending;
+
+  assert.equal(writes, 0);
 });
