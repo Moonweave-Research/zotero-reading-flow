@@ -1181,3 +1181,47 @@ test('tag selector refreshes exactly, retains absent tags and names the last suc
   tag.value = ''; await app.refresh();
   assert.equal(calls.at(-1)?.length, 5); assert.equal(doc.getElementById('dashboard-papers')!.textContent, '2');
 });
+
+test('PDF actions report outcomes in the section that initiated them', async () => {
+  const doc = documentFixture();
+  const current = snapshot({
+    snapshotId: 'snapshot-1',
+    history: history({
+      days: [{ day: '2026-07-28', activePapers: 1, completedPapers: 0, resetPapers: 0, progressPapers: 1 }],
+      recentProgress: [{ id: 7, title: 'Same paper', status: 'reading', currentProgress: 0.25, delta: 0.1,
+        lastProgressDay: '2026-07-28', resetCount: 0 }]
+    })
+  });
+  let failOpen = false;
+  const app = new DashboardApp(doc as any, {
+    async getSnapshot() { return current; },
+    async getActivityDayDetail(snapshotId, day) {
+      return { snapshotId, day, state: 'available', papers: [
+        { itemID: 7, title: 'Same paper', recordedProgress: 0.25, status: 'reading', lastRecordedAt: 0 }
+      ] };
+    },
+    async getPDFTarget() {
+      return { action: 'open', sourceId: 7, filename: 'paper.pdf', canResume: false, reason: 'Available', fallbackLabel: 'Open PDF' };
+    },
+    async executePDFTarget() {
+      if (failOpen) throw new Error('Reader closed');
+      return true;
+    }
+  }, () => 0);
+  app.start();
+  await flush();
+  doc.getElementById('dashboard-history-calendar')!.children[0].children[0].click();
+  await flush();
+
+  const detail = doc.getElementById('dashboard-activity-day-detail-body')!.children[0].children[0].children[1].children[1];
+  const recent = doc.getElementById('dashboard-recent-progress-body')!.children[0].children[0].children[1].children[1];
+  await detail.click();
+  assert.equal(doc.getElementById('dashboard-activity-day-action-status')!.textContent, 'Opened paper.pdf.');
+  assert.equal(doc.getElementById('dashboard-recent-progress-action-status')!.textContent, '');
+  await recent.click();
+  assert.equal(doc.getElementById('dashboard-recent-progress-action-status')!.textContent, 'Opened paper.pdf.');
+  failOpen = true;
+  await detail.click();
+  assert.match(doc.getElementById('dashboard-activity-day-action-status')!.textContent, /unavailable/);
+  assert.equal(doc.getElementById('dashboard-recent-progress-action-status')!.textContent, 'Opened paper.pdf.');
+});
