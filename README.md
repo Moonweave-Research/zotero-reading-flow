@@ -15,7 +15,7 @@
 Reading Flow helps you return to the page you meant to keep. Leave a **reading bookmark**, browse another section, and come back without losing your place. See that bookmark, your last viewed page, and your chosen reading status directly in Zotero.
 
 > [!IMPORTANT]
-> Current release: **1.3.19**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
+> Current release: **1.3.20**. Screenshots show **Reading Flow 1.3.10 in English Zotero 10.0.6 for macOS**, using synthetic sample papers. [Install the latest release](https://github.com/Moonweave-Research/zotero-reading-flow/releases/latest).
 
 ![Actual English Zotero library showing To Read, Reading, Skimmed, Read, and Unassigned with Important states beside the Reading Flow panel](docs/assets/reading-status-library.jpg)
 
@@ -192,7 +192,7 @@ Turning the option off stops future marks but does not remove saved ones. Only r
 
 ## Reading statistics
 
-**Snapshot support (1.3.15):** a loaded web snapshot opening can derive **Reading (automatic)** when no manual stage is set. **Last snapshot opened** is separate from PDF activity; snapshots do not create PDF page positions or calendar activity, and closing one never marks it Read. Snapshot activity requires v6 or newer metadata. A new-item To Read default uses v8 and keeps that format after an opening. Use a v8-capable Reading Flow version on every device that edits those records. Earlier versions, including 1.3.19, preserve v8 records and show them as unavailable.
+**Snapshot support (1.3.15):** a loaded web snapshot opening can derive **Reading (automatic)** when no manual stage is set. **Last snapshot opened** is separate from PDF activity; snapshots do not create PDF page positions or calendar activity, and closing one never marks it Read. Snapshot activity requires v6 or newer metadata. A new-item To Read default uses v8 and keeps that format after an opening. Use Reading Flow 1.3.20 or later on every device that edits those records. Earlier versions, including 1.3.19, preserve v8 records and show them as unavailable.
 
 <img src="docs/assets/workflows/statistics-position-detail.png" alt="Actual statistics row: reading bookmark page 4 of 10, automatic last viewed page 8 of 10, Last PDF activity 2026-10-26 14:01, and Reading automatic with Important" width="920">
 

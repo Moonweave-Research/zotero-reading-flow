@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.20 - 2026-11-21
+
+- A new-item To Read default advances to Automatic (Reading) when you open a saved snapshot in Zotero or switch to its loaded tab. Background loads and session restore preserve the default. Previously saved statuses and explicit choices, including choosing To Read again, keep their priority.
+- Recheck the new-item preference before a queued save. Capture the live PDF page before the tab closes so eligible automatic Read still works when a database transaction delays the close notification.
+- Store new To Read defaults in v8 metadata. Use Reading Flow 1.3.20 or later on every device that edits those records.
+
 ## 1.3.19 - 2026-11-21
 
 - Record the page actually visited in a split PDF or a second reader for the same attachment. Keep bookmarks and reading status independent.
