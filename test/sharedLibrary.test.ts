@@ -116,3 +116,36 @@ test('group creation defaults and empty-record removal use only private storage'
   assert.deepEqual(JSON.parse(env.files.get('/profile/reading-flow-private.json')!).records, {});
   const missingKey = { ...paper, key: '' }; assert.equal(await store.setStatus(missingKey, 'read'), false);
 });
+
+test('a private default is rechecked after waiting behind another group item write', async () => {
+  environment();
+  const store = new DataStore();
+  await store.initialize();
+  const first = item(101, 2, 'AAAABBBB'), second = item(102, 2, 'CCCCDDDD');
+  const io = (globalThis as any).IOUtils;
+  const originalWrite = io.writeUTF8;
+  let blocked!: () => void, release!: () => void;
+  const waiting = new Promise<void>(resolve => { blocked = resolve; });
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  io.writeUTF8 = async (...args: unknown[]) => {
+    blocked();
+    await gate;
+    return originalWrite(...args);
+  };
+  let isCurrent = true, guardCalls = 0;
+  let queued!: () => void;
+  const queuedWrite = new Promise<void>(resolve => { queued = resolve; });
+  const firstWrite = store.setStatus(first, 'read', 100);
+  await waiting;
+  const secondWrite = store.initializeStatusIfUnowned(second, 'to-read', 200, () => {
+    if (++guardCalls === 1) queued();
+    return isCurrent;
+  });
+  await queuedWrite;
+  isCurrent = false;
+  release();
+  assert.equal(await firstWrite, true);
+  assert.equal(await secondWrite, false);
+  assert.equal(store.getData(second).s, null);
+  assert.equal(store.hasReadingFlowNamespace(second), false);
+});

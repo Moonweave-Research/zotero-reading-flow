@@ -150,3 +150,40 @@ for (const scenario of ['closed-before-init', 'disabled-before-init', 'epub', 's
     } finally { tracker.unregister(); (globalThis as any).Zotero = original; (globalThis as any).Services = originalServices; }
   });
 }
+
+for (const activation of ['foreground', 'background', 'restore', 'restored-not-yet-selected'] as const) {
+  test(`only foreground snapshot activity advances the default (${activation})`, async () => {
+    const old = (globalThis as any).Zotero;
+    const parent = memoryItem();
+    const store = new DataStore(), tracker = new ReaderTracker(store);
+    const tabs = { selectedID: activation === 'background' ? 'library' : 'snapshot' };
+    const reader = { itemID: 10, tabID: 'snapshot', _type: 'snapshot', _window: { Zotero_Tabs: tabs }, _initPromise: Promise.resolve() };
+    let toolbar!: (event: any) => void;
+    (globalThis as any).Zotero = {
+      Session: { state: { windows: [{ type: 'pane', tabs: [
+        { type: 'reader', selected: activation === 'restore', data: { itemID: 10 } }
+      ] }] } },
+      Reader: { _readers: [reader], registerEventListener(_: string, fn: typeof toolbar) { toolbar = fn; }, unregisterEventListener() {} },
+      Items: { get: () => ({ parentID: parent.id }), getAsync: async () => parent },
+      Notifier: { registerObserver: () => 'tracker', unregisterObserver() {}, trigger() {} },
+      ItemTreeManager: { refreshColumns() {} }
+    };
+    try {
+      await store.initializeStatusIfUnowned(parent, 'to-read');
+      tracker.register(activation.startsWith('restore'));
+      toolbar({ reader });
+      await new Promise(resolve => setImmediate(resolve));
+      await tracker.flushPending();
+      const autoAdvance = activation !== 'background' && activation !== 'restore';
+      const loaded = store.getData(parent);
+      assert.ok(loaded.snapshotOpenedAt);
+      assert.equal(resolveReadingStatus(loaded).status, autoAdvance ? 'reading' : 'to-read');
+      if (!autoAdvance) {
+        tabs.selectedID = 'snapshot';
+        tracker.notify('select', 'tab', ['snapshot']);
+        await tracker.flushPending();
+        assert.equal(resolveReadingStatus(store.getData(parent)).status, 'reading');
+      }
+    } finally { tracker.unregister(); (globalThis as any).Zotero = old; }
+  });
+}

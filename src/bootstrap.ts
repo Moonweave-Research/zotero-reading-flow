@@ -96,7 +96,7 @@ export class Bootstrap {
 
   install() {}
 
-  async startup({ id, version, rootURI }: { id: string; version: string; rootURI: string }) {
+  async startup({ id, version, rootURI }: { id: string; version: string; rootURI: string }, reason?: number) {
     const lifecycle = ++this.lifecycle;
     await this.shutdownPending;
     await Zotero.initializationPromise;
@@ -138,7 +138,7 @@ export class Bootstrap {
 
     try {
       this.readerTracker = new ReaderTracker(this.dataStore!);
-      this.readerTracker.register();
+      this.readerTracker.register(typeof reason === 'number' && reason === (globalThis as any).APP_STARTUP);
       Logger.log('readerTracker OK');
     } catch (e) { Logger.error('readerTracker FAIL', e); }
 
@@ -457,7 +457,7 @@ export async function resumeDashboardItem(
 const BOOTSTRAP = new Bootstrap();
 
 export function install() { BOOTSTRAP.install(); }
-export async function startup(data: any, reason: any) { await BOOTSTRAP.startup(data); }
+export async function startup(data: any, reason: any) { await BOOTSTRAP.startup(data, reason); }
 export async function shutdown(data: any, reason: any) { await BOOTSTRAP.shutdown(reason); }
 export function uninstall() { BOOTSTRAP.uninstall(); }
 export function onMainWindowLoad(data: any) { BOOTSTRAP.onMainWindowLoad(data); }
