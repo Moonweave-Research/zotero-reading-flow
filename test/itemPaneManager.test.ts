@@ -87,6 +87,38 @@ test('snapshot-only pane separates the opening timestamp from absent PDF activit
   f.manager.unregister();
 });
 
+test('the pane explains a new-item To Read override without discarding snapshot activity', async () => {
+  const f = fixture('Unrelated metadata');
+  f.pdf.isPDFAttachment = () => false;
+  const openedAt = new Date(2026, 10, 20, 16, 13).getTime();
+  assert.equal(await f.store.initializeStatusIfUnowned(f.paper, 'to-read', openedAt - 1_000), true);
+
+  await f.view();
+  assert.doesNotMatch(f.body.text(), /Choose Automatic \(Reading\) to use the recorded snapshot opening/);
+  assert.equal(await f.store.recordSnapshotOpening(f.paper, openedAt), true);
+  await f.view();
+
+  const select = f.body.querySelectorAll('select')[0];
+  const visible = f.body.children.filter(e => e.tag !== 'details').map(e => e.text()).join(' ');
+  assert.match(visible, /To Read can come from the new-item default/);
+  assert.match(visible, /Choose Automatic \(Reading\) to use the recorded snapshot opening/);
+  assert.equal(select.value, 'to-read');
+  assert.equal(f.counts().saves, 2);
+
+  select.value = '';
+  select.listeners.change();
+  await tick(); await tick();
+
+  const data = f.store.getData(f.paper);
+  assert.equal(data.s, null);
+  assert.equal(data.snapshotOpenedAt, openedAt);
+  assert.equal(getLastActivityAt(data), null);
+  assert.deepEqual(resolveReadingStatus(data), { status: 'reading', source: 'automatic' });
+  assert.match(f.paper.getField('extra'), /Unrelated metadata/);
+  assert.doesNotMatch(f.body.text(), /Choose Automatic \(Reading\) to use the recorded snapshot opening/);
+  f.manager.unregister();
+});
+
 test('a selected snapshot attachment shows its parent reading controls without PDF actions', async () => {
   const f = fixture(payload({ v: 6, important: false, snapshotOpenedAt: 100 }));
   f.pdf.isPDFAttachment = () => false;
