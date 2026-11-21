@@ -240,7 +240,7 @@ test('Status column exposes whether a status is manual or automatic', async () =
   const automaticData = automaticColumn.dataProvider(item);
   const automaticCell = automaticColumn.renderCell(0, automaticData, {}, false, fakeDocument());
   assert.equal(automaticData, 'reading|automatic');
-  assert.match(automaticCell['aria-label'], /PDF activity based status/);
+  assert.match(automaticCell['aria-label'], /automatic reading status/);
 });
 
 test('other absent-progress states use plain non-technical wording without duplicate text', async () => {

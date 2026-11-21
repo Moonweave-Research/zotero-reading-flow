@@ -100,6 +100,7 @@ export class DataStore {
       if (updates.ts && updates.ts < current.ts) return false;
 
       // Explicit generic mutations must use the same guarded representation.
+      if (updates.s !== undefined) updates = { ...updates, defaultToRead: undefined };
       if (updates.important !== undefined || (updates.s !== undefined && current.important !== undefined)) {
         updates = { ...updates, v: 3, important: updates.important ?? Boolean(current.important) };
       }
@@ -124,7 +125,11 @@ export class DataStore {
     if (!Number.isFinite(at) || at <= 0) return false;
     return this.enqueueMutation(item, () => this.executeTransition(item, current => {
       if (at <= (current.snapshotOpenedAt ?? 0)) return current;
-      return mergeFlowData(current, { v: 6, snapshotOpenedAt: at }, Math.max(current.ts, at));
+      return mergeFlowData(current, {
+        v: 6,
+        snapshotOpenedAt: at,
+        ...(current.defaultToRead ? { s: null, defaultToRead: undefined } : {})
+      }, Math.max(current.ts, at));
     }, allowDuringShutdown));
   }
 
@@ -222,10 +227,13 @@ export class DataStore {
   public async setStatus(item: any, status: ReadingStatus, at = Date.now()): Promise<boolean> {
     const timestamp = this.normalizeTimestamp(at);
     return this.transition(item, (current) => {
-      if (current.s === status) return current;
+      if (current.s === status) {
+        return current.defaultToRead ? mergeFlowData(current, { defaultToRead: undefined }, timestamp) : current;
+      }
       const startsReading = status === 'reading' && current.s !== 'reading';
       const next = mergeFlowData(current, {
         s: status,
+        defaultToRead: undefined,
         ...(startsReading ? { v: 5, readingStartedAt: timestamp } : current.important !== undefined ? { v: 3 } : {})
       }, timestamp);
       return normalizeFlowData({
@@ -256,6 +264,7 @@ export class DataStore {
       const initial = normalizeFlowData({
         ...DEFAULT_FLOW_DATA,
         ...(status === 'reading' ? { v: 5, readingStartedAt: timestamp } : {}),
+        ...(status === 'to-read' ? { v: 8, defaultToRead: true } : {}),
         s: status,
         ts: timestamp
       });
@@ -299,10 +308,11 @@ export class DataStore {
         const hasResumeState = Object.keys(current.p).length > 0
           || current.lastAttachmentId !== null
           || current.lastPage !== null;
-        if (!hasResumeState && (!markToRead || current.s === 'to-read')) return current;
+        if (!hasResumeState && (!markToRead || (current.s === 'to-read' && !current.defaultToRead))) return current;
         const next = mergeFlowData(current, {
           p: {},
           s: markToRead ? 'to-read' : current.s,
+          defaultToRead: markToRead ? undefined : current.defaultToRead,
           ...(markToRead && current.important !== undefined ? { v: 3 } : {}),
           lastAttachmentId: null,
           lastPage: null,
@@ -524,14 +534,15 @@ export class DataStore {
     try {
       const parsed = JSON.parse(line.trimStart().substring('ReadingFlow:'.length));
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-      if (parsed.v !== 1 && parsed.v !== 2 && parsed.v !== 3 && parsed.v !== 4 && parsed.v !== 5 && parsed.v !== 6 && parsed.v !== 7) return null;
+      if (parsed.v !== 1 && parsed.v !== 2 && parsed.v !== 3 && parsed.v !== 4 && parsed.v !== 5 && parsed.v !== 6 && parsed.v !== 7 && parsed.v !== 8) return null;
       if ((parsed.v >= 3 && (typeof parsed.important !== 'boolean' || parsed.s === 'important'))
         || (parsed.v < 3 && parsed.important !== undefined)) return null;
       if (parsed.bookmark !== undefined && (parsed.v < 4 || !isReadingBookmark(parsed.bookmark))) return null;
       if (parsed.readingStartedAt != null && (parsed.v < 5 || !Number.isFinite(parsed.readingStartedAt) || parsed.readingStartedAt <= 0)) return null;
-      if (parsed.snapshotOpenedAt !== undefined && ((parsed.v !== 6 && parsed.v !== 7) || typeof parsed.snapshotOpenedAt !== 'number'
+      if (parsed.snapshotOpenedAt !== undefined && (parsed.v < 6 || typeof parsed.snapshotOpenedAt !== 'number'
         || !Number.isFinite(parsed.snapshotOpenedAt) || parsed.snapshotOpenedAt <= 0)) return null;
-      if (parsed.automaticRead !== undefined && (parsed.v !== 7 || !isAutomaticRead(parsed.automaticRead))) return null;
+      if (parsed.automaticRead !== undefined && (parsed.v < 7 || !isAutomaticRead(parsed.automaticRead))) return null;
+      if (parsed.defaultToRead !== undefined && (parsed.v !== 8 || parsed.s !== 'to-read' || parsed.defaultToRead !== true)) return null;
       if ((parsed.s != null && !['to-read', 'reading', 'skimmed', 'read', 'important'].includes(parsed.s))
         || (parsed.p != null && (typeof parsed.p !== 'object' || Array.isArray(parsed.p)
           || Object.values(parsed.p).some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0)))

@@ -136,6 +136,27 @@ function item(payload) {
   assert.equal(cleared.snapshotOpenedAt, snapshotPayload.snapshotOpenedAt);
   assert.deepEqual(cleared.bookmark, completed.bookmark);
   console.log(`Compatibility PASS: ${v6Writes.length} released 1.3.15-writer refusals for v7 with byte retention; v6 positive control; v7 round trip and clear.`);
+  const v7Dir = path.join(dir, 'v7');
+  fs.mkdirSync(v7Dir, { recursive: true });
+  const v1319 = 'ee753e4d0f624d2d7e4c4da42bb14e578dcf74cf';
+  for (const name of ['dataStore', 'flowData', 'lruCache', 'Logger', 'preferences', 'privateRecordStore']) {
+    fs.writeFileSync(path.join(v7Dir, `${name}.ts`), execFileSync('git', ['show', `${v1319}:src/${name}.ts`]));
+  }
+  const v7Bundle = path.join(v7Dir, 'store.cjs');
+  esbuild.buildSync({ entryPoints: [path.join(v7Dir, 'dataStore.ts')], outfile: v7Bundle, bundle: true, platform: 'node' });
+  const V7 = require(v7Bundle).DataStore;
+  const inherited = item({ v: 8, important: false, s: 'to-read', defaultToRead: true, p: {} });
+  const beforeInherited = inherited.getField();
+  const v7Writes = [...v6Writes, (store, target) => store.clearAutomaticRead(target),
+    (store, target) => store.recordAutomaticRead(target, { attachmentKey: 'ABCD2345', at: 1000 })];
+  for (const write of v7Writes) assert.equal(await write(new V7(), inherited), false);
+  assert.equal(inherited.getField(), beforeInherited);
+  assert.equal(inherited.saves, 0);
+  assert.equal(await new V7().setStatus(item(completed), 'read'), true);
+  assert.equal(await new New().recordSnapshotOpening(inherited, 2000), true);
+  assert.equal(new New().getData(inherited).s, null);
+  assert.equal(new New().getData(inherited).snapshotOpenedAt, 2000);
+  console.log(`Compatibility PASS: ${v7Writes.length} released 1.3.19-writer refusals for v8 with byte retention; v7 positive control; v8 snapshot transition.`);
   console.log('Compatibility PASS: released 1.3.11 preserves keyed positions and daily observations during a manual status edit.');
   console.log(`Compatibility PASS: ${refusals} v3-writer refusals for v4; ${v4Refusals} released v1.3.8-writer refusals for v5, all with exact byte retention; v3/v4 positive controls; v5 round trip.`);
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateActivityDayDetail } from '../src/statistics';
 import { DataStore } from '../src/dataStore';
-import { FLOW_PREFIX, getLocalDayKey } from '../src/flowData';
+import { FLOW_PREFIX, getLocalDayKey, resolveReadingStatus } from '../src/flowData';
 
 test('late older observations preserve the newest location while retaining both days', async () => {
   const item = memoryItem(9901), store = new DataStore();
@@ -1129,4 +1129,57 @@ test('a confirmed final page survives the daily statistics round trip', async ()
   assert.equal(flowData.lastPage, 2);
   assert.equal(flowData.s, null);
   assert.equal(flowData.history?.completedAt, null);
+});
+
+test('snapshot opening consumes only an untouched new-item To Read default', async () => {
+  const store = new DataStore();
+  const defaultItem = memoryItem(9950, 'Custom: keep');
+  const confirmedItem = memoryItem(9951);
+  const legacyItem = memoryItem(9952, FLOW_PREFIX + '{"v":1,"p":{},"s":"to-read","ts":100}');
+  for (const item of [defaultItem, confirmedItem]) {
+    assert.equal(await store.initializeStatusIfUnowned(item, 'to-read', 100), true);
+  }
+  assert.deepEqual(resolveReadingStatus(store.getData(defaultItem)), { status: 'to-read', source: 'default' });
+  const newWriter = new DataStore();
+  assert.equal(newWriter.getData(defaultItem).defaultToRead, true, 'the flag survives reloading saved metadata');
+  const confirmation = store.setStatus(confirmedItem, 'to-read', 150);
+  const opening = store.recordSnapshotOpening(confirmedItem, 200);
+  assert.equal(await confirmation, true);
+  assert.equal(await opening, true);
+  assert.equal(await store.recordSnapshotOpening(defaultItem, 200), true);
+  assert.equal(await store.recordSnapshotOpening(legacyItem, 200), true);
+  assert.equal(store.getData(confirmedItem).s, 'to-read');
+  assert.equal(store.getData(legacyItem).s, 'to-read');
+  assert.equal(store.getData(legacyItem).v, 6);
+  assert.equal(store.getData(legacyItem).defaultToRead, undefined);
+  assert.equal(store.getData(defaultItem).s, null);
+  assert.equal(store.getData(defaultItem).defaultToRead, undefined);
+  assert.deepEqual(resolveReadingStatus(store.getData(defaultItem)), { status: 'reading', source: 'automatic' });
+  assert.equal(store.getData(defaultItem).snapshotOpenedAt, 200);
+  assert.equal(store.getData(defaultItem).lastReadAt, null);
+  assert.equal(store.getData(defaultItem).readingStartedAt, undefined);
+  assert.equal(store.getData(defaultItem).history, undefined);
+  assert.match(defaultItem.getExtra(), /^Custom: keep/);
+});
+
+test('a manual restart as To Read supersedes the new-item default', async () => {
+  const store = new DataStore(), item = memoryItem(9953);
+  assert.equal(await store.initializeStatusIfUnowned(item, 'to-read', 100), true);
+  assert.equal(await store.restartAsToRead(item, 150), true);
+  assert.equal(await store.recordSnapshotOpening(item, 200), true);
+  assert.deepEqual(resolveReadingStatus(store.getData(item)), { status: 'to-read', source: 'manual' });
+});
+
+test('a PDF visit preserves the new-item default and a later snapshot preserves its PDF position', async () => {
+  const store = new DataStore(), item = memoryItem(9954);
+  assert.equal(await store.initializeStatusIfUnowned(item, 'to-read', 100), true);
+  await store.recordProgress(item, { attachmentId: 'key:AAAABBBB', progress: 0.3, lastPage: 3, pageCount: 10, at: 150 });
+  const before = store.getData(item);
+  assert.equal(before.defaultToRead, true);
+  await store.recordSnapshotOpening(item, 200);
+  const after = store.getData(item);
+  assert.equal(after.s, null);
+  assert.equal(after.lastPage, before.lastPage);
+  assert.deepEqual(after.p, before.p);
+  assert.deepEqual(after.history, before.history);
 });

@@ -201,7 +201,10 @@ export class ReadingFlowMenuManager {
       onCommand: (_event: Event, context: any) => this.updateSelectedItems(
         (item) => this.dataStore.setStatus(item, status),
         context,
-        (item) => this.getCurrentData(item).s === status
+        (item) => {
+          const data = this.getCurrentData(item);
+          return data.s === status && !data.defaultToRead;
+        }
       )
     };
   }
