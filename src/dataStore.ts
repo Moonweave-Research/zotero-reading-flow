@@ -121,16 +121,28 @@ export class DataStore {
     return this.transition(item, build);
   }
 
-  public async recordSnapshotOpening(item: any, at = Date.now(), allowDuringShutdown = false): Promise<boolean> {
+  public async recordSnapshotOpening(
+    item: any,
+    at = Date.now(),
+    allowDuringShutdown = false,
+    { advanceDefault = true, onDefaultAdvanced }: { advanceDefault?: boolean; onDefaultAdvanced?: () => void } = {}
+  ): Promise<boolean> {
     if (!Number.isFinite(at) || at <= 0) return false;
-    return this.enqueueMutation(item, () => this.executeTransition(item, current => {
-      if (at <= (current.snapshotOpenedAt ?? 0)) return current;
-      return mergeFlowData(current, {
-        v: 6,
-        snapshotOpenedAt: at,
-        ...(current.defaultToRead ? { s: null, defaultToRead: undefined } : {})
-      }, Math.max(current.ts, at));
-    }, allowDuringShutdown));
+    return this.enqueueMutation(item, async () => {
+      let advanced = false;
+      const saved = await this.executeTransition(item, current => {
+        advanced = advanceDefault && current.defaultToRead === true;
+        const previous = current.snapshotOpenedAt ?? 0;
+        if (at <= previous && !advanced) return current;
+        return mergeFlowData(current, {
+          v: 6,
+          snapshotOpenedAt: Math.max(previous, at),
+          ...(advanced ? { s: null, defaultToRead: undefined } : {})
+        }, Math.max(current.ts, at));
+      }, allowDuringShutdown);
+      if (saved && advanced) onDefaultAdvanced?.();
+      return saved;
+    });
   }
 
   public async recordAutomaticRead(item: any, completion: NonNullable<FlowData['automaticRead']>, isCurrent: () => boolean = () => true): Promise<boolean> {
@@ -254,11 +266,12 @@ export class DataStore {
   public async initializeStatusIfUnowned(
     item: any,
     status: ReadingStatus,
-    at = Date.now()
+    at = Date.now(),
+    isCurrent: () => boolean = () => true
   ): Promise<boolean> {
     const timestamp = this.normalizeTimestamp(at);
     return this.enqueueMutation(item, async () => {
-      if (!await this.prepareMutation(item)) return false;
+      if (!await this.prepareMutation(item) || !isCurrent()) return false;
       const originalExtra = this.readRecord(item);
       if (this.getFlowLinesFromExtra(originalExtra).length > 0) return false;
       const initial = normalizeFlowData({
@@ -272,7 +285,9 @@ export class DataStore {
         item,
         initial,
         originalExtra,
-        { skipDateModifiedUpdate: true }
+        { skipDateModifiedUpdate: true },
+        false,
+        isCurrent
       );
     });
   }
@@ -413,15 +428,16 @@ export class DataStore {
     data: FlowData | null,
     originalExtra: string,
     saveOptions?: { skipDateModifiedUpdate?: boolean },
-    allowDuringShutdown = false
+    allowDuringShutdown = false,
+    isCurrent: () => boolean = () => true
   ): Promise<boolean> {
     if (this.usesPrivateRecords(item)) {
       if (this.isClosedOrShuttingDown(allowDuringShutdown) || !this.isEligibleForMutation(item)) return false;
       const key = this.privateKey(item);
       if (!key) return false;
-      await this.privateRecords.set(key, this.composeExtra('', data));
-      this.cache.delete(item.id);
-      return true;
+      const saved = await this.privateRecords.set(key, this.composeExtra('', data), isCurrent);
+      if (saved) this.cache.delete(item.id);
+      return saved;
     }
     let baselineExtra = originalExtra;
     for (let attempt = 0; attempt < DataStore.EXTRA_MERGE_RETRY_COUNT; attempt++) {
@@ -430,6 +446,7 @@ export class DataStore {
         return false;
       }
 
+      if (!isCurrent()) return false;
       const attemptedExtra = this.composeExtra(baselineExtra, data);
       item.setField('extra', attemptedExtra);
       try {

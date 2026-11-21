@@ -283,3 +283,25 @@ test('changing the new-item default during a pending item lookup does not write 
 
   assert.equal(writes, 0);
 });
+
+test('a new-item default is rechecked when a dirty item becomes writable', async () => {
+  let configured = 'to-read', extra = '', dirty = true;
+  let waiting!: () => void;
+  const entered = new Promise<void>(resolve => { waiting = resolve; });
+  const previous = (globalThis as any).Zotero;
+  const item = { id: 973, isRegularItem: () => true, dateAdded: '2026-11-21 00:00:00',
+    isDirty() { waiting(); return dirty; },
+    getField: () => extra, setField: (_: string, value: string) => { extra = value; }, async saveTx() {} };
+  (globalThis as any).Zotero = {
+    Prefs: { get: (key: string) => key.endsWith('ActivatedAt') ? '1000' : configured },
+    Items: { getAsync: async () => [item] }
+  };
+  try {
+    const operation = new NotifierManager(new DataStore()).notify('add', 'item', [item.id]);
+    await entered;
+    configured = 'unassigned';
+    dirty = false;
+    await operation;
+    assert.equal(extra, '');
+  } finally { (globalThis as any).Zotero = previous; }
+});

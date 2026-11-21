@@ -58,7 +58,7 @@ Do not create or automatically rename group Extra-based saved searches: they can
 
 Zotero owns column visibility/layout. Compact and Icons affect only the optional combined column. Unassigned is the default for newly added items and writes nothing; an opted-in stage affects only future eligible additions. The sidebar list is one native, library-scoped Saved Search for tracked papers, not a status-derived folder.
 
-A newly assigned To Read default is marked in v8 metadata. A loaded Zotero snapshot clears that default and derives Automatic (Reading). Choosing a status, including To Read again, makes it explicit. The same rule applies to Restart as To Read. Existing To Read records have no provenance marker and are preserved. Snapshot openings preserve PDF positions and history. Older clients, including 1.3.19, leave v8 records untouched. All editing devices need a v8-capable client for those items.
+A newly assigned To Read default is marked in v8 metadata. Opening a loaded snapshot in the foreground or selecting its loaded tab clears that default and derives Automatic (Reading). Background loads and session restore can record activity without clearing the default. Choosing a status, including To Read again, makes it explicit. The same rule applies to Restart as To Read. Existing To Read records have no provenance marker and are preserved. Snapshot openings preserve PDF positions and history. Older clients, including 1.3.19, leave v8 records untouched. All editing devices need a v8-capable client for those items.
 
 Product changes must preserve personal data and settings. Do not alter models, permissions, VoiceOver, IDE settings, or unrelated system preferences as part of Reading Flow work.
 

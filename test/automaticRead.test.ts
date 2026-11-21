@@ -184,3 +184,44 @@ test('a tab closed under a manual stage cannot complete after that stage is clea
     assert.deepEqual(resolveReadingStatus(f.store.getData(f.paper)), { status: 'reading', source: 'automatic' });
   } finally { f.restore(); }
 });
+
+for (const order of ['snapshot-pending', 'snapshot-saved', 'manual-after-open', 'background-snapshot'] as const) {
+  test(`final-page completion respects snapshot observation order (${order})`, async () => {
+    const original = (globalThis as any).Zotero;
+    let extra = '';
+    const parent = { id: 20, getField: () => extra, setField: (_: string, value: string) => { extra = value; }, async saveTx() {} };
+    const pdf = { id: 10, parentID: 20, key: 'ABCD2345', isPDFAttachment: () => true };
+    const snapshot = { id: 11, parentID: 20 };
+    const pdfReader = { itemID: 10, tabID: 'pdf', _type: 'pdf', _initPromise: Promise.resolve(),
+      PDFViewerApplication: { pdfViewer: { currentPageNumber: 10 }, pdfDocument: { numPages: 10 } } };
+    const snapshotReader = { itemID: 11, tabID: 'snapshot', _type: 'snapshot', _isTabClosed: false, _initPromise: Promise.resolve(),
+      _window: { Zotero_Tabs: { selectedID: order === 'background-snapshot' ? 'pdf' : 'snapshot' } } };
+    const readers = [pdfReader, snapshotReader];
+    let toolbar!: (event: any) => void;
+    (globalThis as any).Zotero = {
+      Prefs: { get: () => true },
+      Reader: { _readers: readers, registerEventListener: (_: string, callback: typeof toolbar) => { toolbar = callback; }, unregisterEventListener() {} },
+      Items: { get: (id: number) => id === 10 ? pdf : id === 11 ? snapshot : parent, getAsync: async () => parent },
+      Notifier: { registerObserver: () => 'tracker', unregisterObserver() {}, trigger() {} },
+      ItemTreeManager: { refreshColumns() {} }
+    };
+    const store = new DataStore(), tracker = new ReaderTracker(store);
+    try {
+      await store.initializeStatusIfUnowned(parent, 'to-read');
+      tracker.register();
+      toolbar({ reader: pdfReader }); toolbar({ reader: snapshotReader });
+      await new Promise(resolve => setImmediate(resolve));
+      snapshotReader._isTabClosed = true;
+      if (order === 'snapshot-saved') await tracker.flushPending();
+      tracker.notify('close', 'tab', ['pdf']);
+      readers.length = 0;
+      if (order === 'manual-after-open') await store.setStatus(parent, 'to-read');
+      await tracker.flushPending();
+      const data = store.getData(parent);
+      assert.ok(data.snapshotOpenedAt);
+      const automatic = order === 'snapshot-pending' || order === 'snapshot-saved';
+      assert.equal(resolveReadingStatus(data).status, automatic ? 'read' : 'to-read');
+      assert.equal(Boolean(data.automaticRead), automatic);
+    } finally { tracker.unregister(); (globalThis as any).Zotero = original; }
+  });
+}

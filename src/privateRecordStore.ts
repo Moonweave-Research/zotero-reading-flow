@@ -28,18 +28,20 @@ export class PrivateRecordStore {
   get available(): boolean { return this.ready; }
   get(key: string): string { return this.records[key] ?? ''; }
 
-  async set(key: string, value: string): Promise<void> {
+  async set(key: string, value: string, isCurrent: () => boolean): Promise<boolean> {
     const operation = this.queue.then(async () => {
       if (!this.ready || !this.path) throw new Error('Private Reading Flow storage is unavailable');
+      if (!isCurrent()) return false;
       const next = { ...this.records };
       if (value) next[key] = value; else delete next[key];
       await (globalThis as any).IOUtils.writeUTF8(this.path, JSON.stringify({ v: 1, records: next }), {
         tmpPath: this.path + '.tmp', flush: true
       });
       this.records = next;
+      return true;
     });
-    this.queue = operation.catch(() => undefined);
-    await operation;
+    this.queue = operation.then(() => undefined, () => undefined);
+    return operation;
   }
 
   async flush(): Promise<void> { await this.queue; }
