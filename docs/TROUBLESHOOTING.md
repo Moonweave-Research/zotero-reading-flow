@@ -51,7 +51,7 @@ For a saved search or collection, select it in Zotero, choose Current View in th
 
 Snapshot support in 1.3.15 records Last snapshot opened after the internal reader loads, with the same five-second save delay as PDF tracking. Opening a snapshot in an external browser does not count. Choose Automatic in the status control to remove a manual override; closing a snapshot never marks Read. EPUB tracking is unchanged. Snapshot-only items appear in the tracked set but do not add PDF calendar activity or page counts.
 
-A snapshot opening needs v6 or newer metadata. A new-item To Read default uses v8, which remains after the default clears. Use a v8-capable Reading Flow version on each editing device. Older versions, including 1.3.19, show v8 records as unavailable and preserve their contents.
+A snapshot opening needs v6 or newer metadata. A new-item To Read default uses v8, which remains after the default clears. Use Reading Flow 1.3.20 or later on each device that edits those records. Older versions, including 1.3.19, show v8 records as unavailable and preserve their contents.
 
 My Library metadata lives in a ReadingFlow: JSON line in the parent item's Extra field. Do not edit it manually for routine use. Unrelated Extra content, PDFs, and annotations are preserved; uninstalling does not remove this metadata.
 
