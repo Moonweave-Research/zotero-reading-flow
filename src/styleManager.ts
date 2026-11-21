@@ -2,10 +2,10 @@ const STYLE_ID = 'reading-flow-styles';
 const LOCALE_HREF = 'reading-flow.ftl';
 
 export class StyleManager {
-  private doc: Document | null = null;
+  private documents = new Set<Document>();
 
   public injectCSS(doc: Document) {
-    this.doc = doc;
+    this.documents.add(doc);
     if (doc.getElementById(STYLE_ID)) return;
     const style = doc.createElement('style');
     style.id = STYLE_ID;
@@ -17,8 +17,13 @@ export class StyleManager {
     (doc.head ?? doc.documentElement).appendChild(style);
   }
 
+  public removeCSS(doc: Document) {
+    doc.getElementById(STYLE_ID)?.remove();
+    this.documents.delete(doc);
+  }
+
   public unregister() {
-    this.doc?.getElementById(STYLE_ID)?.remove();
+    for (const doc of this.documents) this.removeCSS(doc);
   }
 
   public injectLocale(win: Window, _rootURI: string) {

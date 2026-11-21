@@ -126,9 +126,12 @@ export class Bootstrap {
 
     try {
       this.dashboardChromeHandle = this.registerDashboardChrome(rootURI);
-      const win = Zotero.getMainWindow();
-      this.styleManager.injectCSS(win.document);
-      this.styleManager.injectLocale(win, rootURI);
+      const windows: Window[] = (Zotero as any).getMainWindows?.() ?? [Zotero.getMainWindow()];
+      for (const win of windows) {
+        if (!win?.document) continue;
+        this.styleManager.injectCSS(win.document);
+        this.styleManager.injectLocale(win, rootURI);
+      }
       Logger.log('CSS OK');
     } catch (e) { Logger.error('CSS FAIL', e); }
 
@@ -174,7 +177,7 @@ export class Bootstrap {
       const dashboardBridge = createDashboardBridge({ scopeAdapter, dataStore, resumeReader });
       if (this.dashboardChromeHandle) {
         this.dashboardManager = new DashboardManager(
-          Zotero.getMainWindow(),
+          () => Zotero.getMainWindow(),
           DASHBOARD_CHROME_URI,
           dashboardBridge
         );
@@ -240,7 +243,8 @@ export class Bootstrap {
     }
   }
 
-  async onMainWindowUnload() {
+  async onMainWindowUnload({ window }: { window: Window }) {
+    if (window?.document) this.styleManager.removeCSS(window.document);
     await this.readerTracker?.flushPending();
   }
 
@@ -450,4 +454,4 @@ export async function startup(data: any, reason: any) { await BOOTSTRAP.startup(
 export async function shutdown(data: any, reason: any) { await BOOTSTRAP.shutdown(reason); }
 export function uninstall() { BOOTSTRAP.uninstall(); }
 export function onMainWindowLoad(data: any) { BOOTSTRAP.onMainWindowLoad(data); }
-export async function onMainWindowUnload(data: any) { await BOOTSTRAP.onMainWindowUnload(); }
+export async function onMainWindowUnload(data: any) { await BOOTSTRAP.onMainWindowUnload(data); }

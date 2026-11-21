@@ -26,7 +26,7 @@ export class DashboardManager {
   private dashboardWindow: DashboardWindow | null = null;
 
   constructor(
-    private readonly mainWindow: Window,
+    private readonly getMainWindow: () => Window | null,
     private readonly rootURI: string,
     private readonly dataSource?: DashboardDataSource
   ) {}
@@ -38,7 +38,8 @@ export class DashboardManager {
       return dashboardWindow;
     }
 
-    const openDialog = (this.mainWindow as ZoteroMainWindow).openDialog;
+    const mainWindow = this.getMainWindow() as ZoteroMainWindow | null;
+    const openDialog = mainWindow?.openDialog;
     if (typeof openDialog !== 'function') {
       throw new Error('Zotero main window does not expose openDialog');
     }
@@ -48,7 +49,7 @@ export class DashboardManager {
       DASHBOARD_WINDOW_FEATURES
     ];
     if (this.dataSource) args.push(this.dataSource);
-    const dashboardWindow = openDialog.call(this.mainWindow, ...args) as DashboardWindow | null;
+    const dashboardWindow = openDialog.call(mainWindow, ...args) as DashboardWindow | null;
     if (!dashboardWindow) {
       throw new Error('Zotero did not open the Reading Flow dashboard window');
     }
@@ -65,9 +66,10 @@ export class DashboardManager {
 
   private focus(dashboardWindow: DashboardWindow) {
     dashboardWindow.focus();
-    const schedule = (this.mainWindow as any).setTimeout ?? (globalThis as any).setTimeout;
+    const mainWindow = this.getMainWindow();
+    const schedule = mainWindow?.setTimeout ?? globalThis.setTimeout;
     if (typeof schedule === 'function') {
-      schedule.call(this.mainWindow, () => {
+      schedule.call(mainWindow ?? globalThis, () => {
         if (!dashboardWindow.closed) dashboardWindow.focus();
       }, 100);
     }

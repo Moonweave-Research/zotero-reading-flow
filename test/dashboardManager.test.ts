@@ -33,7 +33,7 @@ function setup() {
 test('opens one packaged modeless resizable dashboard and focuses it on first and repeated open', () => {
   const { calls, mainWindow, openCalls, scheduled } = setup();
   const manager = new DashboardManager(
-    mainWindow as any,
+    () => mainWindow as any,
     'chrome://readingflow/content/'
   );
 
@@ -54,7 +54,7 @@ test('opens one packaged modeless resizable dashboard and focuses it on first an
 
 test('close is idempotent and a later open creates a new lifecycle', () => {
   const { calls, mainWindow, openCalls } = setup();
-  const manager = new DashboardManager(mainWindow as any, 'resource://reading-flow/');
+  const manager = new DashboardManager(() => mainWindow as any, 'resource://reading-flow/');
 
   manager.open();
   manager.close();
@@ -66,7 +66,7 @@ test('close is idempotent and a later open creates a new lifecycle', () => {
 });
 
 test('fails explicitly when the runtime refuses to create the window', () => {
-  const manager = new DashboardManager({ openDialog: () => null } as any, 'resource://reading-flow/');
+  const manager = new DashboardManager(() => ({ openDialog: () => null }) as any, 'resource://reading-flow/');
   assert.throws(() => manager.open(), /did not open/);
 });
 
@@ -74,7 +74,7 @@ test('passes the dashboard data source to the XHTML window and forwards refresh'
   const { mainWindow, openCalls } = setup();
   const provider = { async getSnapshot() { throw new Error('not called'); } };
   const manager = new DashboardManager(
-    mainWindow as any,
+    () => mainWindow as any,
     'chrome://readingflow/content/',
     provider
   );
@@ -86,4 +86,16 @@ test('passes the dashboard data source to the XHTML window and forwards refresh'
 
   assert.equal(openCalls[0][3], provider);
   assert.equal(refreshes, 1);
+});
+
+test('reopening statistics uses the remaining Zotero window after its original owner closes', () => {
+  const first = setup(), second = setup();
+  let owner = first.mainWindow;
+  const manager = new DashboardManager(() => owner as any, 'chrome://readingflow/content/');
+  manager.open();
+  manager.close();
+  owner = second.mainWindow;
+  manager.open();
+  assert.equal(first.openCalls.length, 1);
+  assert.equal(second.openCalls.length, 1);
 });
