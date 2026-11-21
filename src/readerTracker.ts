@@ -15,6 +15,7 @@ export class ReaderTracker {
   private readerOpenListener?: (event: any) => void;
   private openedReaders = new WeakSet<object>();
   private readyReaders = new WeakSet<object>();
+  private viewStateCleanups = new WeakMap<object, () => void>();
   private pendingSaves = new Map<string, PendingReaderSave>();
   private inFlightSaves = new Set<PendingReaderSave>();
   private flushPromise: Promise<void> | null = null;
@@ -54,6 +55,10 @@ export class ReaderTracker {
       (Zotero as any).Reader?.unregisterEventListener?.('renderToolbar', this.readerOpenListener);
       this.readerOpenListener = undefined;
     }
+    for (const reader of (Zotero as any).Reader?._readers ?? []) {
+      this.viewStateCleanups.get(reader)?.();
+    }
+    this.viewStateCleanups = new WeakMap();
     for (const pending of this.pendingSaves.values()) {
       clearTimeout(pending.timeout);
     }
@@ -89,7 +94,12 @@ export class ReaderTracker {
     if (type !== 'file' || action !== 'pageChange') return;
     const attachmentIds = Array.isArray(ids) ? ids : [ids];
     for (const attachmentId of attachmentIds) {
-      if (typeof attachmentId === 'number') this.handlePageChange(attachmentId);
+      if (typeof attachmentId !== 'number') continue;
+      const readers: any[] = (Zotero as any).Reader?._readers ?? [];
+      const matches = readers.filter(reader => this.toPositiveInt(reader?.itemID) === attachmentId);
+      // Zotero's notifier identifies the attachment, not the PDF view or reader instance.
+      if (matches.some(reader => this.viewStateCleanups.has(reader)) || matches.length > 1) continue;
+      this.handlePageChange(attachmentId, matches[0]);
     }
   }
 
@@ -108,7 +118,54 @@ export class ReaderTracker {
       }
       return;
     }
-    this.handlePageChange(reader.itemID);
+    this.trackPDFViewState(reader, generation);
+    this.handlePageChange(reader.itemID, reader);
+  }
+
+  private trackPDFViewState(reader: any, generation: number) {
+    const internal = reader._internalReader;
+    const original = internal?._onChangeViewState;
+    if (typeof original !== 'function') return;
+
+    const readPageIndex = (view: any) => {
+      const win = view?._iframeWindow;
+      const page = (win?.wrappedJSObject ?? win)?.PDFViewerApplication?.pdfViewer?.currentPageNumber;
+      return Number.isInteger(page) && page > 0 ? page - 1 : null;
+    };
+    let primaryPage = readPageIndex(internal._primaryView);
+    let secondaryPage = readPageIndex(internal._secondaryView);
+
+    const viewStateChanged = (state: any, primary: boolean) => {
+      const result = original.call(internal, state, primary);
+      const index = state?.pageIndex;
+      const pageIndex = Number.isInteger(index) && index >= 0 ? index : null;
+      const previous = primary ? primaryPage : secondaryPage;
+      if (primary) primaryPage = pageIndex;
+      else secondaryPage = pageIndex;
+      // View state also changes on zoom, scroll within a page, and split teardown.
+      if (!this.shouldSkipSave(generation) && pageIndex !== null && pageIndex !== previous
+        && primary === (internal._lastViewPrimary !== false)
+        && (Zotero as any).Reader?._readers?.includes(reader)) {
+        try {
+          this.handlePageChange(reader.itemID, reader, pageIndex);
+        } catch (error) {
+          Logger.error('PDF view-state tracking failed', error);
+        }
+      }
+      return result;
+    };
+
+    try {
+      internal._onChangeViewState = viewStateChanged;
+    } catch (error) {
+      Logger.warn('PDF view-state callback is unavailable; using Zotero page notifications');
+      return;
+    }
+    if (internal._onChangeViewState === viewStateChanged) {
+      this.viewStateCleanups.set(reader, () => {
+        if (internal._onChangeViewState === viewStateChanged) internal._onChangeViewState = original;
+      });
+    }
   }
 
   private handleClosedTabs(ids: Array<number | string>) {
@@ -140,7 +197,7 @@ export class ReaderTracker {
     }
   }
 
-  private handlePageChange(attachmentId: number) {
+  private handlePageChange(attachmentId: number, sourceReader?: any, observedPageIndex?: number) {
     Logger.log('handlePageChange: attachmentId=' + attachmentId);
 
     const zotero = (globalThis as any).Zotero;
@@ -151,7 +208,7 @@ export class ReaderTracker {
     }
     Logger.log('_readers count=' + readers.length);
 
-    const reader = readers.find((r: any) => this.toPositiveInt(r?.itemID) === attachmentId);
+    const reader = sourceReader ?? readers.find((r: any) => this.toPositiveInt(r?.itemID) === attachmentId);
     Logger.log('reader found=' + !!reader + ' type=' + reader?._type);
 
     const item = zotero?.Items?.get?.(attachmentId) as any;
@@ -161,8 +218,9 @@ export class ReaderTracker {
 
     let progress = 0;
     let pdfNumPages = 0;
+    let pageIndex: number | null = null;
     if (reader?._type === 'pdf' || item.isPDFAttachment?.()) {
-      const pageIndex = this.getCurrentPageIndex(reader, item);
+      pageIndex = observedPageIndex ?? this.getCurrentPageIndex(reader, item);
       if (pageIndex === null) return;
       pdfNumPages = this.getPDFPageCount(reader, item);
       Logger.log('pdf pageIndex=' + pageIndex + ' numPages=' + pdfNumPages);
@@ -183,7 +241,7 @@ export class ReaderTracker {
     }
 
     const isPdfWithPages = (reader?._type === 'pdf' || item.isPDFAttachment?.()) && pdfNumPages > 0;
-    const lastPage = isPdfWithPages ? this.getLastPage(reader, item, pdfNumPages) : null;
+    const lastPage = isPdfWithPages && pageIndex !== null ? Math.min(pageIndex + 1, pdfNumPages) : null;
     const pageCount = isPdfWithPages ? pdfNumPages : null;
     const reference = keyedAttachmentReference(item.key) ?? String(attachmentId);
     this.debounceSave(parentId, reference, progress, lastPage, pageCount);
@@ -273,16 +331,6 @@ export class ReaderTracker {
     if (progress <= 0) return 0;
     // Values above 1 are legacy/fallback page numbers and are rendered as pages.
     return progress > 1 ? Math.round(progress) : Math.min(1, progress);
-  }
-
-  private getLastPage(reader: any, item: any, maxPage?: number): number | null {
-    const pageIndex = this.getCurrentPageIndex(reader, item);
-    if (typeof pageIndex !== 'number' || !Number.isFinite(pageIndex)) return null;
-    const page = pageIndex + 1;
-    if (!maxPage || maxPage <= 0) {
-      return page;
-    }
-    return Math.min(page, maxPage);
   }
 
   private getCurrentPageIndex(reader: any, item: any): number | null {
