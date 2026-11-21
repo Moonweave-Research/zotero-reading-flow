@@ -1,6 +1,6 @@
 export type ReadingStatus = 'to-read' | 'reading' | 'skimmed' | 'read';
 export type DisplayReadingStatus = ReadingStatus | 'unassigned' | 'unavailable';
-export type ReadingStatusSource = 'manual' | 'automatic' | 'unassigned' | 'unavailable';
+export type ReadingStatusSource = 'manual' | 'default' | 'automatic' | 'unassigned' | 'unavailable';
 
 export interface ResolvedReadingStatus {
   status: DisplayReadingStatus;
@@ -66,6 +66,7 @@ export interface FlowData {
   pageCount?: { [attId: string]: number };
   c: string | null;
   s: ReadingStatus | null;
+  defaultToRead?: true;
   ts: number;
   lastAttachmentId: string | null;
   lastPage: number | null;
@@ -105,7 +106,7 @@ export function normalizeFlowData(input: any): FlowData {
       : null;
 
   const normalized: FlowData = {
-    v: input?.v === 7 ? 7 : input?.v === 6 ? 6 : input?.v === 5 ? 5 : input?.v === 4 ? 4 : input?.v === 3 ? 3 : history ? 2 : 1,
+    v: input?.v === 8 ? 8 : input?.v === 7 ? 7 : input?.v === 6 ? 6 : input?.v === 5 ? 5 : input?.v === 4 ? 4 : input?.v === 3 ? 3 : history ? 2 : 1,
     p: progress,
     pageCount: Object.keys(pageCount).length ? pageCount : undefined,
     c: typeof input?.c === 'string' ? input.c : null,
@@ -116,14 +117,15 @@ export function normalizeFlowData(input: any): FlowData {
     lastReadAt: finiteNumberOrNull(input?.lastReadAt)
   };
 
-  if ((input?.v === 4 || input?.v === 5 || input?.v === 6 || input?.v === 7) && isReadingBookmark(input.bookmark)) normalized.bookmark = { ...input.bookmark };
-  if ((input?.v === 5 || input?.v === 6 || input?.v === 7) && typeof input.readingStartedAt === 'number' && Number.isFinite(input.readingStartedAt) && input.readingStartedAt > 0) {
+  if (normalized.v >= 4 && isReadingBookmark(input.bookmark)) normalized.bookmark = { ...input.bookmark };
+  if (normalized.v >= 5 && typeof input.readingStartedAt === 'number' && Number.isFinite(input.readingStartedAt) && input.readingStartedAt > 0) {
     normalized.readingStartedAt = input.readingStartedAt;
   }
-  if ((input?.v === 6 || input?.v === 7) && typeof input.snapshotOpenedAt === 'number' && Number.isFinite(input.snapshotOpenedAt) && input.snapshotOpenedAt > 0) {
+  if (normalized.v >= 6 && typeof input.snapshotOpenedAt === 'number' && Number.isFinite(input.snapshotOpenedAt) && input.snapshotOpenedAt > 0) {
     normalized.snapshotOpenedAt = input.snapshotOpenedAt;
   }
-  if (input?.v === 7 && isAutomaticRead(input.automaticRead)) normalized.automaticRead = { ...input.automaticRead };
+  if (normalized.v >= 7 && isAutomaticRead(input.automaticRead)) normalized.automaticRead = { ...input.automaticRead };
+  if (normalized.v === 8 && normalized.s === 'to-read' && input.defaultToRead === true) normalized.defaultToRead = true;
   if (input?.important === true || input?.s === 'important' || input?.v >= 3) normalized.important = input?.important === true || input?.s === 'important';
   if (history) normalized.history = history;
   return normalized;
@@ -187,7 +189,7 @@ export function resolveReadingAvailability(data: FlowData): ReadingAvailability 
 
 export function resolveReadingStatus(data: FlowData): ResolvedReadingStatus {
   if (data.availability === 'unavailable') return { status: 'unavailable', source: 'unavailable' };
-  if (data.s) return { status: data.s, source: 'manual' };
+  if (data.s) return { status: data.s, source: data.defaultToRead ? 'default' : 'manual' };
   if (data.automaticRead) return { status: 'read', source: 'automatic' };
   if (data.bookmark || data.snapshotOpenedAt || Object.keys(data.p).length > 0 || data.lastPage != null || getLastActivityAt(data) !== null
     || Object.values(data.history?.days ?? {}).some(day => day.activity)) {

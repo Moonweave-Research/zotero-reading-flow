@@ -6,7 +6,7 @@ The #43 reader-opening fix is included in 1.3.11. Published 1.3.10 only observes
 
 Snapshot support in 1.3.15: opening a loaded web snapshot derives automatic Reading and records `snapshotOpenedAt` in v6 metadata. Manual stages take precedence. Closing a snapshot does not mark Read. The pane labels this timestamp Last snapshot opened; PDF activity dates, positions, bookmarks, explicit reading-start dates, and the PDF activity calendar remain independent. Snapshot opening alone creates no PDF activity history.
 
-Only a snapshot opening upgrades its parent record to v6; PDF-only items retain their existing format. Released 1.3.14 refuses v6 mutations without changing the stored bytes. All editing devices need 1.3.15 or a later snapshot-capable client for upgraded items. No bulk migration or automatic schema downgrade is performed.
+Only a snapshot opening upgrades its parent record to v6. New-item default provenance uses v8 as described below. Released 1.3.14 refuses v6 mutations without changing the stored bytes. All editing devices need 1.3.15 or a later snapshot-capable client for upgraded items. No bulk migration or automatic schema downgrade is performed.
 
 ## Reading meaning
 
@@ -57,6 +57,8 @@ Do not create or automatically rename group Extra-based saved searches: they can
 ## Preferences and scope
 
 Zotero owns column visibility/layout. Compact and Icons affect only the optional combined column. Unassigned is the default for newly added items and writes nothing; an opted-in stage affects only future eligible additions. The sidebar list is one native, library-scoped Saved Search for tracked papers, not a status-derived folder.
+
+A newly assigned To Read default is marked in v8 metadata. A loaded Zotero snapshot clears that default and derives Automatic (Reading). Choosing a status, including To Read again, makes it explicit. The same rule applies to Restart as To Read. Existing To Read records have no provenance marker and are preserved. Snapshot openings preserve PDF positions and history. Older clients, including 1.3.19, leave v8 records untouched. All editing devices need a v8-capable client for those items.
 
 Product changes must preserve personal data and settings. Do not alter models, permissions, VoiceOver, IDE settings, or unrelated system preferences as part of Reading Flow work.
 

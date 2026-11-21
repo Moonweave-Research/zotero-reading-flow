@@ -87,11 +87,10 @@ test('snapshot-only pane separates the opening timestamp from absent PDF activit
   f.manager.unregister();
 });
 
-test('the pane explains a new-item To Read override without discarding snapshot activity', async () => {
-  const f = fixture('Unrelated metadata');
+test('the pane explains an existing To Read override without discarding snapshot activity', async () => {
+  const f = fixture('Unrelated metadata\n' + payload({ s: 'to-read' }));
   f.pdf.isPDFAttachment = () => false;
   const openedAt = new Date(2026, 10, 20, 16, 13).getTime();
-  assert.equal(await f.store.initializeStatusIfUnowned(f.paper, 'to-read', openedAt - 1_000), true);
 
   await f.view();
   assert.doesNotMatch(f.body.text(), /Choose Automatic \(Reading\) to use the recorded snapshot opening/);
@@ -103,7 +102,7 @@ test('the pane explains a new-item To Read override without discarding snapshot 
   assert.match(visible, /To Read can come from the new-item default/);
   assert.match(visible, /Choose Automatic \(Reading\) to use the recorded snapshot opening/);
   assert.equal(select.value, 'to-read');
-  assert.equal(f.counts().saves, 2);
+  assert.equal(f.counts().saves, 1);
 
   select.value = '';
   select.listeners.change();
@@ -116,6 +115,24 @@ test('the pane explains a new-item To Read override without discarding snapshot 
   assert.deepEqual(resolveReadingStatus(data), { status: 'reading', source: 'automatic' });
   assert.match(f.paper.getField('extra'), /Unrelated metadata/);
   assert.doesNotMatch(f.body.text(), /Choose Automatic \(Reading\) to use the recorded snapshot opening/);
+  f.manager.unregister();
+});
+
+test('the pane lets a user pin To Read while the same status is a new-item default', async () => {
+  const f = fixture();
+  assert.equal(await f.store.initializeStatusIfUnowned(f.paper, 'to-read', 100), true);
+  await f.view();
+  const select = f.body.querySelectorAll('select')[0];
+  const defaultOption = select.children.find(option => option.value === select.value)!;
+  assert.equal(defaultOption.textContent, 'To Read (new-item default)');
+  assert.equal(defaultOption.disabled, true);
+
+  select.value = 'to-read';
+  select.listeners.change();
+  await tick(); await tick();
+  assert.equal(f.store.getData(f.paper).defaultToRead, undefined);
+  assert.equal(await f.store.recordSnapshotOpening(f.paper, 200), true);
+  assert.deepEqual(resolveReadingStatus(f.store.getData(f.paper)), { status: 'to-read', source: 'manual' });
   f.manager.unregister();
 });
 

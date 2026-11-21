@@ -163,12 +163,28 @@ export class ReadingFlowItemPaneManager {
     select.style.setProperty('width', '100%');
     const automaticStatus = resolveReadingStatus({ ...data, s: null }).status;
     const automatic = automaticStatus === 'read' ? 'Read' : automaticStatus === 'reading' ? 'Reading' : 'Unassigned';
+    const defaultValue = 'default-to-read';
+    if (data.defaultToRead) {
+      const option = this.element(props, 'option', 'To Read (new-item default)');
+      option.value = defaultValue;
+      option.disabled = true;
+      select.append(option);
+    }
     for (const [value, text] of [['', `Automatic (${automatic})`], ['to-read', 'To Read (manual)'], ['reading', 'Reading (manual)'], ['skimmed', 'Skimmed (manual)'], ['read', 'Read (manual)']]) {
       const option = this.element(props, 'option', text); option.value = value; select.append(option);
     }
     if (problem) { const option = this.element(props, 'option', 'Record unavailable'); option.value = 'unavailable'; select.append(option); }
-    select.value = problem ? 'unavailable' : data.s ?? ''; select.disabled = !writable; label.append(select); controls.append(label);
-    select.addEventListener('change', () => { if (!this.current(state, generation, props.item)) return; void this.mutate(state, parent, () => select.value ? this.store.setStatus(parent, select.value as ReadingStatus) : this.store.clearManualStatus(parent), () => this.store.getData(parent).s === (select.value || null)); });
+    select.value = problem ? 'unavailable' : data.defaultToRead ? defaultValue : data.s ?? ''; select.disabled = !writable; label.append(select); controls.append(label);
+    select.addEventListener('change', () => {
+      if (!this.current(state, generation, props.item) || select.value === defaultValue) return;
+      const selectedStatus = (select.value || null) as ReadingStatus | null;
+      void this.mutate(state, parent,
+        () => selectedStatus ? this.store.setStatus(parent, selectedStatus) : this.store.clearManualStatus(parent),
+        () => {
+          const stored = this.store.getData(parent);
+          return stored.s === selectedStatus && !stored.defaultToRead;
+        });
+    });
     const importantLabel = this.element(props, 'label', ' Important'), important = this.element(props, 'input');
     importantLabel.style.setProperty('display', 'flex');
     importantLabel.style.setProperty('align-items', 'center');

@@ -634,7 +634,7 @@ function renderRecentProgress(
       (entry.bookmarkText ?? 'No reading bookmark').replace('Reading bookmark: page ', 'Page '),
       (entry.positionText ?? formatProgress(entry.currentProgress)).replace('Last viewed: page ', 'Page '),
       entry.lastActivityAt ? formatActivityTimestamp(entry.lastActivityAt) : entry.lastProgressDay,
-      `${STATUS_LABELS[entry.status]}${entry.statusSource === 'automatic' ? ' (automatic)' : entry.statusSource === 'manual' ? ' (manual)' : ''}${entry.important ? ' · Important' : ''}`
+      `${STATUS_LABELS[entry.status]}${entry.statusSource === 'automatic' ? ' (automatic)' : entry.statusSource === 'manual' ? ' (manual)' : entry.statusSource === 'default' ? ' (default)' : ''}${entry.important ? ' · Important' : ''}`
     ];
     const labels = ['Reading bookmark', 'Last viewed (automatic)', 'Last PDF activity', 'Status'];
     values.forEach((value, index) => {
@@ -761,7 +761,7 @@ function renderActivityDayDetail(
 
     const values = [
       paper.recordedPositionText ?? formatPDFLocation(paper.recordedProgress, null),
-      `${STATUS_LABELS[paper.status]}${paper.statusSource === 'automatic' ? ' (automatic)' : paper.statusSource === 'manual' ? ' (manual)' : ''}${paper.important ? ' · Important' : ''}`,
+      `${STATUS_LABELS[paper.status]}${paper.statusSource === 'automatic' ? ' (automatic)' : paper.statusSource === 'manual' ? ' (manual)' : paper.statusSource === 'default' ? ' (default)' : ''}${paper.important ? ' · Important' : ''}`,
       formatRecordedAt(paper.lastRecordedAt)
     ];
     const labels = ['Recorded location', 'Current status', 'Last recorded update'];
