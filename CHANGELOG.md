@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.19 - 2026-11-21
+
+- Record the page actually visited in a split PDF or a second reader for the same attachment. Keep bookmarks and reading status independent.
+- Put each preference description beside its control and report saved-search actions in the settings window. Avoid writing a previous new-item default if the setting changes while items are loading.
+- Explain why To Read can remain selected after opening a snapshot and how to switch that item to Automatic.
+- Report PDF actions in the statistics section that initiated them. Reopen statistics from the remaining library window when the original window closes in Zotero 11 beta.
+
 ## 1.3.18 - 2026-11-15
 
 - Filter Reading Statistics by one exact parent-item tag, including automatic tags, within the selected view or library. Combine it with dataset, status, Important and activity-period filters without editing item data.
