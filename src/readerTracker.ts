@@ -15,6 +15,16 @@ interface PendingReaderSave {
   run: (allowDuringShutdown?: boolean) => Promise<void>;
 }
 
+interface PDFCloseObservation {
+  parentID: number;
+  itemID: number;
+  attachmentKey: string;
+  at: number;
+  otherTabIDs: Array<string | undefined>;
+  snapshotSaves: PendingReaderSave[];
+  tabRetained?: Promise<boolean>;
+}
+
 export class ReaderTracker {
   private dataStore: DataStore;
   private notifierId: string | null = null;
@@ -22,6 +32,8 @@ export class ReaderTracker {
   private openedReaders = new WeakSet<object>();
   private readyReaders = new WeakSet<object>();
   private viewStateCleanups = new WeakMap<object, () => void>();
+  private pdfCloseHooks = new Map<string, { tab: any; restore: () => void }>();
+  private pdfCloseObservations = new Map<string, PDFCloseObservation | null>();
   private selectedSnapshotReaders = new WeakSet<object>();
   private restoredReaderItems = new Map<number, number>();
   private newReaderTabs = new Set<string>();
@@ -84,6 +96,9 @@ export class ReaderTracker {
       this.viewStateCleanups.get(reader)?.();
     }
     this.viewStateCleanups = new WeakMap();
+    for (const hook of this.pdfCloseHooks.values()) hook.restore();
+    this.pdfCloseHooks.clear();
+    this.pdfCloseObservations.clear();
     this.restoredReaderItems.clear();
     this.newReaderTabs.clear();
     for (const pending of this.pendingSaves.values()) {
@@ -131,9 +146,9 @@ export class ReaderTracker {
         }
       } else if (action === 'select') {
         for (const reader of (Zotero as any).Reader?._readers ?? []) {
-          if (reader._type === 'snapshot' && tabIDs.includes(reader.tabID) && this.readyReaders.has(reader)) {
-            this.scheduleSnapshotOpening(reader, true);
-          }
+          if (!tabIDs.includes(reader.tabID) || !this.readyReaders.has(reader)) continue;
+          if (reader._type === 'snapshot') this.scheduleSnapshotOpening(reader, true);
+          else if (reader._type === 'pdf') this.trackPDFTabClose(reader);
         }
       }
       return;
@@ -167,6 +182,7 @@ export class ReaderTracker {
       this.scheduleSnapshotOpening(reader, foreground && restoreCount === 0);
       return;
     }
+    this.trackPDFTabClose(reader);
     this.trackPDFViewState(reader, generation);
     this.handlePageChange(reader.itemID, reader);
   }
@@ -231,41 +247,108 @@ export class ReaderTracker {
     }
   }
 
-  private handleClosedTabs(ids: Array<number | string>) {
-    if (getGlobalPreference(READING_FLOW_PREFS.autoComplete) !== true) return;
-    const readers = (Zotero as any).Reader?._readers;
-    if (!Array.isArray(readers)) return;
-    for (const reader of readers) {
-      if (reader._type !== 'pdf' || !ids.includes(reader.tabID) || !this.readyReaders.has(reader)) continue;
+  private trackPDFTabClose(reader: any) {
+    const id = reader.tabID;
+    if (typeof id !== 'string') return;
+    const tabs = reader._window?.Zotero_Tabs;
+    const tab = tabs?._getTab?.(id)?.tab;
+    const original = tab?.onClose;
+    if (typeof original !== 'function') return;
+    const existing = this.pdfCloseHooks.get(id);
+    if (existing?.tab === tab) return;
+    existing?.restore();
+
+    const tracker = this;
+    const onClose = function (this: any, ...args: unknown[]) {
+      try {
+        restore();
+        tracker.pdfCloseHooks.delete(id);
+        // Capture before Zotero removes the viewer. A DB transaction may delay
+        // the close notification until after its document has gone away.
+        // Tab moves change the reader's owner before disposing of the old tab.
+        if (tracker.active && reader.tabID === id) {
+          const observation = tracker.capturePDFClose(reader);
+          if (observation) {
+            // Memory unload recreates the tab synchronously with the same ID.
+            observation.tabRetained = Promise.resolve()
+              .then(() => Boolean(tabs._getTab(id)?.tab))
+              .catch(() => true);
+          }
+          tracker.pdfCloseObservations.set(id, observation);
+        }
+      } catch (error) {
+        Logger.warn('ReadingFlow: could not capture PDF tab closure: ' + String(error));
+      }
+      return original.apply(this, args);
+    };
+    const restore = () => {
+      try {
+        if (tab.onClose === onClose) tab.onClose = original;
+      } catch {
+        // The owning window can already be gone during shutdown.
+      }
+    };
+    try {
+      tab.onClose = onClose;
+      if (tab.onClose === onClose) this.pdfCloseHooks.set(id, { tab, restore });
+    } catch (error) {
+      Logger.warn('ReadingFlow: PDF tab close callback is unavailable: ' + String(error));
+    }
+  }
+
+  private capturePDFClose(reader: any): PDFCloseObservation | null {
+    if (!reader || reader._type !== 'pdf' || !this.readyReaders.has(reader)
+      || this.isZoteroShuttingDown() || getGlobalPreference(READING_FLOW_PREFS.autoComplete) !== true) return null;
+    try {
       const pdf = Zotero.Items.get(reader.itemID) as any;
-      if (!pdf?.parentID || !keyedAttachmentReference(pdf.key)) continue;
+      if (!pdf?.parentID || !keyedAttachmentReference(pdf.key)) return null;
       const parent = Zotero.Items.get(pdf.parentID) as any;
-      if (!parent || parent.deleted || !this.dataStore.canEdit(parent)) continue;
+      if (!parent || parent.deleted || !this.dataStore.canEdit(parent)) return null;
       this.dataStore.invalidateCache(parent.id);
       const closingData = this.dataStore.getData(parent);
-      if (closingData.availability) continue;
+      if (closingData.availability) return null;
       const snapshotSaves = closingData.defaultToRead
         ? [...this.pendingSaves.values(), ...this.inFlightSaves]
           .filter(save => save.snapshotAdvance?.parentID === parent.id)
         : [];
-      if (closingData.s !== null && !snapshotSaves.length) continue;
-      // Only live visible pages count; saved/farthest positions are not a closing-page observation.
+      if (closingData.s !== null && !snapshotSaves.length) return null;
+
+      // Only the live, focused PDF page at close can trigger automatic Read.
       const app = activePDFApplication(reader);
       const page = app?.pdfViewer?.currentPageNumber, count = app?.pdfDocument?.numPages;
       if (!Number.isInteger(page) || !Number.isInteger(count) || count <= 0
-        || count > ReaderTracker.MAX_REASONABLE_PAGE_COUNT || page !== count) continue;
-      if (readers.some(other => other !== reader && !other._isTabClosed && !ids.includes(other.tabID)
-        && (Zotero.Items.get(other.itemID) as any)?.parentID === pdf.parentID)) continue;
+        || count > ReaderTracker.MAX_REASONABLE_PAGE_COUNT || page !== count) return null;
+      const readers: any[] = (Zotero as any).Reader?._readers ?? [];
+      const otherTabIDs = readers.filter(other => other !== reader && !other._isTabClosed
+        && (Zotero.Items.get(other.itemID) as any)?.parentID === pdf.parentID).map(other => other.tabID);
+      return { parentID: parent.id, itemID: reader.itemID, attachmentKey: pdf.key, at: Date.now(), otherTabIDs, snapshotSaves };
+    } catch (error) {
+      Logger.warn('ReadingFlow: could not inspect the closing PDF reader: ' + String(error));
+      return null;
+    }
+  }
+
+  private handleClosedTabs(ids: Array<number | string>) {
+    const readers: any[] = (Zotero as any).Reader?._readers ?? [];
+    for (const id of ids) {
+      if (typeof id !== 'string') continue;
+      let observation = this.pdfCloseObservations.get(id);
+      this.pdfCloseObservations.delete(id);
+      if (observation === undefined && !this.pdfCloseHooks.has(id)) {
+        observation = this.capturePDFClose(readers.find(reader => reader.tabID === id));
+      }
+      if (!observation || observation.otherTabIDs.some(other => other === undefined || !ids.includes(other))) continue;
+      const { parentID, itemID, attachmentKey, at, snapshotSaves, tabRetained } = observation;
       const generation = this.generation;
       const isCurrent = () => generation === this.generation && this.active
         && getGlobalPreference(READING_FLOW_PREFS.autoComplete) === true && !this.isZoteroShuttingDown();
-      this.scheduleSave(pdf.parentID, `complete:${reader.itemID}`, async (parent, at) => {
-        if (!isCurrent()) return false;
+      this.scheduleSave(parentID, `complete:${itemID}`, async (parent) => {
+        if (await tabRetained || !isCurrent()) return false;
         if (snapshotSaves.length) {
           await Promise.all(snapshotSaves.map(save => save.run()));
           if (!snapshotSaves.some(save => save.snapshotAdvance?.committed)) return false;
         }
-        return this.dataStore.recordAutomaticRead(parent, { attachmentKey: pdf.key, at }, isCurrent);
+        return this.dataStore.recordAutomaticRead(parent, { attachmentKey, at }, isCurrent);
       });
     }
   }

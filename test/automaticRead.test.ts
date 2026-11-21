@@ -6,13 +6,16 @@ import { resolveReadingStatus } from '../src/flowData';
 import { calculateStatisticsSnapshot } from '../src/statistics';
 import { readFileSync } from 'node:fs';
 
-async function fixture(enabled: unknown = true, manual: any = null) {
+async function fixture(enabled: unknown = true, manual: any = null, nativeTab = false) {
   const old = (globalThis as any).Zotero;
   let extra = 'Custom: keep\nReadingFlow: ' + JSON.stringify({ v: 6, important: true, s: manual, p: {}, snapshotOpenedAt: 100 });
   const paper: any = { id: 20, getField: () => extra, setField: (_: string, value: string) => { extra = value; }, saveTx: async () => {} };
   const pdf = { id: 10, key: 'AAAABBBB', parentID: 20, isPDFAttachment: () => true };
   const app = { pdfViewer: { currentPageNumber: 10 }, pdfDocument: { numPages: 10 } };
   const reader = { itemID: 10, tabID: 'reader-tab', _type: 'pdf', _initPromise: Promise.resolve(), PDFViewerApplication: app };
+  let hostCalls = 0, tabExists = true;
+  const tab = { onClose() { assert.equal(this, tab); hostCalls++; } };
+  if (nativeTab) Object.assign(reader, { _window: { Zotero_Tabs: { _getTab: () => ({ tab: tabExists ? tab : undefined }) } } });
   let toolbar!: (event: any) => void, priority: number | undefined;
   const store = new DataStore(), tracker = new ReaderTracker(store);
   const api = { _readers: [reader] as any[], registerEventListener: (_: string, listener: any) => { toolbar = listener; }, unregisterEventListener() {} };
@@ -23,7 +26,8 @@ async function fixture(enabled: unknown = true, manual: any = null) {
     ItemTreeManager: { refreshColumns() {} }
   };
   tracker.register(); toolbar({ reader }); await new Promise(resolve => setImmediate(resolve)); await tracker.flushPending();
-  return { store, tracker, reader, paper, app, api, get priority() { return priority; },
+  return { store, tracker, reader, paper, app, api, tab, get hostCalls() { return hostCalls; },
+    setTabExists(value: boolean) { tabExists = value; }, get priority() { return priority; },
     setEnabled(value: unknown) { enabled = value; },
     restore() { tracker.unregister(); (globalThis as any).Zotero = old; } };
 }
@@ -225,3 +229,39 @@ for (const order of ['snapshot-pending', 'snapshot-saved', 'manual-after-open', 
     } finally { tracker.unregister(); (globalThis as any).Zotero = original; }
   });
 }
+
+for (const scenario of ['final-page', 'earlier-page', 'manual-after-close', 'manual-at-close', 'unloaded'] as const) {
+  test(`queued host tab-close notification uses only the captured live page (${scenario})`, async () => {
+    const f = await fixture(true, scenario === 'manual-at-close' ? 'to-read' : null, true);
+    try {
+      if (scenario === 'earlier-page') f.app.pdfViewer.currentPageNumber = 9;
+      f.setTabExists(false);
+      f.tab.onClose();
+      assert.equal(f.hostCalls, 1);
+      if (scenario === 'unloaded') f.setTabExists(true);
+      await Promise.resolve();
+      // A transaction can delay the notifier until the reader DOM has been removed.
+      Object.defineProperty(f.app, 'pdfViewer', { get() { throw new TypeError('dead reader'); } });
+      f.api._readers.length = 0;
+      if (scenario === 'manual-after-close') await f.store.setStatus(f.paper, 'to-read');
+      if (scenario === 'manual-at-close') await f.store.clearManualStatus(f.paper);
+      f.tracker.notify('close', 'tab', ['reader-tab']);
+      await f.tracker.flushPending();
+      const data = f.store.getData(f.paper);
+      assert.equal(Boolean(data.automaticRead), scenario === 'final-page');
+      assert.equal(data.s, scenario === 'manual-after-close' ? 'to-read' : null);
+    } finally { f.restore(); }
+  });
+}
+
+
+test('disabling tracking restores the native tab-close callback', async () => {
+  const f = await fixture(true, null, true);
+  try {
+    const wrapped = f.tab.onClose;
+    f.tracker.unregister();
+    assert.notEqual(f.tab.onClose, wrapped);
+    f.tab.onClose();
+    assert.equal(f.hostCalls, 1);
+  } finally { f.restore(); }
+});
