@@ -810,3 +810,68 @@ test('an initializing active secondary PDF view cannot save stale primary or syn
     assert.equal(extra, '');
   } finally { tracker.unregister(); (globalThis as any).Zotero = originalZotero; }
 });
+
+test('native view-state changes track the exact PDF reader and focused split without secondary notifier events', async () => {
+  const originalZotero = (globalThis as any).Zotero;
+  let onToolbar!: (event: any) => void;
+  let extra = '';
+  const parent = { id: 20, getField: () => extra, setField: (_: string, value: string) => { extra = value; }, saveTx: async () => {} };
+  const pdf = { parentID: 20, key: 'ABCD2345', isPDFAttachment: () => true, getField: () => null };
+  const nativeCalls: Array<[number | undefined, boolean]> = [];
+  const nativeChange = function (this: any, state: { pageIndex: number } | null, primary: boolean) {
+    assert.ok(this._primaryView);
+    nativeCalls.push([state?.pageIndex, primary]);
+    return 'native result';
+  };
+  const makeReader = (page: number) => ({
+    itemID: 10, _type: 'pdf', _internalReader: {
+      _lastViewPrimary: true, _primaryView: { _iframeWindow: { PDFViewerApplication: {
+        pdfViewer: { currentPageNumber: page }, pdfDocument: { numPages: 30 }
+      } } },
+      _onChangeViewState: nativeChange
+    }
+  });
+  const first = makeReader(3), second = makeReader(3);
+  const readers = [first, second];
+  (globalThis as any).Zotero = {
+    Reader: { _readers: readers, registerEventListener(_event: string, callback: typeof onToolbar) { onToolbar = callback; }, unregisterEventListener() {} },
+    Items: { get: () => pdf, getAsync: async () => parent },
+    Notifier: { registerObserver: () => 'tracker', unregisterObserver() {}, trigger() {} },
+    ItemTreeManager: { refreshColumns() {} }
+  };
+  const store = new DataStore(), tracker = new ReaderTracker(store);
+  try {
+    tracker.register();
+    onToolbar({ reader: first }); onToolbar({ reader: second });
+    await waitFor(() => (tracker as any).readyReaders.has(second));
+    await tracker.flushPending();
+    assert.equal(store.getData(parent).lastPage, 3);
+    const internal = second._internalReader;
+    assert.equal(internal._onChangeViewState({ pageIndex: 6 }, false), 'native result');
+    await tracker.flushPending();
+    assert.equal(store.getData(parent).lastPage, 3, 'unfocused split must not replace the current page');
+    internal._lastViewPrimary = false;
+    assert.equal(internal._onChangeViewState({ pageIndex: 16 }, false), 'native result');
+    await tracker.flushPending();
+    assert.equal(store.getData(parent).lastPage, 17);
+    const beforeZoom = store.getData(parent).lastReadAt;
+    internal._onChangeViewState({ pageIndex: 16 }, false);
+    assert.equal((tracker as any).pendingSaves.size, 0);
+    assert.equal(store.getData(parent).lastReadAt, beforeZoom);
+    internal._onChangeViewState(null, false);
+    internal._lastViewPrimary = true;
+    tracker.notify('pageChange', 'file', 10);
+    await tracker.flushPending();
+    assert.equal(store.getData(parent).lastPage, 17);
+    internal._onChangeViewState({ pageIndex: 16 }, false);
+    first._internalReader._onChangeViewState({ pageIndex: 8 }, true);
+    await tracker.flushPending();
+    assert.equal(store.getData(parent).lastPage, 9);
+    assert.deepEqual(nativeCalls, [[6, false], [16, false], [16, false], [undefined, false], [16, false], [8, true]]);
+    tracker.unregister();
+    assert.equal(second._internalReader._onChangeViewState, nativeChange);
+  } finally {
+    tracker.unregister();
+    (globalThis as any).Zotero = originalZotero;
+  }
+});
