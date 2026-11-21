@@ -10,6 +10,8 @@ const REQUIRED_FILES = [
   'bootstrap.js',
   'dashboard.js',
   'prefs.js',
+  'prefs.xhtml',
+  'preference-pane.js',
   'dashboard.xhtml',
   'dashboard.css',
   'icon.png',

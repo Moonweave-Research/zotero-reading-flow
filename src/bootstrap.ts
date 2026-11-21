@@ -121,8 +121,9 @@ export class Bootstrap {
     } catch (e) { Logger.error('dataStore FAIL', e); return; }
 
     try {
-      this.registerPreferencePane(id, rootURI);
+      await this.registerPreferencePane(id, rootURI, lifecycle);
     } catch (e) { Logger.error('preferencePane FAIL', e); }
+    if (lifecycle !== this.lifecycle) return;
 
     try {
       this.dashboardChromeHandle = this.registerDashboardChrome(rootURI);
@@ -244,12 +245,18 @@ export class Bootstrap {
     await this.readerTracker?.flushPending();
   }
 
-  private registerPreferencePane(pluginID: string, rootURI: string) {
+  private async registerPreferencePane(pluginID: string, rootURI: string, lifecycle: number) {
     if (!Zotero.PreferencePanes?.register) return;
-    this.preferencePaneID = Zotero.PreferencePanes.register({
+    const paneID = await Zotero.PreferencePanes.register({
       pluginID,
-      src: `${rootURI}prefs.xhtml`
-    }) ?? null;
+      src: `${rootURI}prefs.xhtml`,
+      scripts: [`${rootURI}preference-pane.js`]
+    });
+    if (lifecycle !== this.lifecycle) {
+      if (paneID) Zotero.PreferencePanes.unregister?.(paneID);
+      return;
+    }
+    this.preferencePaneID = paneID ?? null;
     Logger.log('preferencePane OK');
   }
 
