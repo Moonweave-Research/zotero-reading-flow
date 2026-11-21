@@ -89,7 +89,7 @@ test('puts the sidebar list control before secondary appearance settings and sta
   assert.match(prefs, /Add to Left Sidebar/);
   assert.match(prefs, /under <html:strong>Saved Searches<\/html:strong>/);
   assert.match(prefs, /not an exact status-filtered folder/);
-  assert.match(prefs, /refreshSidebarSearchStatus/);
+  assert.match(prefs, /id="readingflow-pref-sidebar-message"/);
 });
 
 test('uses Zotero 10 selected-library IDs API when the removed singular API is unavailable', async () => {

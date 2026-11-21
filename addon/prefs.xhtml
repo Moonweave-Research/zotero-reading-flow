@@ -1,14 +1,14 @@
 <vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
       xmlns:html="http://www.w3.org/1999/xhtml"
-      onload="void Zotero.ReadingFlowPreferences?.refreshSidebarSearchStatus()">
+      id="readingflow-prefs">
   <groupbox>
     <label><html:h2>Reading Flow</html:h2></label>
     <html:section style="border: 1px solid color-mix(in srgb, currentColor 22%, transparent); border-radius: 6px; padding: 12px; margin: 0 0 14px; max-width: 520px;">
       <html:h3 style="margin: 0 0 6px;">Reading list in the left sidebar</html:h3>
       <html:p style="margin: 0 0 10px;">Add <html:strong>Reading Flow — Tracked Papers</html:strong> to the selected library. It appears under <html:strong>Saved Searches</html:strong> and contains top-level papers with Reading Flow data.</html:p>
       <html:div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <html:button type="button" onclick="void Zotero.ReadingFlowPreferences?.createSidebarSearch()">Add to Left Sidebar</html:button>
-        <html:button type="button" onclick="void Zotero.ReadingFlowPreferences?.removeSidebarSearch()">Remove from Selected Library</html:button>
+        <html:button type="button" id="readingflow-pref-sidebar-create">Add to Left Sidebar</html:button>
+        <html:button type="button" id="readingflow-pref-sidebar-remove">Remove from Selected Library</html:button>
       </html:div>
       <html:p id="readingflow-pref-sidebar-message" role="status" aria-live="polite" style="margin: 8px 0 0;"></html:p>
       <html:p style="margin: 8px 0 0; opacity: .8;">This is a tracked-papers list, not an exact status-filtered folder. Zotero Saved Searches cannot derive automatic reading status from the stored activity.</html:p>
@@ -20,13 +20,13 @@
       <html:input id="readingflow-pref-auto-complete" type="checkbox" preference="extensions.readingflow.autoComplete" aria-describedby="readingflow-pref-auto-complete-help"/>
       <html:p id="readingflow-pref-auto-complete-help" style="grid-column: 1 / -1; margin: 0 0 8px;">Off by default. Applies only to Automatic items when a loaded PDF tab closes on its final visible page and no other reader for that item remains open. Manual stages, snapshots, EPUBs, and app shutdown do not trigger completion. This rule does not prove reading. Turning it off stops future marks; remove an existing mark with Clear automatic Read in the item pane.</html:p>
       <html:label for="readingflow-pref-density">Reading Flow column density</html:label>
-      <html:select id="readingflow-pref-density" preference="extensions.readingflow.displayDensity" aria-describedby="readingflow-pref-density-message" onchange="Zotero.ReadingFlowColumnManager?.setDisplayDensity(this.value)">
+      <html:select id="readingflow-pref-density" preference="extensions.readingflow.displayDensity" aria-describedby="readingflow-pref-density-message">
         <html:option value="compact">Compact</html:option>
         <html:option value="icons">Icons</html:option>
       </html:select>
       <html:p id="readingflow-pref-density-message" data-l10n-id="reading-flow-density-help" style="grid-column: 1 / -1; margin: 0 0 8px;">This changes only the contents of the Reading Flow column. Use Zotero's native column chooser to show or hide it.</html:p>
       <html:label for="readingflow-pref-new-item-status">Status for newly added papers</html:label>
-      <html:select id="readingflow-pref-new-item-status" preference="extensions.readingflow.newItemStatus" aria-describedby="readingflow-pref-new-item-status-help" onchange="Zotero.ReadingFlowPreferences?.setNewItemStatus(this.value)">
+      <html:select id="readingflow-pref-new-item-status" preference="extensions.readingflow.newItemStatus" aria-describedby="readingflow-pref-new-item-status-help">
         <html:option value="unassigned">Unassigned</html:option>
         <html:option value="to-read">To Read</html:option>
         <html:option value="reading">Reading</html:option>

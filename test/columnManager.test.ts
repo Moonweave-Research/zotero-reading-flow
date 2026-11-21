@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { ColumnManager, READING_FLOW_DISPLAY_PREF, sortReadingFlowValues } from '../src/columnManager';
 
 function fakeDocument() {
@@ -284,27 +283,10 @@ test('preference refresh preserves the public manager receiver and reports throw
   const manager = new ColumnManager(dataStoreFor(flow));
   manager.setDisplayDensity('icons');
   assert.equal(zotero.refreshThis, (globalThis as any).Zotero.ItemTreeManager);
-  const message = { textContent: '' };
-  (globalThis as any).document = { getElementById: () => message };
+  let guidance = '';
   zotero.failRefresh(new Error('refresh unavailable'));
-  manager.setDisplayDensity('compact');
-  assert.match(message.textContent, /restart or refresh/i);
-});
-
-test('preference control executes the public density handler and displays fallback guidance', () => {
-  const prefs = readFileSync('addon/prefs.xhtml', 'utf8');
-  const handler = prefs.match(/onchange="([^"]+)"/)?.[1];
-  assert.equal(handler, 'Zotero.ReadingFlowColumnManager?.setDisplayDensity(this.value)');
-  assert.match(prefs, /id="readingflow-pref-density-message"/);
-  assert.doesNotMatch(prefs, /onchange="[^"]*refreshColumns/);
-  const message = { textContent: '' };
-  const zotero = setupZotero('compact');
-  delete (globalThis as any).Zotero.ItemTreeManager.refreshColumns;
-  (globalThis as any).Zotero.ReadingFlowColumnManager = new ColumnManager(dataStoreFor(flow));
-  (globalThis as any).document = { getElementById: () => message };
-  new Function('Zotero', handler!).call({ value: 'icons' }, (globalThis as any).Zotero);
-  assert.match(message.textContent, /restart or refresh/i);
-  assert.deepEqual(zotero.prefWrites, [[READING_FLOW_DISPLAY_PREF, 'icons']]);
+  manager.setDisplayDensity('compact', text => { guidance = text; });
+  assert.match(guidance, /restart or refresh/i);
 });
 
 test('composite sorting is recent-first, never-read-last, and deterministic', () => {

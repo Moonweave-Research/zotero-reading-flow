@@ -348,3 +348,24 @@ test('exact parent tag filters every statistic and cached activity detail before
   assert.equal((await bridge.getSnapshot('current-view', 'all-time', 'reading', 'tracked', false, 'topic')).totalPapers, 0);
   assert.equal((await bridge.getSnapshot('current-view', 'all-time')).totalPapers, 3);
 });
+
+test('a preference pane resolving after shutdown is removed by its resolved ID', async () => {
+  const fixture = startupLifecycleFixture();
+  const pending = deferred<string>();
+  const removed: string[] = [];
+  let options: any;
+  fixture.runtime.PreferencePanes = {
+    register(value: any) { options = value; return pending.promise; },
+    unregister(id: string) { removed.push(id); }
+  };
+  try {
+    const startup = fixture.start();
+    await fixture.tick();
+    assert.deepEqual(options.scripts, ['test://preference-pane.js']);
+    await fixture.bootstrap.shutdown();
+    pending.resolve('actual-pane-id');
+    await startup;
+    assert.deepEqual(removed, ['actual-pane-id']);
+    assert.deepEqual(fixture.columns, []);
+  } finally { fixture.restore(); }
+});

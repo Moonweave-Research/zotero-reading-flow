@@ -191,31 +191,27 @@ export class ColumnManager {
     return value === 'icons' ? 'icons' : 'compact';
   }
 
-  public setDisplayDensity(value: ReadingFlowDisplayDensity): string | undefined {
+  public setDisplayDensity(value: ReadingFlowDisplayDensity, showGuidance?: (text: string) => void): string | undefined {
     if (value !== 'compact' && value !== 'icons') return undefined;
+    const showRefreshGuidance = () => {
+      const guidance = 'Reading Flow density saved. Restart or refresh Zotero to see it.';
+      showGuidance?.(guidance);
+      return guidance;
+    };
     setGlobalPreference(READING_FLOW_DISPLAY_PREF, value);
     const manager = (globalThis as any).Zotero.ItemTreeManager;
     if (typeof manager?.refreshColumns === 'function') {
       try {
         const result = manager.refreshColumns();
         if (result && typeof result.then === 'function') {
-          result.catch(() => this.showRefreshGuidance());
+          result.catch(showRefreshGuidance);
         }
         return undefined;
       } catch {
-        return this.showRefreshGuidance();
+        return showRefreshGuidance();
       }
     }
-    return this.showRefreshGuidance();
-  }
-
-  private showRefreshGuidance(): string {
-    const guidance = 'Reading Flow density saved. Restart or refresh Zotero to see it.';
-    const mainWindow = (globalThis as any).Zotero?.getMainWindow?.();
-    const message = (globalThis as any).document?.getElementById?.('readingflow-pref-density-message')
-      ?? mainWindow?.document?.getElementById?.('readingflow-pref-density-message');
-    if (message) message.textContent = guidance;
-    return guidance;
+    return showRefreshGuidance();
   }
 
   public async ensureColumnsVisibleOnFirstRun() { /* Native chooser owns visibility; deliberately no-op. */ }

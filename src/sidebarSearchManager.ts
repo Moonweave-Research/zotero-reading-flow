@@ -21,25 +21,23 @@ export class SidebarSearchManager {
     try {
       return await this.createSearch();
     } catch (error) {
-      return this.report(`Could not create the sidebar shortcut: ${this.errorMessage(error)}`);
+      return `Could not create the sidebar shortcut: ${this.errorMessage(error)}`;
     }
   }
 
   private async createSearch(): Promise<string> {
     const libraryID = getSelectedLibraryID(Zotero.getActiveZoteroPane?.());
-    if (!libraryID) return this.report('Select an editable Zotero library first.');
+    if (!libraryID) return 'Select an editable Zotero library first.';
     const library = (Zotero as any).Libraries?.get?.(libraryID);
-    if (this.isGroup(libraryID)) return this.report(this.privateGroupMessage());
+    if (this.isGroup(libraryID)) return this.privateGroupMessage();
     if (library?.editable === false) {
-      return this.report(`“${this.libraryName(libraryID)}” is read-only. Select an editable library.`);
+      return `“${this.libraryName(libraryID)}” is read-only. Select an editable library.`;
     }
 
     const existing = await this.getTrackedSearch(libraryID);
     if (existing) {
-      return this.report(
-        `“${SIDEBAR_SEARCH_NAME}” is already added to “${this.libraryName(libraryID)}”. `
-        + 'Look under Saved Searches in the left sidebar.'
-      );
+      return `“${SIDEBAR_SEARCH_NAME}” is already added to “${this.libraryName(libraryID)}”. `
+        + 'Look under Saved Searches in the left sidebar.';
     }
 
     const search = new (Zotero as any).Search();
@@ -54,39 +52,37 @@ export class SidebarSearchManager {
       throw new Error('Zotero did not return a key for the saved search');
     }
     this.setReference(libraryID, search.key);
-    return this.report(
-      `Created “${SIDEBAR_SEARCH_NAME}” in “${this.libraryName(libraryID)}”. `
-      + 'Look under Saved Searches in the left sidebar.'
-    );
+    return `Created “${SIDEBAR_SEARCH_NAME}” in “${this.libraryName(libraryID)}”. `
+      + 'Look under Saved Searches in the left sidebar.';
   }
 
   public async status(): Promise<string> {
     try {
       const libraryID = getSelectedLibraryID(Zotero.getActiveZoteroPane?.());
-      if (!libraryID) return this.report('Select a Zotero library to check its sidebar list.');
-      if (this.isGroup(libraryID)) return this.report(this.privateGroupMessage());
+      if (!libraryID) return 'Select a Zotero library to check its sidebar list.';
+      if (this.isGroup(libraryID)) return this.privateGroupMessage();
       const libraryName = this.libraryName(libraryID);
       const search = await this.getTrackedSearch(libraryID);
-      return this.report(search
+      return search
         ? `Added to “${libraryName}”. Look under Saved Searches in the left sidebar.`
-        : `Not added to “${libraryName}”.`);
+        : `Not added to “${libraryName}”.`;
     } catch (error) {
-      return this.report(`Could not check the sidebar list: ${this.errorMessage(error)}`);
+      return `Could not check the sidebar list: ${this.errorMessage(error)}`;
     }
   }
 
   public async remove(): Promise<string> {
     try {
       const libraryID = getSelectedLibraryID(Zotero.getActiveZoteroPane?.());
-      if (!libraryID) return this.report('Select the Zotero library whose shortcut you want to remove.');
+      if (!libraryID) return 'Select the Zotero library whose shortcut you want to remove.';
       const search = await this.getTrackedSearch(libraryID);
       if (search) await search.eraseTx();
       this.setReference(libraryID, null);
-      return this.report(search
+      return search
         ? `Removed “${SIDEBAR_SEARCH_NAME}” from “${this.libraryName(libraryID)}”.`
-        : `“${SIDEBAR_SEARCH_NAME}” is not added to “${this.libraryName(libraryID)}”.`);
+        : `“${SIDEBAR_SEARCH_NAME}” is not added to “${this.libraryName(libraryID)}”.`;
     } catch (error) {
-      return this.report(`Could not remove the sidebar shortcut: ${this.errorMessage(error)}`);
+      return `Could not remove the sidebar shortcut: ${this.errorMessage(error)}`;
     }
   }
 
@@ -146,14 +142,6 @@ export class SidebarSearchManager {
     return typeof library?.name === 'string' && library.name.trim()
       ? library.name.trim()
       : `Library ${libraryID}`;
-  }
-
-  private report(message: string): string {
-    const mainDocument = Zotero.getMainWindow?.()?.document;
-    const element = (globalThis as any).document?.getElementById?.('readingflow-pref-sidebar-message')
-      ?? mainDocument?.getElementById?.('readingflow-pref-sidebar-message');
-    if (element) element.textContent = message;
-    return message;
   }
 
   private errorMessage(error: unknown): string {
