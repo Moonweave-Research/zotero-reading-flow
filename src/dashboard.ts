@@ -346,6 +346,7 @@ export class DashboardApp {
     if (!this.bridge?.getPDFTarget) return;
     for (const button of Array.from(this.doc.querySelectorAll?.<HTMLButtonElement>('button[data-pdf-item]') ?? [])) {
       const id = button.getAttribute('data-pdf-item')!;
+      const statusID = button.getAttribute('data-pdf-status');
       button.disabled = true;
       button.textContent = 'Checking PDF…';
       void this.bridge?.getPDFTarget?.(id).then(target => {
@@ -360,9 +361,11 @@ export class DashboardApp {
         button.setAttribute('aria-label', `${target.fallbackLabel}. ${target.reason}`);
         button.disabled = target.action === 'none';
         button.onclick = async () => {
-          const opened = await this.bridge?.executePDFTarget?.(target);
-          setText(this.doc, 'dashboard-recent-progress-action-status', opened
-            ? `Opened ${target.filename}.` : 'PDF target changed or is unavailable. Refresh to inspect it.');
+          const opened = await this.bridge?.executePDFTarget?.(target).catch(() => false);
+          if (statusID && button.isConnected) {
+            setText(this.doc, statusID, opened
+              ? `Opened ${target.filename}.` : 'PDF target changed or is unavailable. Refresh to inspect it.');
+          }
         };
       }).catch(() => { button.textContent = 'PDF unavailable'; });
     }
@@ -613,6 +616,7 @@ function renderRecentProgress(
     resume.className = 'recent-progress-resume';
     resume.textContent = 'Open PDF';
     resume.setAttribute('data-pdf-item', String(entry.id));
+    resume.setAttribute('data-pdf-status', 'dashboard-recent-progress-action-status');
     if (options.onResumeItem) resume.addEventListener('click', () => options.onResumeItem?.(entry.id, entry.title));
     const actions = doc.createElement('span');
     actions.className = 'recent-progress-actions';
@@ -747,6 +751,7 @@ function renderActivityDayDetail(
     resume.className = 'recent-progress-resume';
     resume.textContent = 'Open PDF';
     resume.setAttribute('data-pdf-item', String(paper.itemID));
+    resume.setAttribute('data-pdf-status', 'dashboard-activity-day-action-status');
     if (options.onResumeActivityDayItem) resume.addEventListener('click', () => options.onResumeActivityDayItem?.(paper.itemID, paper.title));
     const actions = doc.createElement('span');
     actions.className = 'recent-progress-actions';
