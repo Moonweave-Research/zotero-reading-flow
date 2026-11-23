@@ -272,7 +272,10 @@ for (const scenario of [
   'qualifying-close', 'brief', 'above-end', 'short', 'background-close',
   'background-time', 'window-inactive', 'restored', 'pdf-option-only',
   'manual-stage', 'default-became-automatic', 'another-reader', 'unloaded', 'disabled-before-save',
-  'moved-before-reader-opens', 'reader-opened-before-save'
+  'moved-before-reader-opens', 'reader-opened-before-save',
+  'unloaded-sibling-tab', 'snapshot-trashed', 'reading-mode-away-from-end', 'reading-mode-at-end', 'reading-mode-loading',
+  'restored-return-before-ready', 'restored-return-after-ready', 'prebound-close',
+  'delayed-select', 'nested-unread', 'nested-at-end', 'trashed-before-save'
 ] as const) {
   test(`snapshot automatic Read: ${scenario}`, async () => {
     const global = globalThis as any;
@@ -288,12 +291,17 @@ for (const scenario of [
       id: 20, getField: () => extra,
       setField: (_: string, value: string) => { extra = value; }, saveTx: async () => {}
     };
-    const attachment = { id: 10, key: 'AAAABBBB', parentID: 20 };
-    let tabExists = true, closed = false, focused = true;
+    const attachment = { id: 10, key: 'AAAABBBB', parentID: 20, deleted: scenario === 'snapshot-trashed' };
+    let closed = false, focused = true;
     const secondRead = scenario === 'another-reader';
     let notifyClose: () => void = () => {};
+    const tab = { id: 'snapshot-tab', type: 'reader', data: {itemID: 10}, onClose() { closed = true; } };
     const tabs = {
-      selectedID: 'snapshot-tab',
+      _selectedID: 'snapshot-tab',
+      get selectedID() { return this._selectedID; },
+      set selectedID(id: string) { this._selectedID = id; },
+      _tabs: scenario === 'unloaded-sibling-tab'
+        ? [tab, { ...tab, id: 'unloaded-sibling-tab', type: 'reader-unloaded' }] : [tab],
       tabHooks: {
         moveToNewWindow: {
           async reader(tab: { id: string }) {
@@ -304,24 +312,42 @@ for (const scenario of [
           }
         }
       },
-      _getTab: () => ({ tab: tabExists ? {} : undefined }),
+      _getTab(id: string) { return { tab: this._tabs.find(tab => tab.id === id) }; },
       close(_id?: string) {
-        closed = true;
-        readers.splice(readers.indexOf(reader), 1);
         this.selectedID = 'library';
+        this._tabs = this._tabs.filter(other => other !== tab);
+        tab.onClose();
+        readers.splice(readers.indexOf(reader), 1);
         tracker.notify('select', 'tab', 'library');
-        tabExists = scenario === 'unloaded';
+        if (scenario === 'unloaded') this._tabs.push({ ...tab, type: 'reader-unloaded' });
         notifyClose = () => tracker.notify('close', 'tab', 'snapshot-tab');
       }
     };
+    const preboundClose = tabs.close.bind(tabs);
     const win = Object.assign(new EventTarget(), {
       Zotero_Tabs: tabs, document: { hasFocus: () => focused }, performance: { now: () => now }
     });
-    const scroll = { clientHeight: 500, scrollHeight: scenario === 'short' ? 500 : 2500,
-      scrollTop: scenario === 'short' ? 0 : scenario === 'above-end' ? 1500 : 2000 };
+    const scroll = { clientHeight: 500, scrollHeight: scenario === 'short' || scenario.startsWith('nested-') ? 500 : 2500,
+      clientWidth: 800,
+      scrollTop: scenario === 'short' || scenario.startsWith('nested-') ? 0 : scenario === 'above-end' || scenario === 'reading-mode-at-end' ? 1500 : 2000 };
+    const nested = { clientHeight: 200, scrollHeight: 2000, scrollTop: scenario === 'nested-at-end' ? 1800 : 0,
+      getBoundingClientRect: () => ({ top: 0, bottom: 200, left: 0, right: 500, width: 500 }) };
+    const doc = { scrollingElement: scroll,
+      body: { querySelectorAll: () => scenario.startsWith('nested-') ? [nested] : [] },
+      defaultView: { getComputedStyle: () => ({ overflowY: 'auto', visibility: 'visible' }) } };
+    const primaryView = { get _iframeDocument() { return closed ? undefined : doc; } };
+    const overlay = { initialized: scenario !== 'reading-mode-loading', _iframeDocument: { scrollingElement: { ...scroll,
+      scrollTop: scenario === 'reading-mode-away-from-end' ? 500 : 2000 } } };
+    let finishInit!: () => void;
+    const initialLoad = scenario === 'restored-return-before-ready' ? new Promise<void>(resolve => {
+      finishInit = resolve;
+    }) : Promise.resolve();
     const reader = {
+      _initPromise: initialLoad,
       itemID: 10, tabID: 'snapshot-tab', _type: 'snapshot', _window: win,
-      _internalReader: { _primaryView: { get _iframeDocument() { return closed ? undefined : { scrollingElement: scroll }; } } }
+      _internalReader: { _primaryView: primaryView, get _lastView() {
+        return scenario.startsWith('reading-mode-') ? overlay : primaryView;
+      } }
     };
     const readers: Array<{ itemID: number; tabID?: string }> = secondRead
       ? [reader, { itemID: 10, tabID: 'other-tab' }] : [reader];
@@ -338,9 +364,20 @@ for (const scenario of [
     try {
       const originalClose = tabs.close;
       const originalMove = tabs.tabHooks.moveToNewWindow.reader;
-      tracker.register(scenario === 'restored');
+      tracker.register(scenario.startsWith('restored'));
       toolbar({ reader });
+      const reselect = () => {
+        tabs.selectedID = 'library';
+        tracker.notify('select', 'tab', 'library');
+        tabs.selectedID = reader.tabID;
+        tracker.notify('select', 'tab', reader.tabID);
+      };
+      if (scenario === 'restored-return-before-ready') {
+        reselect();
+        finishInit();
+      }
       await new Promise(resolve => setImmediate(resolve));
+      if (scenario === 'restored-return-after-ready') reselect();
       await tracker.flushPending();
       now = scenario === 'brief' ? 14_999 : 15_000;
       if (scenario === 'background-close' || scenario === 'background-time') {
@@ -352,6 +389,12 @@ for (const scenario of [
         tabs.selectedID = reader.tabID;
         tracker.notify('select', 'tab', reader.tabID);
       }
+      if (scenario === 'delayed-select') {
+        now = 800;
+        tabs.selectedID = 'library';
+        now += 15_500;
+        tabs.selectedID = reader.tabID;
+      }
       if (scenario === 'window-inactive') {
         focused = false;
         win.dispatchEvent(new Event('deactivate'));
@@ -362,15 +405,24 @@ for (const scenario of [
       if (scenario === 'moved-before-reader-opens') {
         await tabs.tabHooks.moveToNewWindow.reader({ id: reader.tabID });
       } else {
-        tabs.close();
+        if (scenario === 'prebound-close') {
+          const click = Object.assign(new Event('click'), { button: 0 });
+          Object.defineProperty(click, 'target', { value: {
+            closest: (selector: string) => selector === '.tab-close' ? {} : { getAttribute: () => reader.tabID }
+          } });
+          win.dispatchEvent(click);
+          preboundClose();
+        } else tabs.close();
         await Promise.resolve();
         notifyClose();
       }
       if (scenario === 'reader-opened-before-save') readers.push({ itemID: 10 });
+      if (scenario === 'trashed-before-save') attachment.deleted = true;
       if (scenario === 'disabled-before-save') enabled = false;
       await tracker.flushPending();
       const after = store.getData(parent);
-      const qualifies = scenario === 'qualifying-close' || scenario === 'short' || defaultToRead;
+      const qualifies = scenario === 'qualifying-close' || scenario === 'short' || defaultToRead || scenario === 'reading-mode-at-end' || scenario.startsWith('restored-return')
+        || scenario === 'prebound-close' || scenario === 'nested-at-end';
       assert.equal(after.automaticRead?.attachmentKey, qualifies ? attachment.key : undefined);
       assert.equal(after.defaultToRead, undefined);
       assert.ok(after.snapshotOpenedAt);
@@ -380,6 +432,7 @@ for (const scenario of [
       assert.deepEqual(after.p, {});
       tracker.unregister();
       assert.equal(tabs.close, originalClose);
+      assert.equal(Object.getOwnPropertyDescriptor(tabs, '_selectedID')?.value, 'library');
       assert.equal(tabs.tabHooks.moveToNewWindow.reader, originalMove);
     } finally {
       tracker.unregister();

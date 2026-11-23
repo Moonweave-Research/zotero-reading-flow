@@ -149,3 +149,36 @@ test('a private default is rechecked after waiting behind another group item wri
   assert.equal(store.getData(second).s, null);
   assert.equal(store.hasReadingFlowNamespace(second), false);
 });
+
+for (const cancelQueued of [false, true]) test(`queued automatic Read respects its live guard, cancelled=${cancelQueued}`, async () => {
+  environment();
+  const store = new DataStore();
+  await store.initialize();
+  const first = item(101, 2, 'AAAABBBB'), second = item(102, 2, 'CCCCDDDD');
+  const io = (globalThis as any).IOUtils;
+  const originalWrite = io.writeUTF8;
+  let blocked!: () => void, release!: () => void;
+  const waiting = new Promise<void>(resolve => { blocked = resolve; });
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  io.writeUTF8 = async (...args: unknown[]) => {
+    blocked();
+    await gate;
+    return originalWrite(...args);
+  };
+  let isCurrent = true, guardCalls = 0;
+  let queued!: () => void;
+  const queuedWrite = new Promise<void>(resolve => { queued = resolve; });
+  const firstWrite = store.setStatus(first, 'read', 100);
+  await waiting;
+  const secondWrite = store.recordAutomaticRead(second, {attachmentKey: 'EEEEFFFF', at: 200}, () => {
+    if (++guardCalls === 1) queued();
+    return isCurrent;
+  });
+  await queuedWrite;
+  if (cancelQueued) isCurrent = false;
+  release();
+  assert.equal(await firstWrite, true);
+  assert.equal(await secondWrite, !cancelQueued);
+  assert.equal(store.getData(second).s, null);
+  assert.equal(store.getData(second).automaticRead?.at, cancelQueued ? undefined : 200);
+});

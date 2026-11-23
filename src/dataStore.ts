@@ -152,7 +152,7 @@ export class DataStore {
         || (this.automaticReadClearedAt.get(item.id) ?? 0) >= completion.at
         || (current.automaticRead?.at ?? 0) >= completion.at) return current;
       return mergeFlowData(current, { v: 7, automaticRead: completion }, Math.max(current.ts, completion.at));
-    }));
+    }, false, isCurrent));
   }
 
   public async clearAutomaticRead(item: any): Promise<boolean> {
@@ -381,7 +381,8 @@ export class DataStore {
   private async executeTransition(
     item: any,
     build: (current: FlowData) => FlowData,
-    allowDuringShutdown = false
+    allowDuringShutdown = false,
+    isCurrent: () => boolean = () => true
   ): Promise<boolean> {
     if (!await this.prepareMutation(item, allowDuringShutdown)) return false;
     const originalExtra = this.readRecord(item);
@@ -389,7 +390,7 @@ export class DataStore {
     if (!current) return false;
     const next = build(current);
     if (isFlowDataSame(current, next)) return false;
-    return this.saveData(item, next, originalExtra, allowDuringShutdown);
+    return this.saveData(item, next, originalExtra, allowDuringShutdown, isCurrent);
   }
 
   private async prepareMutation(item: any, allowDuringShutdown = false): Promise<boolean> {
@@ -414,9 +415,10 @@ export class DataStore {
     item: any,
     data: FlowData,
     originalExtra: string,
-    allowDuringShutdown = false
+    allowDuringShutdown = false,
+    isCurrent?: () => boolean
   ): Promise<boolean> {
-    return this.persistDataChange(item, data, originalExtra, undefined, allowDuringShutdown);
+    return this.persistDataChange(item, data, originalExtra, undefined, allowDuringShutdown, isCurrent);
   }
 
   private async removeData(item: any, originalExtra: string): Promise<boolean> {

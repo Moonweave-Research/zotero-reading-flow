@@ -234,6 +234,7 @@ export class Bootstrap {
   onMainWindowLoad({ window }: { window: Window }) {
     if (!this.started) return;
     try {
+      this.readerTracker?.trackSnapshotWindow(window);
       this.styleManager.injectCSS(window.document);
       if (this.rootURI) {
         this.styleManager.injectLocale(window, this.rootURI);
