@@ -184,7 +184,9 @@ Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Pape
 
 ## Optional automatic completion (1.3.16)
 
-In **Settings → Zotero Reading Flow**, enable **Automatic Read on final-page tab close** only if you want that rule. It is **off by default**. A loaded PDF tab must be on its actual final visible page when it closes, with no other reader for the same item remaining open. A saved farthest position or a previous visit to the end is insufficient. Manual stages are preserved; snapshots, EPUBs, and app shutdown do not complete items.
+In **Settings → Zotero Reading Flow**, enable **Automatic Read on final-page tab close** only if you want that rule. It is **off by default**. A loaded PDF tab must be on its actual final visible page when it closes, with no other reader for the same item remaining open. A saved farthest position or a previous visit to the end is insufficient. Manual stages are preserved. EPUBs and app shutdown do not complete items.
+
+The separate **Automatic Read on snapshot tab close** option is also **off by default**. When enabled, an Automatic item can be marked Read if its snapshot tab stays selected in the focused Zotero window for at least 15 seconds and the end is in view at close. No other reader for the item can remain open. A short snapshot that fits in the reader counts as being at the end.
 
 The pane labels the result **Automatic (Read)** and shows **Automatically marked Read**. **Clear automatic Read** removes that mark while preserving manual choices, bookmarks, PDF history and snapshot openings. Statistics keep **Marked Read** manual-only and show **Automatic Read** separately. This is an automation rule, not proof of reading.
 
@@ -192,7 +194,7 @@ Turning the option off stops future marks but does not remove saved ones. Only r
 
 ## Reading statistics
 
-**Snapshot support (1.3.15):** a loaded web snapshot opening can derive **Reading (automatic)** when no manual stage is set. **Last snapshot opened** is separate from PDF activity; snapshots do not create PDF page positions or calendar activity, and closing one never marks it Read. Snapshot activity requires v6 or newer metadata. A new-item To Read default uses v8 and keeps that format after an opening. Use Reading Flow 1.3.20 or later on every device that edits those records. Earlier versions, including 1.3.19, preserve v8 records and show them as unavailable.
+**Snapshot support (1.3.15):** a loaded web snapshot opening can derive **Reading (automatic)** when no manual stage is set. **Last snapshot opened** is separate from PDF activity; snapshots do not create PDF page positions or calendar activity. Snapshot activity requires v6 or newer metadata. A new-item To Read default uses v8 and keeps that format after an opening. Use Reading Flow 1.3.20 or later on every device that edits those records. Earlier versions, including 1.3.19, preserve v8 records and show them as unavailable.
 
 <img src="docs/assets/workflows/statistics-position-detail.png" alt="Actual statistics row: reading bookmark page 4 of 10, automatic last viewed page 8 of 10, Last PDF activity 2026-10-26 14:01, and Reading automatic with Important" width="920">
 

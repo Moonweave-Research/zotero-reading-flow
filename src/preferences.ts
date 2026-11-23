@@ -1,4 +1,5 @@
 export const READING_FLOW_PREFS = {
+  autoCompleteSnapshot: 'extensions.readingflow.autoCompleteSnapshot',
   autoComplete: 'extensions.readingflow.autoComplete',
   completedColor: 'extensions.readingflow.color-completed',
   readingColor: 'extensions.readingflow.color-reading',

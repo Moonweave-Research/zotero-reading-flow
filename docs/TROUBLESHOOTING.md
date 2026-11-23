@@ -19,9 +19,9 @@ Use Zotero's built-in PDF reader, change pages, and allow the pending save to co
 
 The book-shaped icon should resolve saved positions without another scroll. If it remains at Checking PDF availability, report the plugin/Zotero versions and reproducible steps.
 
-## Optional automatic Read (1.3.16)
+## Optional automatic Read
 
-The setting is off by default and only affects items using Automatic. A loaded PDF tab must close on its live final visible page; another reader for that parent must not remain open. Visiting the end and returning to an earlier page is insufficient. Missing page counts, external windows closing, snapshots, EPUBs and app shutdown do not trigger the rule. Allow the five-second save delay. Manual To Read/Reading/Skimmed/Read stays unchanged until you clear that override yourself.
+Both options are off by default and apply only to items using Automatic. A loaded PDF tab must close on its live final visible page; another reader for that parent must not remain open. Visiting the end and returning to an earlier page is insufficient. The separate snapshot option requires 15 continuous seconds in the active snapshot tab and the end in view at close. Another open reader for the same item prevents either rule. External reader windows, EPUBs, and app shutdown do not trigger completion. Allow the five-second save delay. Manual To Read/Reading/Skimmed/Read stays unchanged until you clear that override yourself.
 
 The pane shows Automatic (Read) and its timestamp. Use Clear automatic Read to remove the mark without resetting PDF positions/history, bookmarks, snapshot activity or manual stages. Turning the setting off does not remove existing marks. Statistics show Automatic Read separately from the manual-only Marked Read count. v7 records need 1.3.16 or a later v7-capable client; released 1.3.15 refuses their edits without changing bytes. Do not downgrade the record version.
 

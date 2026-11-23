@@ -80,7 +80,7 @@ test('snapshot-only pane separates the opening timestamp from absent PDF activit
   await f.view();
   assert.match(f.body.text(), /Last snapshot opened/);
   assert.match(f.body.text(), /Last PDF activity.*Not recorded/);
-  assert.match(f.body.text(), /Snapshot openings affect automatic status/);
+  assert.match(f.body.text(), /Snapshot activity can affect automatic status/);
   assert.equal(f.body.querySelectorAll('select')[0].value, '');
   assert.match(f.body.querySelectorAll('select')[0].text(), /Automatic \(Reading\)/);
   assert.equal(f.counts().saves, 0);
