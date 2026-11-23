@@ -271,7 +271,8 @@ test('disabling tracking restores the native tab-close callback', async () => {
 for (const scenario of [
   'qualifying-close', 'brief', 'above-end', 'short', 'background-close',
   'background-time', 'window-inactive', 'restored', 'pdf-option-only',
-  'manual-stage', 'default-became-automatic', 'another-reader', 'unloaded', 'disabled-before-save'
+  'manual-stage', 'default-became-automatic', 'another-reader', 'unloaded', 'disabled-before-save',
+  'moved-before-reader-opens', 'reader-opened-before-save'
 ] as const) {
   test(`snapshot automatic Read: ${scenario}`, async () => {
     const global = globalThis as any;
@@ -293,9 +294,20 @@ for (const scenario of [
     let notifyClose: () => void = () => {};
     const tabs = {
       selectedID: 'snapshot-tab',
+      tabHooks: {
+        moveToNewWindow: {
+          async reader(tab: { id: string }) {
+            tabs.close(tab.id);
+            await Promise.resolve();
+            notifyClose();
+            await tracker.flushPending();
+          }
+        }
+      },
       _getTab: () => ({ tab: tabExists ? {} : undefined }),
-      close() {
+      close(_id?: string) {
         closed = true;
+        readers.splice(readers.indexOf(reader), 1);
         this.selectedID = 'library';
         tracker.notify('select', 'tab', 'library');
         tabExists = scenario === 'unloaded';
@@ -311,7 +323,8 @@ for (const scenario of [
       itemID: 10, tabID: 'snapshot-tab', _type: 'snapshot', _window: win,
       _internalReader: { _primaryView: { get _iframeDocument() { return closed ? undefined : { scrollingElement: scroll }; } } }
     };
-    const readers = secondRead ? [reader, { itemID: 10, tabID: 'other-tab' }] : [reader];
+    const readers: Array<{ itemID: number; tabID?: string }> = secondRead
+      ? [reader, { itemID: 10, tabID: 'other-tab' }] : [reader];
     let toolbar!: (event: any) => void;
     let enabled = scenario !== 'pdf-option-only';
     global.Zotero = {
@@ -324,6 +337,7 @@ for (const scenario of [
     };
     try {
       const originalClose = tabs.close;
+      const originalMove = tabs.tabHooks.moveToNewWindow.reader;
       tracker.register(scenario === 'restored');
       toolbar({ reader });
       await new Promise(resolve => setImmediate(resolve));
@@ -345,9 +359,14 @@ for (const scenario of [
         focused = true;
         win.dispatchEvent(new Event('activate'));
       }
-      tabs.close();
-      await Promise.resolve();
-      notifyClose();
+      if (scenario === 'moved-before-reader-opens') {
+        await tabs.tabHooks.moveToNewWindow.reader({ id: reader.tabID });
+      } else {
+        tabs.close();
+        await Promise.resolve();
+        notifyClose();
+      }
+      if (scenario === 'reader-opened-before-save') readers.push({ itemID: 10 });
       if (scenario === 'disabled-before-save') enabled = false;
       await tracker.flushPending();
       const after = store.getData(parent);
@@ -361,6 +380,7 @@ for (const scenario of [
       assert.deepEqual(after.p, {});
       tracker.unregister();
       assert.equal(tabs.close, originalClose);
+      assert.equal(tabs.tabHooks.moveToNewWindow.reader, originalMove);
     } finally {
       tracker.unregister();
       global.Zotero = oldZotero;

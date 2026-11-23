@@ -272,12 +272,24 @@ export class ReaderTracker {
     }
 
     const tracker = this;
+    const movingTabs = new Set<string>();
+    const moveHooks = tabs.tabHooks?.moveToNewWindow;
+    const originalMove = moveHooks?.reader;
+    // Zotero closes the old tab before opening the detached reader.
+    const move = async function (this: any, tab: { id: string }, ...args: unknown[]) {
+      movingTabs.add(tab.id);
+      try {
+        return await originalMove.call(this, tab, ...args);
+      } finally {
+        movingTabs.delete(tab.id);
+      }
+    };
     const close = function (this: any, ids?: string | string[]) {
       const viewing = state.viewing;
       const selectedID = tabs.selectedID;
       const closesSelected = Array.isArray(ids) ? ids.includes(selectedID) : !ids || ids === selectedID;
       let observation: ReaderCloseObservation | null = null;
-      if (viewing && viewing.reader.tabID === selectedID && closesSelected
+      if (viewing && viewing.reader.tabID === selectedID && closesSelected && !movingTabs.has(selectedID)
         && getGlobalPreference(READING_FLOW_PREFS.autoCompleteSnapshot) === true && !tracker.isZoteroShuttingDown()) {
         // Zotero selects a different tab before invoking the closing tab's onClose.
         try {
@@ -315,6 +327,7 @@ export class ReaderTracker {
     const onDeactivate = () => { state.viewing = undefined; };
     const restore = () => {
       if (tabs.close === close) tabs.close = original;
+      if (moveHooks?.reader === move) moveHooks.reader = originalMove;
       win.removeEventListener('activate', refresh);
       win.removeEventListener('deactivate', onDeactivate);
       win.removeEventListener('unload', restore);
@@ -323,6 +336,7 @@ export class ReaderTracker {
     const state: SnapshotWindow = { refresh, restore };
     tabs.close = close;
     if (tabs.close !== close) return;
+    if (typeof originalMove === 'function') moveHooks.reader = move;
     this.snapshotWindows.set(win, state);
     win.addEventListener('activate', refresh);
     win.addEventListener('deactivate', onDeactivate);
@@ -451,9 +465,16 @@ export class ReaderTracker {
           await Promise.all(snapshotSaves.map(save => save.run()));
           if (!snapshotSaves.some(save => save.snapshotAdvance?.committed)) return false;
         }
-        return this.dataStore.recordAutomaticRead(parent, { attachmentKey, at }, isCurrent);
+        const completionStillApplies = () => isCurrent()
+          && (preference !== READING_FLOW_PREFS.autoCompleteSnapshot || !this.hasOpenReaderFor(parentID));
+        return this.dataStore.recordAutomaticRead(parent, { attachmentKey, at }, completionStillApplies);
       });
     }
+  }
+
+  private hasOpenReaderFor(parentID: number): boolean {
+    const readers: any[] = (Zotero as any).Reader?._readers ?? [];
+    return readers.some(reader => !reader._isTabClosed && Zotero.Items.get(reader.itemID)?.parentID === parentID);
   }
 
   private handlePageChange(attachmentId: number, sourceReader?: any, observedPageIndex?: number) {
