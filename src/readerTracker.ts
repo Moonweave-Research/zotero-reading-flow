@@ -15,7 +15,8 @@ interface PendingReaderSave {
   run: (allowDuringShutdown?: boolean) => Promise<void>;
 }
 
-interface PDFCloseObservation {
+interface ReaderCloseObservation {
+  preference: typeof READING_FLOW_PREFS.autoComplete | typeof READING_FLOW_PREFS.autoCompleteSnapshot;
   parentID: number;
   itemID: number;
   attachmentKey: string;
@@ -23,6 +24,12 @@ interface PDFCloseObservation {
   otherTabIDs: Array<string | undefined>;
   snapshotSaves: PendingReaderSave[];
   tabRetained?: Promise<boolean>;
+}
+
+interface SnapshotWindow {
+  viewing?: { reader: any; since: number };
+  refresh: () => void;
+  restore: () => void;
 }
 
 export class ReaderTracker {
@@ -33,7 +40,8 @@ export class ReaderTracker {
   private readyReaders = new WeakSet<object>();
   private viewStateCleanups = new WeakMap<object, () => void>();
   private pdfCloseHooks = new Map<string, { tab: any; restore: () => void }>();
-  private pdfCloseObservations = new Map<string, PDFCloseObservation | null>();
+  private closeObservations = new Map<string, ReaderCloseObservation | null>();
+  private snapshotWindows = new Map<Window, SnapshotWindow>();
   private selectedSnapshotReaders = new WeakSet<object>();
   private restoredReaderItems = new Map<number, number>();
   private newReaderTabs = new Set<string>();
@@ -42,6 +50,8 @@ export class ReaderTracker {
   private flushPromise: Promise<void> | null = null;
   private active = false;
   private generation = 0;
+  private static readonly SNAPSHOT_MIN_VIEW_MS = 15_000;
+  private static readonly SNAPSHOT_END_MARGIN_PX = 24;
   private static readonly MAX_REASONABLE_PAGE_COUNT = 100000;
 
   constructor(dataStore: DataStore) {
@@ -98,7 +108,8 @@ export class ReaderTracker {
     this.viewStateCleanups = new WeakMap();
     for (const hook of this.pdfCloseHooks.values()) hook.restore();
     this.pdfCloseHooks.clear();
-    this.pdfCloseObservations.clear();
+    this.closeObservations.clear();
+    for (const state of this.snapshotWindows.values()) state.restore();
     this.restoredReaderItems.clear();
     this.newReaderTabs.clear();
     for (const pending of this.pendingSaves.values()) {
@@ -150,6 +161,7 @@ export class ReaderTracker {
           if (reader._type === 'snapshot') this.scheduleSnapshotOpening(reader, true);
           else if (reader._type === 'pdf') this.trackPDFTabClose(reader);
         }
+        for (const state of this.snapshotWindows.values()) state.refresh();
       }
       return;
     }
@@ -180,6 +192,7 @@ export class ReaderTracker {
       const selectedTab = reader._window?.Zotero_Tabs?.selectedID;
       const foreground = !reader.tabID || selectedTab === reader.tabID;
       this.scheduleSnapshotOpening(reader, foreground && restoreCount === 0);
+      this.trackSnapshotTabClose(reader);
       return;
     }
     this.trackPDFTabClose(reader);
@@ -247,6 +260,101 @@ export class ReaderTracker {
     }
   }
 
+  private trackSnapshotTabClose(reader: any) {
+    const win = reader._window;
+    const tabs = win?.Zotero_Tabs;
+    const original = tabs?.close;
+    if (!reader.tabID || typeof original !== 'function') return;
+    const existing = this.snapshotWindows.get(win);
+    if (existing) {
+      existing.refresh();
+      return;
+    }
+
+    const tracker = this;
+    const movingTabs = new Set<string>();
+    const moveHooks = tabs.tabHooks?.moveToNewWindow;
+    const originalMove = moveHooks?.reader;
+    // Zotero closes the old tab before opening the detached reader.
+    const move = async function (this: any, tab: { id: string }, ...args: unknown[]) {
+      movingTabs.add(tab.id);
+      try {
+        return await originalMove.call(this, tab, ...args);
+      } finally {
+        movingTabs.delete(tab.id);
+      }
+    };
+    const close = function (this: any, ids?: string | string[]) {
+      const viewing = state.viewing;
+      const selectedID = tabs.selectedID;
+      const closesSelected = Array.isArray(ids) ? ids.includes(selectedID) : !ids || ids === selectedID;
+      let observation: ReaderCloseObservation | null = null;
+      if (viewing && viewing.reader.tabID === selectedID && closesSelected && !movingTabs.has(selectedID)
+        && getGlobalPreference(READING_FLOW_PREFS.autoCompleteSnapshot) === true && !tracker.isZoteroShuttingDown()) {
+        // Zotero selects a different tab before invoking the closing tab's onClose.
+        try {
+          if (win.document.hasFocus() && win.performance.now() - viewing.since >= ReaderTracker.SNAPSHOT_MIN_VIEW_MS
+            && tracker.snapshotAtEnd(viewing.reader)) {
+            observation = tracker.captureReaderClose(viewing.reader, READING_FLOW_PREFS.autoCompleteSnapshot);
+          }
+        } catch (error) {
+          Logger.warn('ReadingFlow: could not inspect the closing snapshot: ' + String(error));
+        }
+        if (observation) {
+          observation.tabRetained = Promise.resolve()
+            .then(() => Boolean(tabs._getTab(selectedID)?.tab))
+            .catch(() => true);
+          tracker.closeObservations.set(selectedID, observation);
+        }
+      }
+
+      try {
+        return original.apply(this, arguments);
+      } catch (error) {
+        if (observation && tracker.closeObservations.get(selectedID) === observation) {
+          tracker.closeObservations.delete(selectedID);
+        }
+        throw error;
+      }
+    };
+    const refresh = () => {
+      const readers: any[] = (Zotero as any).Reader?._readers ?? [];
+      const selected = win.document.hasFocus() && readers.find(candidate => candidate._window === win
+        && candidate.tabID === tabs.selectedID && this.selectedSnapshotReaders.has(candidate));
+      if (!selected) state.viewing = undefined;
+      else if (state.viewing?.reader !== selected) state.viewing = { reader: selected, since: win.performance.now() };
+    };
+    const onDeactivate = () => { state.viewing = undefined; };
+    const restore = () => {
+      if (tabs.close === close) tabs.close = original;
+      if (moveHooks?.reader === move) moveHooks.reader = originalMove;
+      win.removeEventListener('activate', refresh);
+      win.removeEventListener('deactivate', onDeactivate);
+      win.removeEventListener('unload', restore);
+      this.snapshotWindows.delete(win);
+    };
+    const state: SnapshotWindow = { refresh, restore };
+    tabs.close = close;
+    if (tabs.close !== close) return;
+    if (typeof originalMove === 'function') moveHooks.reader = move;
+    this.snapshotWindows.set(win, state);
+    win.addEventListener('activate', refresh);
+    win.addEventListener('deactivate', onDeactivate);
+    win.addEventListener('unload', restore);
+    refresh();
+  }
+
+  private snapshotAtEnd(reader: any): boolean {
+    const internal = reader._internalReader;
+    const view = internal?._lastViewPrimary === false ? internal._secondaryView : internal?._primaryView;
+    const scroll = view?._iframeDocument?.scrollingElement;
+    if (!scroll) return false;
+    const { scrollHeight, clientHeight, scrollTop } = scroll;
+    return Number.isFinite(scrollHeight) && Number.isFinite(clientHeight) && Number.isFinite(scrollTop)
+      && clientHeight > 0 && scrollHeight >= clientHeight && scrollTop >= 0
+      && scrollHeight - clientHeight - scrollTop <= ReaderTracker.SNAPSHOT_END_MARGIN_PX;
+  }
+
   private trackPDFTabClose(reader: any) {
     const id = reader.tabID;
     if (typeof id !== 'string') return;
@@ -274,7 +382,7 @@ export class ReaderTracker {
               .then(() => Boolean(tabs._getTab(id)?.tab))
               .catch(() => true);
           }
-          tracker.pdfCloseObservations.set(id, observation);
+          tracker.closeObservations.set(id, observation);
         }
       } catch (error) {
         Logger.warn('ReadingFlow: could not capture PDF tab closure: ' + String(error));
@@ -296,13 +404,22 @@ export class ReaderTracker {
     }
   }
 
-  private capturePDFClose(reader: any): PDFCloseObservation | null {
-    if (!reader || reader._type !== 'pdf' || !this.readyReaders.has(reader)
-      || this.isZoteroShuttingDown() || getGlobalPreference(READING_FLOW_PREFS.autoComplete) !== true) return null;
+  private capturePDFClose(reader: any): ReaderCloseObservation | null {
+    if (reader?._type !== 'pdf' || !this.readyReaders.has(reader) || this.isZoteroShuttingDown()
+      || getGlobalPreference(READING_FLOW_PREFS.autoComplete) !== true) return null;
+    // Only the live, focused PDF page at close can trigger automatic Read.
+    const app = activePDFApplication(reader);
+    const page = app?.pdfViewer?.currentPageNumber, count = app?.pdfDocument?.numPages;
+    if (!Number.isInteger(page) || !Number.isInteger(count) || count <= 0
+      || count > ReaderTracker.MAX_REASONABLE_PAGE_COUNT || page !== count) return null;
+    return this.captureReaderClose(reader, READING_FLOW_PREFS.autoComplete);
+  }
+
+  private captureReaderClose(reader: any, preference: ReaderCloseObservation['preference']): ReaderCloseObservation | null {
     try {
-      const pdf = Zotero.Items.get(reader.itemID) as any;
-      if (!pdf?.parentID || !keyedAttachmentReference(pdf.key)) return null;
-      const parent = Zotero.Items.get(pdf.parentID) as any;
+      const attachment = Zotero.Items.get(reader.itemID) as any;
+      if (!attachment?.parentID || !keyedAttachmentReference(attachment.key)) return null;
+      const parent = Zotero.Items.get(attachment.parentID) as any;
       if (!parent || parent.deleted || !this.dataStore.canEdit(parent)) return null;
       this.dataStore.invalidateCache(parent.id);
       const closingData = this.dataStore.getData(parent);
@@ -313,17 +430,13 @@ export class ReaderTracker {
         : [];
       if (closingData.s !== null && !snapshotSaves.length) return null;
 
-      // Only the live, focused PDF page at close can trigger automatic Read.
-      const app = activePDFApplication(reader);
-      const page = app?.pdfViewer?.currentPageNumber, count = app?.pdfDocument?.numPages;
-      if (!Number.isInteger(page) || !Number.isInteger(count) || count <= 0
-        || count > ReaderTracker.MAX_REASONABLE_PAGE_COUNT || page !== count) return null;
       const readers: any[] = (Zotero as any).Reader?._readers ?? [];
       const otherTabIDs = readers.filter(other => other !== reader && !other._isTabClosed
-        && (Zotero.Items.get(other.itemID) as any)?.parentID === pdf.parentID).map(other => other.tabID);
-      return { parentID: parent.id, itemID: reader.itemID, attachmentKey: pdf.key, at: Date.now(), otherTabIDs, snapshotSaves };
+        && (Zotero.Items.get(other.itemID) as any)?.parentID === attachment.parentID).map(other => other.tabID);
+      return { preference, parentID: parent.id, itemID: reader.itemID, attachmentKey: attachment.key,
+        at: Date.now(), otherTabIDs, snapshotSaves };
     } catch (error) {
-      Logger.warn('ReadingFlow: could not inspect the closing PDF reader: ' + String(error));
+      Logger.warn('ReadingFlow: could not record the closing reader: ' + String(error));
       return null;
     }
   }
@@ -332,25 +445,36 @@ export class ReaderTracker {
     const readers: any[] = (Zotero as any).Reader?._readers ?? [];
     for (const id of ids) {
       if (typeof id !== 'string') continue;
-      let observation = this.pdfCloseObservations.get(id);
-      this.pdfCloseObservations.delete(id);
+      let observation = this.closeObservations.get(id);
+      this.closeObservations.delete(id);
       if (observation === undefined && !this.pdfCloseHooks.has(id)) {
-        observation = this.capturePDFClose(readers.find(reader => reader.tabID === id));
+        try {
+          observation = this.capturePDFClose(readers.find(reader => reader.tabID === id));
+        } catch (error) {
+          Logger.warn('ReadingFlow: could not inspect the closing PDF reader: ' + String(error));
+        }
       }
       if (!observation || observation.otherTabIDs.some(other => other === undefined || !ids.includes(other))) continue;
-      const { parentID, itemID, attachmentKey, at, snapshotSaves, tabRetained } = observation;
+      const { preference, parentID, itemID, attachmentKey, at, snapshotSaves, tabRetained } = observation;
       const generation = this.generation;
       const isCurrent = () => generation === this.generation && this.active
-        && getGlobalPreference(READING_FLOW_PREFS.autoComplete) === true && !this.isZoteroShuttingDown();
+        && getGlobalPreference(preference) === true && !this.isZoteroShuttingDown();
       this.scheduleSave(parentID, `complete:${itemID}`, async (parent) => {
         if (await tabRetained || !isCurrent()) return false;
         if (snapshotSaves.length) {
           await Promise.all(snapshotSaves.map(save => save.run()));
           if (!snapshotSaves.some(save => save.snapshotAdvance?.committed)) return false;
         }
-        return this.dataStore.recordAutomaticRead(parent, { attachmentKey, at }, isCurrent);
+        const completionStillApplies = () => isCurrent()
+          && (preference !== READING_FLOW_PREFS.autoCompleteSnapshot || !this.hasOpenReaderFor(parentID));
+        return this.dataStore.recordAutomaticRead(parent, { attachmentKey, at }, completionStillApplies);
       });
     }
+  }
+
+  private hasOpenReaderFor(parentID: number): boolean {
+    const readers: any[] = (Zotero as any).Reader?._readers ?? [];
+    return readers.some(reader => !reader._isTabClosed && Zotero.Items.get(reader.itemID)?.parentID === parentID);
   }
 
   private handlePageChange(attachmentId: number, sourceReader?: any, observedPageIndex?: number) {

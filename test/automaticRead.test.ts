@@ -150,6 +150,8 @@ test('automatic completion is packaged off by default with an accessible opt-in 
   const panel = readFileSync('addon/prefs.xhtml', 'utf8');
   assert.match(panel, /id="readingflow-pref-auto-complete"[^>]*preference="extensions\.readingflow\.autoComplete"/);
   assert.match(panel, /Off by default/);
+  assert.match(readFileSync('addon/prefs.js', 'utf8'), /pref\("extensions\.readingflow\.autoCompleteSnapshot", false\)/);
+  assert.match(panel, /id="readingflow-pref-auto-complete-snapshot"[^>]*preference="extensions\.readingflow\.autoCompleteSnapshot"[^>]*aria-describedby="readingflow-pref-auto-complete-snapshot-help"/);
 });
 
 test('a preference change during a dirty-item wait cancels completion before it is persisted', async () => {
@@ -265,3 +267,123 @@ test('disabling tracking restores the native tab-close callback', async () => {
     assert.equal(f.hostCalls, 1);
   } finally { f.restore(); }
 });
+
+for (const scenario of [
+  'qualifying-close', 'brief', 'above-end', 'short', 'background-close',
+  'background-time', 'window-inactive', 'restored', 'pdf-option-only',
+  'manual-stage', 'default-became-automatic', 'another-reader', 'unloaded', 'disabled-before-save',
+  'moved-before-reader-opens', 'reader-opened-before-save'
+] as const) {
+  test(`snapshot automatic Read: ${scenario}`, async () => {
+    const global = globalThis as any;
+    const oldZotero = global.Zotero;
+    let now = 0;
+    const store = new DataStore();
+    const tracker = new ReaderTracker(store);
+    const manual = scenario === 'manual-stage' ? 'reading' : null;
+    const defaultToRead = scenario === 'default-became-automatic';
+    let extra = 'ReadingFlow: ' + JSON.stringify({ v: 8, s: defaultToRead ? 'to-read' : manual,
+      ...(defaultToRead ? { defaultToRead: true } : {}), p: {}, important: true });
+    const parent = {
+      id: 20, getField: () => extra,
+      setField: (_: string, value: string) => { extra = value; }, saveTx: async () => {}
+    };
+    const attachment = { id: 10, key: 'AAAABBBB', parentID: 20 };
+    let tabExists = true, closed = false, focused = true;
+    const secondRead = scenario === 'another-reader';
+    let notifyClose: () => void = () => {};
+    const tabs = {
+      selectedID: 'snapshot-tab',
+      tabHooks: {
+        moveToNewWindow: {
+          async reader(tab: { id: string }) {
+            tabs.close(tab.id);
+            await Promise.resolve();
+            notifyClose();
+            await tracker.flushPending();
+          }
+        }
+      },
+      _getTab: () => ({ tab: tabExists ? {} : undefined }),
+      close(_id?: string) {
+        closed = true;
+        readers.splice(readers.indexOf(reader), 1);
+        this.selectedID = 'library';
+        tracker.notify('select', 'tab', 'library');
+        tabExists = scenario === 'unloaded';
+        notifyClose = () => tracker.notify('close', 'tab', 'snapshot-tab');
+      }
+    };
+    const win = Object.assign(new EventTarget(), {
+      Zotero_Tabs: tabs, document: { hasFocus: () => focused }, performance: { now: () => now }
+    });
+    const scroll = { clientHeight: 500, scrollHeight: scenario === 'short' ? 500 : 2500,
+      scrollTop: scenario === 'short' ? 0 : scenario === 'above-end' ? 1500 : 2000 };
+    const reader = {
+      itemID: 10, tabID: 'snapshot-tab', _type: 'snapshot', _window: win,
+      _internalReader: { _primaryView: { get _iframeDocument() { return closed ? undefined : { scrollingElement: scroll }; } } }
+    };
+    const readers: Array<{ itemID: number; tabID?: string }> = secondRead
+      ? [reader, { itemID: 10, tabID: 'other-tab' }] : [reader];
+    let toolbar!: (event: any) => void;
+    let enabled = scenario !== 'pdf-option-only';
+    global.Zotero = {
+      Prefs: { get: (name: string) => name === 'extensions.readingflow.autoCompleteSnapshot' ? enabled : true },
+      Session: { state: { windows: [{ tabs: [{ type: 'reader', selected: true, data: { itemID: 10 } }] }] } },
+      Reader: { _readers: readers, registerEventListener: (_: string, listener: typeof toolbar) => { toolbar = listener; } },
+      Items: { get: (id: number) => id === 10 ? attachment : parent, getAsync: async () => parent },
+      Notifier: { registerObserver: () => 'tracker', unregisterObserver() {}, trigger() {} },
+      ItemTreeManager: { refreshColumns() {} }
+    };
+    try {
+      const originalClose = tabs.close;
+      const originalMove = tabs.tabHooks.moveToNewWindow.reader;
+      tracker.register(scenario === 'restored');
+      toolbar({ reader });
+      await new Promise(resolve => setImmediate(resolve));
+      await tracker.flushPending();
+      now = scenario === 'brief' ? 14_999 : 15_000;
+      if (scenario === 'background-close' || scenario === 'background-time') {
+        tabs.selectedID = 'library';
+        tracker.notify('select', 'tab', 'library');
+      }
+      if (scenario === 'background-time') {
+        now += 15_000;
+        tabs.selectedID = reader.tabID;
+        tracker.notify('select', 'tab', reader.tabID);
+      }
+      if (scenario === 'window-inactive') {
+        focused = false;
+        win.dispatchEvent(new Event('deactivate'));
+        now += 15_000;
+        focused = true;
+        win.dispatchEvent(new Event('activate'));
+      }
+      if (scenario === 'moved-before-reader-opens') {
+        await tabs.tabHooks.moveToNewWindow.reader({ id: reader.tabID });
+      } else {
+        tabs.close();
+        await Promise.resolve();
+        notifyClose();
+      }
+      if (scenario === 'reader-opened-before-save') readers.push({ itemID: 10 });
+      if (scenario === 'disabled-before-save') enabled = false;
+      await tracker.flushPending();
+      const after = store.getData(parent);
+      const qualifies = scenario === 'qualifying-close' || scenario === 'short' || defaultToRead;
+      assert.equal(after.automaticRead?.attachmentKey, qualifies ? attachment.key : undefined);
+      assert.equal(after.defaultToRead, undefined);
+      assert.ok(after.snapshotOpenedAt);
+      assert.equal(after.s, manual);
+      assert.equal(after.important, true);
+      assert.equal(after.v, 8);
+      assert.deepEqual(after.p, {});
+      tracker.unregister();
+      assert.equal(tabs.close, originalClose);
+      assert.equal(tabs.tabHooks.moveToNewWindow.reader, originalMove);
+    } finally {
+      tracker.unregister();
+      global.Zotero = oldZotero;
+    }
+  });
+}
