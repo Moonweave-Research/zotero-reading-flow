@@ -156,12 +156,13 @@ for (const activation of ['foreground', 'background', 'restore', 'restored-not-y
     const old = (globalThis as any).Zotero;
     const parent = memoryItem();
     const store = new DataStore(), tracker = new ReaderTracker(store);
-    const tabs = { selectedID: activation === 'background' ? 'library' : 'snapshot' };
+    const data = { itemID: 10 };
+    const tabs = { selectedID: activation === 'background' ? 'library' : 'snapshot', _getTab: () => ({ tab: { data } }) };
     const reader = { itemID: 10, tabID: 'snapshot', _type: 'snapshot', _window: { Zotero_Tabs: tabs }, _initPromise: Promise.resolve() };
     let toolbar!: (event: any) => void;
     (globalThis as any).Zotero = {
       Session: { state: { windows: [{ type: 'pane', tabs: [
-        { type: 'reader', selected: activation === 'restore', data: { itemID: 10 } }
+        { type: 'reader', selected: activation === 'restore', data }
       ] }] } },
       Reader: { _readers: [reader], registerEventListener(_: string, fn: typeof toolbar) { toolbar = fn; }, unregisterEventListener() {} },
       Items: { get: () => ({ parentID: parent.id }), getAsync: async () => parent },
