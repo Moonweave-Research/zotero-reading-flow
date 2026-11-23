@@ -204,8 +204,8 @@ export class ReadingFlowItemPaneManager {
     if (data.snapshotOpenedAt) props.body.append(this.facts(props, [
       ['Last snapshot opened', formatActivityTimestamp(data.snapshotOpenedAt)]
     ]));
-    if (writable && data.s === 'to-read' && data.snapshotOpenedAt && automaticStatus === 'reading') {
-      add('To Read can come from the new-item default and still overrides automatic status. Choose Automatic (Reading) to use the recorded snapshot opening.');
+    if (writable && data.s === 'to-read' && !data.defaultToRead && automaticStatus === 'reading') {
+      add('This item is set to To Read. Choose Automatic (Reading) to follow its reading activity.');
     }
     if (data.automaticRead) {
       props.body.append(this.facts(props, [['Automatically marked Read', formatActivityTimestamp(data.automaticRead.at)]]));

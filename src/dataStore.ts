@@ -27,6 +27,11 @@ export interface ProgressInput {
   at?: number;
 }
 
+interface DefaultAdvanceOptions {
+  advanceDefault?: boolean;
+  onDefaultAdvanced?: () => void;
+}
+
 export class DataStore {
   private static readonly DIRTY_RETRY_COUNT = 3;
   private static readonly DIRTY_RETRY_MS = 100;
@@ -125,7 +130,7 @@ export class DataStore {
     item: any,
     at = Date.now(),
     allowDuringShutdown = false,
-    { advanceDefault = true, onDefaultAdvanced }: { advanceDefault?: boolean; onDefaultAdvanced?: () => void } = {}
+    { advanceDefault = true, onDefaultAdvanced }: DefaultAdvanceOptions = {}
   ): Promise<boolean> {
     if (!Number.isFinite(at) || at <= 0) return false;
     return this.enqueueMutation(item, async () => {
@@ -168,19 +173,28 @@ export class DataStore {
     item: any,
     input: ProgressInput,
     capturedAt: number,
-    options: { allowDuringShutdown?: boolean } = {}
+    options: DefaultAdvanceOptions & { allowDuringShutdown?: boolean } = {}
   ): Promise<boolean> {
-    const build = this.buildProgressTransition(input);
+    let advanced = false;
+    const build = this.buildProgressTransition(input, current => {
+      advanced = options.advanceDefault === true && current.defaultToRead === true;
+      return advanced;
+    });
     if (!build) return false;
 
     return this.enqueueMutation(item, async () => {
       const resetAt = this.resetTimestamps.get(item.id);
       if (typeof resetAt === 'number' && resetAt >= capturedAt) return false;
-      return this.executeTransition(item, build, options.allowDuringShutdown === true);
+      const saved = await this.executeTransition(item, build, options.allowDuringShutdown === true);
+      if (saved && advanced) options.onDefaultAdvanced?.();
+      return saved;
     });
   }
 
-  private buildProgressTransition(input: ProgressInput): ((current: FlowData) => FlowData) | null {
+  private buildProgressTransition(
+    input: ProgressInput,
+    shouldAdvanceDefault: (current: FlowData) => boolean = () => false
+  ): ((current: FlowData) => FlowData) | null {
     const at = this.normalizeTimestamp(input.at);
     const rawObserved = normalizeFlowData({ p: { [input.attachmentId]: input.progress } }).p[input.attachmentId];
     if (!rawObserved) return null;
@@ -202,7 +216,8 @@ export class DataStore {
         ? (currentProgress === 1 && comparableCurrent === 1 && pageCount && pageCount > 1 ? pageCount : currentProgress)
         : observed;
       const updates: Partial<FlowData> = {
-        p: { [input.attachmentId]: nextProgress }
+        p: { [input.attachmentId]: nextProgress },
+        ...(shouldAdvanceDefault(current) ? { s: null, defaultToRead: undefined } : {})
       };
       if (at >= (getLastActivityAt(current) ?? 0)) {
         updates.lastAttachmentId = input.attachmentId;

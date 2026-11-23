@@ -8,6 +8,7 @@
     const message = field('sidebar-message');
     const create = field('sidebar-create');
     const remove = field('sidebar-remove');
+    const automaticRead = field('auto-complete');
     const density = field('density');
     const newItemStatus = field('new-item-status');
     let sidebarRequest = 0;
@@ -23,6 +24,13 @@
       } finally {
         if (isMutation) create.disabled = remove.disabled = false;
       }
+    }
+
+    const settings = Zotero.ReadingFlowPreferences;
+    if (settings) {
+      automaticRead.value = settings.getAutomaticReadMode();
+      automaticRead.disabled = false;
+      automaticRead.addEventListener('change', () => settings.setAutomaticReadMode(automaticRead.value));
     }
 
     create.addEventListener('click', () => void updateSidebar('createSidebarSearch', true));

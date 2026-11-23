@@ -173,7 +173,7 @@ test('ReaderTracker uses the live PDF viewer page while Reader and asynchronous 
 
   (tracker as any).handlePageChange(10);
 
-  assert.deepEqual(savedCall, [20, '10', 0.4, 2, 5]);
+  assert.deepEqual(savedCall, [20, '10', 0.4, 2, 5, false]);
 });
 
 test('ReaderTracker uses attachment numPages field when PDF viewer count is unavailable', () => {
@@ -224,7 +224,7 @@ test('ReaderTracker uses attachment numPages field when PDF viewer count is unav
 
   (tracker as any).handlePageChange(10);
 
-  assert.deepEqual(savedCall, [20, '10', 0.4, 2, 5]);
+  assert.deepEqual(savedCall, [20, '10', 0.4, 2, 5, false]);
 });
 
 test('ReaderTracker prefers attachment metadata when open-reader page count conflicts', () => {
@@ -277,7 +277,7 @@ test('ReaderTracker prefers attachment metadata when open-reader page count conf
 
   (tracker as any).handlePageChange(10);
 
-  assert.deepEqual(savedCall, [20, '10', 0.4, 2, 5]);
+  assert.deepEqual(savedCall, [20, '10', 0.4, 2, 5, false]);
 });
 
 test('ReaderTracker does not emit synthetic page number when page count is unavailable', () => {

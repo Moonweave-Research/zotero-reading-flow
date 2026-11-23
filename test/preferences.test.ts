@@ -4,8 +4,10 @@ import { runInNewContext } from 'node:vm';
 import { readFileSync } from 'node:fs';
 import {
   clearLegacyReadingFlowPreferenceAliases,
+  getAutomaticReadMode,
   getGlobalPreference,
   READING_FLOW_PREFS,
+  setAutomaticReadMode,
   setGlobalPreference,
   setNewItemStatusPreference
 } from '../src/preferences';
@@ -32,6 +34,35 @@ test('Reading Flow preferences always use Zotero global keys and clear legacy al
     calls.slice(2),
     Object.values(READING_FLOW_PREFS).map((name) => ['clear', name])
   );
+});
+
+test('one completion setting round-trips all four existing selections without rewriting them on load', () => {
+  const modes = [['off', false, false], ['pdf', true, false], ['snapshot', false, true], ['both', true, true]] as const;
+  const pdfKey = READING_FLOW_PREFS.autoComplete, snapshotKey = READING_FLOW_PREFS.autoCompleteSnapshot;
+  const prefs = new Map<string, boolean>();
+  let writes = 0;
+  (globalThis as any).Zotero = {
+    Prefs: {
+      get: (name: string) => prefs.get(name),
+      set(name: string, value: boolean) { writes++; prefs.set(name, value); }
+    }
+  };
+  assert.equal(getAutomaticReadMode(), 'off');
+  for (const [existing, existingPDF, existingSnapshot] of modes) {
+    prefs.set(pdfKey, existingPDF);
+    prefs.set(snapshotKey, existingSnapshot);
+    writes = 0;
+    assert.equal(getAutomaticReadMode(), existing);
+    setAutomaticReadMode('invalid');
+    setAutomaticReadMode(existing);
+    assert.equal(writes, 0);
+    for (const [choice, pdf, snapshot] of modes) {
+      setAutomaticReadMode(choice);
+      assert.equal(prefs.get(pdfKey), pdf);
+      assert.equal(prefs.get(snapshotKey), snapshot);
+      assert.equal(getAutomaticReadMode(), choice);
+    }
+  }
 });
 
 test('new-item status activation is stored as a string to avoid Zotero integer truncation', () => {
@@ -78,7 +109,7 @@ test('each option with help exposes its description before the next option', () 
 test('preferences attach CSP-safe controls and report sidebar actions in their own pane', async () => {
   const markup = readFileSync('addon/prefs.xhtml', 'utf8');
   assert.doesNotMatch(markup, /\son(?:load|click|change)\s*=/);
-  const controls = new Map(['sidebar-message', 'sidebar-create', 'sidebar-remove', 'density', 'density-message', 'new-item-status']
+  const controls = new Map(['sidebar-message', 'sidebar-create', 'sidebar-remove', 'density', 'density-message', 'new-item-status', 'auto-complete']
     .map(name => ['#readingflow-pref-' + name, Object.assign(new EventTarget(), { textContent: '', disabled: false, value: '' })]));
   const actions: string[] = [];
   let finishStatus!: (value: string) => void;
@@ -90,6 +121,8 @@ test('preferences attach CSP-safe controls and report sidebar actions in their o
       ReadingFlowColumnManager: { setDisplayDensity(value: string, show: (text: string) => void) { actions.push(value); show('Refresh guidance'); } },
       ReadingFlowPreferences: {
         refreshSidebarSearchStatus: () => initialStatus,
+        getAutomaticReadMode: () => 'snapshot',
+        setAutomaticReadMode(value: string) { actions.push(value); },
         setNewItemStatus(value: string) { actions.push(value); },
         async createSidebarSearch() { return 'Created'; },
         async removeSidebarSearch() { return 'Removed'; }
@@ -98,11 +131,15 @@ test('preferences attach CSP-safe controls and report sidebar actions in their o
   });
   onLoad({ target: { id: 'readingflow-prefs', querySelector: (selector: string) => controls.get(selector) } });
   const get = (id: string) => controls.get('#readingflow-pref-' + id)!;
+  assert.equal(get('auto-complete').value, 'snapshot');
+  assert.deepEqual(actions, []);
+  get('auto-complete').value = 'both';
+  get('auto-complete').dispatchEvent(new Event('change'));
   get('density').value = 'icons';
   get('density').dispatchEvent(new Event('change'));
   get('new-item-status').value = 'to-read';
   get('new-item-status').dispatchEvent(new Event('change'));
-  assert.deepEqual(actions, ['icons', 'to-read']);
+  assert.deepEqual(actions, ['both', 'icons', 'to-read']);
   assert.equal(get('density-message').textContent, 'Refresh guidance');
   get('sidebar-create').dispatchEvent(new Event('click'));
   assert.equal(get('sidebar-remove').disabled, true);

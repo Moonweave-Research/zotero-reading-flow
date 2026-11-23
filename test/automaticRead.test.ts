@@ -6,27 +6,38 @@ import { resolveReadingStatus } from '../src/flowData';
 import { calculateStatisticsSnapshot } from '../src/statistics';
 import { readFileSync } from 'node:fs';
 
-async function fixture(enabled: unknown = true, manual: any = null, nativeTab = false) {
+async function fixture(
+  enabled: unknown = true, manual: any = null, nativeTab = false,
+  options: { defaultToRead?: boolean; restoring?: boolean; background?: boolean; pending?: boolean } = {}
+) {
   const old = (globalThis as any).Zotero;
-  let extra = 'Custom: keep\nReadingFlow: ' + JSON.stringify({ v: 6, important: true, s: manual, p: {}, snapshotOpenedAt: 100 });
+  let extra = 'Custom: keep\nReadingFlow: ' + JSON.stringify({ v: options.defaultToRead ? 8 : 6, important: true,
+    s: options.defaultToRead ? 'to-read' : manual,
+    ...(options.defaultToRead ? { defaultToRead: true } : {}), p: {}, snapshotOpenedAt: 100 });
   const paper: any = { id: 20, getField: () => extra, setField: (_: string, value: string) => { extra = value; }, saveTx: async () => {} };
   const pdf = { id: 10, key: 'AAAABBBB', parentID: 20, isPDFAttachment: () => true };
   const app = { pdfViewer: { currentPageNumber: 10 }, pdfDocument: { numPages: 10 } };
   const reader = { itemID: 10, tabID: 'reader-tab', _type: 'pdf', _initPromise: Promise.resolve(), PDFViewerApplication: app };
   let hostCalls = 0, tabExists = true;
   const tab = { onClose() { assert.equal(this, tab); hostCalls++; } };
-  if (nativeTab) Object.assign(reader, { _window: { Zotero_Tabs: { _getTab: () => ({ tab: tabExists ? tab : undefined }) } } });
+  const tabs = { selectedID: options.background ? 'library' : reader.tabID,
+    _getTab: () => ({ tab: tabExists ? tab : undefined }) };
+  if (nativeTab) Object.assign(reader, { _window: { Zotero_Tabs: tabs } });
   let toolbar!: (event: any) => void, priority: number | undefined;
   const store = new DataStore(), tracker = new ReaderTracker(store);
   const api = { _readers: [reader] as any[], registerEventListener: (_: string, listener: any) => { toolbar = listener; }, unregisterEventListener() {} };
   (globalThis as any).Zotero = {
     Prefs: { get: () => enabled }, Reader: api,
+    Session: { state: { windows: [{ tabs: [{ type: 'reader', selected: true, data: { itemID: 10 } }] }] } },
     Items: { get: (id: number) => id === 10 ? pdf : paper, getAsync: async () => paper },
     Notifier: { registerObserver: (_: any, _types: any, _id: any, p: number) => { priority = p; return 'tracker'; }, unregisterObserver() {}, trigger() {} },
     ItemTreeManager: { refreshColumns() {} }
   };
-  tracker.register(); toolbar({ reader }); await new Promise(resolve => setImmediate(resolve)); await tracker.flushPending();
-  return { store, tracker, reader, paper, app, api, tab, get hostCalls() { return hostCalls; },
+  tracker.register(options.restoring);
+  toolbar({ reader });
+  await new Promise(resolve => setImmediate(resolve));
+  if (!options.pending) await tracker.flushPending();
+  return { store, tracker, reader, paper, app, api, tab, tabs, get hostCalls() { return hostCalls; },
     setTabExists(value: boolean) { tabExists = value; }, get priority() { return priority; },
     setEnabled(value: unknown) { enabled = value; },
     restore() { tracker.unregister(); (globalThis as any).Zotero = old; } };
@@ -145,14 +156,47 @@ test('completion writes preserve unsupported and read-only records', async () =>
   } finally { f.restore(); }
 });
 
-test('automatic completion is packaged off by default with an accessible opt-in control', () => {
-  assert.match(readFileSync('addon/prefs.js', 'utf8'), /pref\("extensions\.readingflow\.autoComplete", false\)/);
+test('automatic completion keeps both packaged defaults off behind one accessible control', () => {
+  const prefs = readFileSync('addon/prefs.js', 'utf8');
+  assert.match(prefs, /pref\("extensions\.readingflow\.autoComplete", false\)/);
+  assert.match(prefs, /pref\("extensions\.readingflow\.autoCompleteSnapshot", false\)/);
   const panel = readFileSync('addon/prefs.xhtml', 'utf8');
-  assert.match(panel, /id="readingflow-pref-auto-complete"[^>]*preference="extensions\.readingflow\.autoComplete"/);
-  assert.match(panel, /Off by default/);
-  assert.match(readFileSync('addon/prefs.js', 'utf8'), /pref\("extensions\.readingflow\.autoCompleteSnapshot", false\)/);
-  assert.match(panel, /id="readingflow-pref-auto-complete-snapshot"[^>]*preference="extensions\.readingflow\.autoCompleteSnapshot"[^>]*aria-describedby="readingflow-pref-auto-complete-snapshot-help"/);
+  assert.match(panel, /<html:select id="readingflow-pref-auto-complete"[^>]*aria-describedby="readingflow-pref-auto-complete-help"/);
+  for (const mode of ['off', 'pdf', 'snapshot', 'both']) assert.ok(panel.includes(`value="${mode}"`));
 });
+
+for (const scenario of ['foreground', 'pending-close', 'background', 'restore', 'manual'] as const) {
+  test(`only deliberate PDF viewing releases default To Read (${scenario})`, async () => {
+    const f = await fixture(true, scenario === 'manual' ? 'to-read' : null, true, {
+      defaultToRead: scenario !== 'manual',
+      restoring: scenario === 'restore',
+      background: scenario === 'background',
+      pending: scenario === 'pending-close'
+    });
+    try {
+      const stage = () => resolveReadingStatus(f.store.getData(f.paper));
+      if (scenario !== 'pending-close') {
+        assert.equal(stage().status, scenario === 'foreground' ? 'reading' : 'to-read');
+      }
+      if (scenario === 'restore' || scenario === 'background') {
+        f.tabs.selectedID = f.reader.tabID;
+        f.tracker.notify('select', 'tab', f.reader.tabID);
+        await f.tracker.flushPending();
+        assert.deepEqual(stage(), { status: 'reading', source: 'automatic' });
+      }
+      f.setTabExists(false);
+      f.tab.onClose();
+      f.tracker.notify('close', 'tab', f.reader.tabID);
+      await f.tracker.flushPending();
+      assert.deepEqual(stage(), scenario === 'manual'
+        ? { status: 'to-read', source: 'manual' } : { status: 'read', source: 'automatic' });
+      const data = f.store.getData(f.paper);
+      assert.equal(data.lastPage, 10);
+      assert.equal(data.important, true);
+      if (scenario !== 'manual') assert.equal(data.v, 8);
+    } finally { f.restore(); }
+  });
+}
 
 test('a preference change during a dirty-item wait cancels completion before it is persisted', async () => {
   const f = await fixture();
