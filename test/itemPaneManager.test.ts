@@ -93,14 +93,14 @@ test('the pane explains an existing To Read override without discarding snapshot
   const openedAt = new Date(2026, 10, 20, 16, 13).getTime();
 
   await f.view();
-  assert.doesNotMatch(f.body.text(), /Choose Automatic \(Reading\) to use the recorded snapshot opening/);
+  assert.doesNotMatch(f.body.text(), /Choose Automatic \(Reading\) to follow its reading activity/);
   assert.equal(await f.store.recordSnapshotOpening(f.paper, openedAt), true);
   await f.view();
 
   const select = f.body.querySelectorAll('select')[0];
   const visible = f.body.children.filter(e => e.tag !== 'details').map(e => e.text()).join(' ');
-  assert.match(visible, /To Read can come from the new-item default/);
-  assert.match(visible, /Choose Automatic \(Reading\) to use the recorded snapshot opening/);
+  assert.match(visible, /This item is set to To Read/);
+  assert.match(visible, /Choose Automatic \(Reading\) to follow its reading activity/);
   assert.equal(select.value, 'to-read');
   assert.equal(f.counts().saves, 1);
 
@@ -114,7 +114,7 @@ test('the pane explains an existing To Read override without discarding snapshot
   assert.equal(getLastActivityAt(data), null);
   assert.deepEqual(resolveReadingStatus(data), { status: 'reading', source: 'automatic' });
   assert.match(f.paper.getField('extra'), /Unrelated metadata/);
-  assert.doesNotMatch(f.body.text(), /Choose Automatic \(Reading\) to use the recorded snapshot opening/);
+  assert.doesNotMatch(f.body.text(), /Choose Automatic \(Reading\) to follow its reading activity/);
   f.manager.unregister();
 });
 

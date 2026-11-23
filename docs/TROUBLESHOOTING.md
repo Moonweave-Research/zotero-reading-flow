@@ -21,7 +21,7 @@ The book-shaped icon should resolve saved positions without another scroll. If i
 
 ## Optional automatic Read
 
-Both options are off by default and apply only to items using Automatic. A loaded PDF tab must close on its live final visible page; another reader for that parent must not remain open. Visiting the end and returning to an earlier page is insufficient. The separate snapshot option requires 15 continuous seconds in the active snapshot tab and the end in view at close. Another open reader for the same item prevents either rule. External reader windows, EPUBs, and app shutdown do not trigger completion. Allow the five-second save delay. Manual To Read/Reading/Skimmed/Read stays unchanged until you clear that override yourself.
+The Mark as Read when closing a tab setting defaults to Off and applies only to items using Automatic. A loaded PDF tab must close on its live final visible page; another reader for that parent must not remain open. Visiting the end and returning to an earlier page is insufficient. The separate snapshot option requires 15 continuous seconds in the active snapshot tab and the end in view at close. Another open reader for the same item prevents either rule. External reader windows, EPUBs, and app shutdown do not trigger completion. Allow the five-second save delay. Manual To Read/Reading/Skimmed/Read stays unchanged until you clear that override yourself.
 
 The pane shows Automatic (Read) and its timestamp. Use Clear automatic Read to remove the mark without resetting PDF positions/history, bookmarks, snapshot activity or manual stages. Turning the setting off does not remove existing marks. Statistics show Automatic Read separately from the manual-only Marked Read count. v7 records need 1.3.16 or a later v7-capable client; released 1.3.15 refuses their edits without changing bytes. Do not downgrade the record version.
 
@@ -49,9 +49,9 @@ For a saved search or collection, select it in Zotero, choose Current View in th
 
 ## Data and sync
 
-Snapshot support in 1.3.15 records Last snapshot opened after the internal reader loads, with the same five-second save delay as PDF tracking. Opening a snapshot in an external browser does not count. Choose Automatic in the status control to remove a manual override; closing a snapshot never marks Read. EPUB tracking is unchanged. Snapshot-only items appear in the tracked set but do not add PDF calendar activity or page counts.
+Snapshot support in 1.3.15 records Last snapshot opened after the internal reader loads, with the same five-second save delay as PDF tracking. Opening a snapshot in an external browser does not count. Choose Automatic in the status control to remove a manual override. To mark Read when closing a snapshot, select Web snapshots only or PDFs and web snapshots and meet the viewing criteria. EPUB tracking is unchanged. Snapshot-only items appear in the tracked set but do not add PDF calendar activity or page counts.
 
-A snapshot opening needs v6 or newer metadata. A new-item To Read default uses v8, which remains after the default clears. Use Reading Flow 1.3.20 or later on each device that edits those records. Older versions, including 1.3.19, show v8 records as unavailable and preserve their contents.
+A snapshot opening needs v6 or newer metadata. A new-item To Read default uses v8, which remains after the default clears on a foreground PDF or snapshot visit. Use Reading Flow 1.3.20 or later on each device that edits those records. Older versions, including 1.3.19, show v8 records as unavailable and preserve their contents.
 
 My Library metadata lives in a ReadingFlow: JSON line in the parent item's Extra field. Do not edit it manually for routine use. Unrelated Extra content, PDFs, and annotations are preserved; uninstalling does not remove this metadata.
 

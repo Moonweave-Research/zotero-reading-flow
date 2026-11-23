@@ -145,8 +145,8 @@ Choose **Continue from bookmark** to return to your marked page. **Open last vie
 - **Keep automatic status:** choose **Clear Manual Status (Use Automatic)** in the context menu to remove your manual override. Untouched items remain **Unassigned**.
 - **Scan the library:** use Zotero's native column chooser to show **Bookmark / Last Viewed**, **Status**, **Last PDF Activity**, or the optional combined **Reading Flow** column. Column visibility and layout stay under Zotero's control.
 - **Choose a density:** in **Settings → Zotero Reading Flow**, **Compact** shows a status icon with position and activity date; **Icons** keeps the status icon with full information in its tooltip. This changes only the optional combined column.
-- **Create a reading list:** **Settings → Zotero Reading Flow → Add to Left Sidebar** creates one native **Reading Flow — Tracked Papers** Saved Search per selected editable library.
-- **Set a default for new items:** **Status for newly added papers** starts at **Unassigned**. Choosing a default affects eligible items added afterward; it does not rewrite the existing library.
+- **Create a reading list:** **Settings → Zotero Reading Flow → Add to Sidebar** creates one native **Reading Flow — Tracked Papers** Saved Search per selected editable library.
+- **Set a default for new items:** **Default status for new papers** starts at **No preset**. Choosing a default affects eligible items added afterward; it does not rewrite the existing library.
 
 ## Reading list and settings
 
@@ -167,11 +167,11 @@ For the smaller controls and less frequent tasks, see the **[visual guide](docs/
 
 </details>
 
-Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Papers**, choose the optional combined column's density, or set a default for future eligible additions. The default **Unassigned** leaves new items untouched. Existing items keep their current data.
+Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Papers**, choose the optional combined column's density, or set a default for future eligible additions. **No preset** leaves new items untouched. Existing items keep their current data.
 
 <img src="docs/assets/workflows/settings-controls-detail.png" alt="Actual settings detail showing Compact column density and Unassigned status for newly added papers" width="600">
 
-*Density changes the optional combined column. The new-item default applies only to future eligible additions. [Full settings window](docs/assets/reading-flow-settings.jpg).*
+*Earlier settings layout. The current pane labels the empty preset No preset. Display changes apply to the optional combined column. The new-item default applies only to future eligible additions. [Full settings window](docs/assets/reading-flow-settings.jpg).*
 
 <details>
 <summary>See the tracked-papers list in Zotero</summary>
@@ -182,11 +182,11 @@ Open **Settings → Zotero Reading Flow** to add **Reading Flow — Tracked Pape
 
 </details>
 
-## Optional automatic completion (1.3.16)
+## Optional automatic completion
 
-In **Settings → Zotero Reading Flow**, enable **Automatic Read on final-page tab close** only if you want that rule. It is **off by default**. A loaded PDF tab must be on its actual final visible page when it closes, with no other reader for the same item remaining open. A saved farthest position or a previous visit to the end is insufficient. Manual stages are preserved. EPUBs and app shutdown do not complete items.
+Under **Settings → Zotero Reading Flow**, **Mark as Read when closing a tab** lets you choose **Off**, **PDFs only**, **Web snapshots only**, or **PDFs and web snapshots**. It starts at **Off** on a fresh profile.
 
-The separate **Automatic Read on snapshot tab close** option is also **off by default**. When enabled, an Automatic item can be marked Read if its snapshot tab stays selected in the focused Zotero window for at least 15 seconds and the end is in view at close. No other reader for the item can remain open. A short snapshot that fits in the reader counts as being at the end.
+For items using Automatic status, close a PDF on its actual final page, or close a web snapshot while its end is visible after at least 15 seconds in the active tab. A short snapshot that fits in the reader counts as being at the end. Another reader for the item must be closed. Manual stages are preserved.
 
 The pane labels the result **Automatic (Read)** and shows **Automatically marked Read**. **Clear automatic Read** removes that mark while preserving manual choices, bookmarks, PDF history and snapshot openings. Statistics keep **Marked Read** manual-only and show **Automatic Read** separately. This is an automation rule, not proof of reading.
 

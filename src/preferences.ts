@@ -18,6 +18,26 @@ export function setGlobalPreference(name: string, value: unknown): void {
   (globalThis as any).Zotero?.Prefs?.set?.(name, value, true);
 }
 
+export function getAutomaticReadMode(): string {
+  const pdf = getGlobalPreference(READING_FLOW_PREFS.autoComplete) === true;
+  const snapshot = getGlobalPreference(READING_FLOW_PREFS.autoCompleteSnapshot) === true;
+  if (pdf && snapshot) return 'both';
+  if (pdf) return 'pdf';
+  return snapshot ? 'snapshot' : 'off';
+}
+
+export function setAutomaticReadMode(mode: string): void {
+  if (!['off', 'pdf', 'snapshot', 'both'].includes(mode)) return;
+  const pdf = mode === 'pdf' || mode === 'both';
+  const snapshot = mode === 'snapshot' || mode === 'both';
+  if ((getGlobalPreference(READING_FLOW_PREFS.autoComplete) === true) !== pdf) {
+    setGlobalPreference(READING_FLOW_PREFS.autoComplete, pdf);
+  }
+  if ((getGlobalPreference(READING_FLOW_PREFS.autoCompleteSnapshot) === true) !== snapshot) {
+    setGlobalPreference(READING_FLOW_PREFS.autoCompleteSnapshot, snapshot);
+  }
+}
+
 export function clearLegacyPreferenceAlias(name: string): void {
   try {
     // Earlier Reading Flow builds accidentally passed a full key to Zotero's

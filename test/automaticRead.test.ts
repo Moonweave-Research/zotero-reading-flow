@@ -6,27 +6,43 @@ import { resolveReadingStatus } from '../src/flowData';
 import { calculateStatisticsSnapshot } from '../src/statistics';
 import { readFileSync } from 'node:fs';
 
-async function fixture(enabled: unknown = true, manual: any = null, nativeTab = false) {
+async function fixture(
+  enabled: unknown = true, manual: any = null, nativeTab = false,
+  options: { defaultToRead?: boolean; restoring?: boolean; background?: boolean; pending?: boolean } = {}
+) {
   const old = (globalThis as any).Zotero;
-  let extra = 'Custom: keep\nReadingFlow: ' + JSON.stringify({ v: 6, important: true, s: manual, p: {}, snapshotOpenedAt: 100 });
+  let extra = 'Custom: keep\nReadingFlow: ' + JSON.stringify({ v: options.defaultToRead ? 8 : 6, important: true,
+    s: options.defaultToRead ? 'to-read' : manual,
+    ...(options.defaultToRead ? { defaultToRead: true } : {}), p: {}, snapshotOpenedAt: 100 });
   const paper: any = { id: 20, getField: () => extra, setField: (_: string, value: string) => { extra = value; }, saveTx: async () => {} };
-  const pdf = { id: 10, key: 'AAAABBBB', parentID: 20, isPDFAttachment: () => true };
+  const pdf = { id: 10, key: 'AAAABBBB', parentID: 20, deleted: false, isPDFAttachment: () => true };
   const app = { pdfViewer: { currentPageNumber: 10 }, pdfDocument: { numPages: 10 } };
-  const reader = { itemID: 10, tabID: 'reader-tab', _type: 'pdf', _initPromise: Promise.resolve(), PDFViewerApplication: app };
+  const reader = { itemID: 10, tabID: 'reader-tab', _isTabClosed: false, _type: 'pdf', _initPromise: Promise.resolve(), PDFViewerApplication: app };
   let hostCalls = 0, tabExists = true;
-  const tab = { onClose() { assert.equal(this, tab); hostCalls++; } };
-  if (nativeTab) Object.assign(reader, { _window: { Zotero_Tabs: { _getTab: () => ({ tab: tabExists ? tab : undefined }) } } });
+  const tab = { data: { itemID: 10 }, onClose() { assert.equal(this, tab); hostCalls++; reader._isTabClosed = true; } };
+  const tabs = { selectedID: options.background ? 'library' : reader.tabID,
+    _getTab: () => ({ tab: tabExists ? tab : undefined }) };
+  if (nativeTab) Object.assign(reader, { _window: { Zotero_Tabs: tabs } });
   let toolbar!: (event: any) => void, priority: number | undefined;
   const store = new DataStore(), tracker = new ReaderTracker(store);
   const api = { _readers: [reader] as any[], registerEventListener: (_: string, listener: any) => { toolbar = listener; }, unregisterEventListener() {} };
   (globalThis as any).Zotero = {
     Prefs: { get: () => enabled }, Reader: api,
+    Session: { state: { windows: [{ tabs: [{ type: 'reader', selected: true, data: tab.data }] }] } },
     Items: { get: (id: number) => id === 10 ? pdf : paper, getAsync: async () => paper },
     Notifier: { registerObserver: (_: any, _types: any, _id: any, p: number) => { priority = p; return 'tracker'; }, unregisterObserver() {}, trigger() {} },
     ItemTreeManager: { refreshColumns() {} }
   };
-  tracker.register(); toolbar({ reader }); await new Promise(resolve => setImmediate(resolve)); await tracker.flushPending();
-  return { store, tracker, reader, paper, app, api, tab, get hostCalls() { return hostCalls; },
+  tracker.register(options.restoring);
+  toolbar({ reader });
+  await new Promise(resolve => setImmediate(resolve));
+  if (!options.pending) await tracker.flushPending();
+  return { store, tracker, reader, paper, pdf, app, api, tab, tabs, get hostCalls() { return hostCalls; },
+    notifyClose() {
+      reader._isTabClosed = false;
+      tracker.notify('close', 'tab', reader.tabID);
+      reader._isTabClosed = true;
+    },
     setTabExists(value: boolean) { tabExists = value; }, get priority() { return priority; },
     setEnabled(value: unknown) { enabled = value; },
     restore() { tracker.unregister(); (globalThis as any).Zotero = old; } };
@@ -37,7 +53,7 @@ test('opt-in final-page tab closure derives automatic Read without changing manu
   try {
     const before = f.store.getData(f.paper);
     assert.equal(resolveReadingStatus(before).status, 'reading');
-    f.tracker.notify('close', 'tab', ['reader-tab'] as any);
+    f.notifyClose();
     f.api._readers.length = 0;
     await f.tracker.flushPending();
     const after = f.store.getData(f.paper);
@@ -58,7 +74,7 @@ for (const option of [undefined, false, 'true']) {
   test(`automatic completion stays off for preference ${String(option)}`, async () => {
     const f = await fixture(option === undefined ? null : option);
     try {
-      f.tracker.notify('close', 'tab', ['reader-tab']); await f.tracker.flushPending();
+      f.notifyClose(); await f.tracker.flushPending();
       assert.equal(resolveReadingStatus(f.store.getData(f.paper)).status, 'reading');
       assert.equal(f.store.getData(f.paper).v, 6);
     } finally { f.restore(); }
@@ -69,7 +85,7 @@ for (const manual of ['to-read', 'reading', 'skimmed', 'read']) {
   test(`automatic completion never overwrites manual ${manual}`, async () => {
     const f = await fixture(true, manual);
     try {
-      f.tracker.notify('close', 'tab', ['reader-tab']); await f.tracker.flushPending();
+      f.notifyClose(); await f.tracker.flushPending();
       assert.deepEqual(resolveReadingStatus(f.store.getData(f.paper)), { status: manual, source: 'manual' });
       assert.equal(f.store.getData(f.paper).automaticRead, undefined);
     } finally { f.restore(); }
@@ -85,7 +101,7 @@ for (const scenario of ['back-from-end', 'unknown-page-count', 'other-reader-ope
       if (scenario === 'other-reader-open') f.api._readers.push({ itemID: 10, tabID: 'other-tab' });
       if (scenario === 'snapshot' || scenario === 'epub') f.reader._type = scenario;
       if (scenario === 'shutdown') (globalThis as any).Services = { startup: { shuttingDown: true } };
-      f.tracker.notify('close', 'tab', ['reader-tab']);
+      f.notifyClose();
       if (scenario === 'preference-disabled') f.setEnabled(false);
       if (scenario === 'late-manual-choice') await f.store.setStatus(f.paper, 'to-read');
       if (scenario === 'unregister') f.tracker.unregister();
@@ -102,10 +118,10 @@ test('focused split closing page wins over the primary pane and historical maxim
     (f.reader as any)._internalReader = { _lastViewPrimary: false,
       _primaryView: { _iframeWindow: { PDFViewerApplication: f.app } },
       _secondaryView: { _iframeWindow: { PDFViewerApplication: { pdfViewer: { currentPageNumber: 2 }, pdfDocument: { numPages: 10 } } } } };
-    f.tracker.notify('close', 'tab', ['reader-tab']); await f.tracker.flushPending();
+    f.notifyClose(); await f.tracker.flushPending();
     assert.equal(f.store.getData(f.paper).automaticRead, undefined);
     (f.reader as any)._internalReader._secondaryView._iframeWindow.PDFViewerApplication.pdfViewer.currentPageNumber = 10;
-    f.tracker.notify('close', 'tab', ['reader-tab']); await f.tracker.flushPending();
+    f.notifyClose(); await f.tracker.flushPending();
     assert.equal(f.store.getData(f.paper).automaticRead!.attachmentKey, 'AAAABBBB');
   } finally { f.restore(); }
 });
@@ -113,7 +129,7 @@ test('focused split closing page wins over the primary pane and historical maxim
 test('clear automatic Read preserves manual choices and every other record field after reload', async () => {
   const f = await fixture();
   try {
-    f.tracker.notify('close', 'tab', ['reader-tab']); await f.tracker.flushPending();
+    f.notifyClose(); await f.tracker.flushPending();
     await f.store.setStatus(f.paper, 'reading');
     const before = f.store.getData(f.paper);
     assert.equal(before.v, 7);
@@ -145,13 +161,84 @@ test('completion writes preserve unsupported and read-only records', async () =>
   } finally { f.restore(); }
 });
 
-test('automatic completion is packaged off by default with an accessible opt-in control', () => {
-  assert.match(readFileSync('addon/prefs.js', 'utf8'), /pref\("extensions\.readingflow\.autoComplete", false\)/);
+test('automatic completion keeps both packaged defaults off behind one accessible control', () => {
+  const prefs = readFileSync('addon/prefs.js', 'utf8');
+  assert.match(prefs, /pref\("extensions\.readingflow\.autoComplete", false\)/);
+  assert.match(prefs, /pref\("extensions\.readingflow\.autoCompleteSnapshot", false\)/);
   const panel = readFileSync('addon/prefs.xhtml', 'utf8');
-  assert.match(panel, /id="readingflow-pref-auto-complete"[^>]*preference="extensions\.readingflow\.autoComplete"/);
-  assert.match(panel, /Off by default/);
-  assert.match(readFileSync('addon/prefs.js', 'utf8'), /pref\("extensions\.readingflow\.autoCompleteSnapshot", false\)/);
-  assert.match(panel, /id="readingflow-pref-auto-complete-snapshot"[^>]*preference="extensions\.readingflow\.autoCompleteSnapshot"[^>]*aria-describedby="readingflow-pref-auto-complete-snapshot-help"/);
+  assert.match(panel, /<html:select id="readingflow-pref-auto-complete"[^>]*aria-describedby="readingflow-pref-auto-complete-help"/);
+  for (const mode of ['off', 'pdf', 'snapshot', 'both']) assert.ok(panel.includes(`value="${mode}"`));
+});
+
+for (const scenario of ['foreground', 'pending-close', 'background', 'restore', 'manual'] as const) {
+  test(`only deliberate PDF viewing releases default To Read (${scenario})`, async () => {
+    const f = await fixture(true, scenario === 'manual' ? 'to-read' : null, true, {
+      defaultToRead: scenario !== 'manual',
+      restoring: scenario === 'restore',
+      background: scenario === 'background',
+      pending: scenario === 'pending-close'
+    });
+    try {
+      const stage = () => resolveReadingStatus(f.store.getData(f.paper));
+      if (scenario !== 'pending-close') {
+        assert.equal(stage().status, scenario === 'foreground' ? 'reading' : 'to-read');
+      }
+      if (scenario === 'restore' || scenario === 'background') {
+        f.tabs.selectedID = f.reader.tabID;
+        f.tracker.notify('select', 'tab', f.reader.tabID);
+        await f.tracker.flushPending();
+        assert.deepEqual(stage(), { status: 'reading', source: 'automatic' });
+      }
+      f.setTabExists(false);
+      f.tab.onClose();
+      f.tracker.notify('close', 'tab', f.reader.tabID);
+      await f.tracker.flushPending();
+      assert.deepEqual(stage(), scenario === 'manual'
+        ? { status: 'to-read', source: 'manual' } : { status: 'read', source: 'automatic' });
+      const data = f.store.getData(f.paper);
+      assert.equal(data.lastPage, 10);
+      assert.equal(data.important, true);
+      if (scenario !== 'manual') assert.equal(data.v, 8);
+    } finally { f.restore(); }
+  });
+}
+
+for (const scenario of ['trashed', 'reopened'] as const) {
+  test(`a final-page PDF close cancels completion if ${scenario}`, async () => {
+    const f = await fixture(true, null, true);
+    try {
+      if (scenario === 'trashed') f.pdf.deleted = true;
+      f.setTabExists(false);
+      f.tab.onClose();
+      f.tracker.notify('close', 'tab', f.reader.tabID);
+      if (scenario === 'reopened') f.api._readers.push({ ...f.reader, _isTabClosed: false, tabID: 'reopened' });
+      await f.tracker.flushPending();
+      assert.equal(f.store.getData(f.paper).automaticRead, undefined);
+      assert.equal(f.store.getData(f.paper).lastPage, 10);
+    } finally { f.restore(); }
+  });
+}
+
+test('pinning To Read during a PDF save preserves the bookmark and prior history', async () => {
+  const f = await fixture(true, null, true, { defaultToRead: true, pending: true });
+  try {
+    const bookmark = { attachmentKey: 'AAAABBBB', page: 2, pageCount: 10, at: 200 };
+    await f.store.setReadingBookmark(f.paper, bookmark);
+    const yesterday = Date.now() - 86_400_000;
+    await f.store.recordProgress(f.paper, { attachmentId: 'key:AAAABBBB', pageCount: 10, progress: .3, lastPage: 3, at: yesterday });
+    const history = f.store.getData(f.paper).history!;
+    await f.store.setStatus(f.paper, 'to-read');
+    f.setTabExists(false);
+    f.tab.onClose();
+    f.tracker.notify('close', 'tab', f.reader.tabID);
+    await f.tracker.flushPending();
+    const data = f.store.getData(f.paper);
+    assert.deepEqual(resolveReadingStatus(data), { status: 'to-read', source: 'manual' });
+    assert.equal(data.automaticRead, undefined);
+    assert.equal(data.lastPage, 10);
+    assert.deepEqual(data.bookmark, bookmark);
+    for (const [day, activity] of Object.entries(history.days)) assert.deepEqual(data.history?.days[day], activity);
+  } finally { f.restore(); }
 });
 
 test('a preference change during a dirty-item wait cancels completion before it is persisted', async () => {
@@ -159,7 +246,7 @@ test('a preference change during a dirty-item wait cancels completion before it 
   try {
     let checks = 0;
     f.paper.isDirty = () => { checks++; if (checks === 1) { f.setEnabled(false); return true; } return false; };
-    f.tracker.notify('close', 'tab', ['reader-tab']); await f.tracker.flushPending();
+    f.notifyClose(); await f.tracker.flushPending();
     assert.ok(checks >= 2);
     assert.equal(f.store.getData(f.paper).automaticRead, undefined);
   } finally { f.restore(); }
@@ -168,7 +255,7 @@ test('a preference change during a dirty-item wait cancels completion before it 
 test('clearing automatic Read does not cancel an unrelated pending PDF position save', async () => {
   const f = await fixture();
   try {
-    f.tracker.notify('close', 'tab', ['reader-tab']); await f.tracker.flushPending();
+    f.notifyClose(); await f.tracker.flushPending();
     f.app.pdfViewer.currentPageNumber = 3;
     f.tracker.notify('pageChange', 'file', [10]);
     await f.store.clearAutomaticRead(f.paper);
@@ -183,7 +270,7 @@ test('clearing automatic Read does not cancel an unrelated pending PDF position 
 test('a tab closed under a manual stage cannot complete after that stage is cleared', async () => {
   const f = await fixture(true, 'to-read');
   try {
-    f.tracker.notify('close', 'tab', ['reader-tab']);
+    f.notifyClose();
     await f.store.clearManualStatus(f.paper);
     await f.tracker.flushPending();
     assert.equal(f.store.getData(f.paper).automaticRead, undefined);
@@ -247,7 +334,7 @@ for (const scenario of ['final-page', 'earlier-page', 'manual-after-close', 'man
       f.api._readers.length = 0;
       if (scenario === 'manual-after-close') await f.store.setStatus(f.paper, 'to-read');
       if (scenario === 'manual-at-close') await f.store.clearManualStatus(f.paper);
-      f.tracker.notify('close', 'tab', ['reader-tab']);
+      f.tracker.notify('close', 'tab', 'reader-tab');
       await f.tracker.flushPending();
       const data = f.store.getData(f.paper);
       assert.equal(Boolean(data.automaticRead), scenario === 'final-page');
@@ -272,7 +359,10 @@ for (const scenario of [
   'qualifying-close', 'brief', 'above-end', 'short', 'background-close',
   'background-time', 'window-inactive', 'restored', 'pdf-option-only',
   'manual-stage', 'default-became-automatic', 'another-reader', 'unloaded', 'disabled-before-save',
-  'moved-before-reader-opens', 'reader-opened-before-save'
+  'moved-before-reader-opens', 'reader-opened-before-save',
+  'unloaded-sibling-tab', 'snapshot-trashed', 'reading-mode-away-from-end', 'reading-mode-at-end', 'reading-mode-loading',
+  'restored-return-before-ready', 'restored-return-after-ready', 'prebound-close',
+  'delayed-select', 'nested-unread', 'nested-at-end', 'nested-and-root-unread', 'trashed-before-save'
 ] as const) {
   test(`snapshot automatic Read: ${scenario}`, async () => {
     const global = globalThis as any;
@@ -288,12 +378,17 @@ for (const scenario of [
       id: 20, getField: () => extra,
       setField: (_: string, value: string) => { extra = value; }, saveTx: async () => {}
     };
-    const attachment = { id: 10, key: 'AAAABBBB', parentID: 20 };
-    let tabExists = true, closed = false, focused = true;
+    const attachment = { id: 10, key: 'AAAABBBB', parentID: 20, deleted: scenario === 'snapshot-trashed' };
+    let closed = false, focused = true;
     const secondRead = scenario === 'another-reader';
     let notifyClose: () => void = () => {};
+    const tab = { id: 'snapshot-tab', type: 'reader', data: {itemID: 10}, onClose() { closed = true; } };
     const tabs = {
-      selectedID: 'snapshot-tab',
+      _selectedID: 'snapshot-tab',
+      get selectedID() { return this._selectedID; },
+      set selectedID(id: string) { this._selectedID = id; },
+      _tabs: scenario === 'unloaded-sibling-tab'
+        ? [tab, { ...tab, id: 'unloaded-sibling-tab', type: 'reader-unloaded' }] : [tab],
       tabHooks: {
         moveToNewWindow: {
           async reader(tab: { id: string }) {
@@ -304,24 +399,42 @@ for (const scenario of [
           }
         }
       },
-      _getTab: () => ({ tab: tabExists ? {} : undefined }),
+      _getTab(id: string) { return { tab: this._tabs.find(tab => tab.id === id) }; },
       close(_id?: string) {
-        closed = true;
-        readers.splice(readers.indexOf(reader), 1);
         this.selectedID = 'library';
+        this._tabs = this._tabs.filter(other => other !== tab);
+        tab.onClose();
+        readers.splice(readers.indexOf(reader), 1);
         tracker.notify('select', 'tab', 'library');
-        tabExists = scenario === 'unloaded';
+        if (scenario === 'unloaded') this._tabs.push({ ...tab, type: 'reader-unloaded' });
         notifyClose = () => tracker.notify('close', 'tab', 'snapshot-tab');
       }
     };
+    const preboundClose = tabs.close.bind(tabs);
     const win = Object.assign(new EventTarget(), {
       Zotero_Tabs: tabs, document: { hasFocus: () => focused }, performance: { now: () => now }
     });
-    const scroll = { clientHeight: 500, scrollHeight: scenario === 'short' ? 500 : 2500,
-      scrollTop: scenario === 'short' ? 0 : scenario === 'above-end' ? 1500 : 2000 };
+    const scroll = { clientHeight: 500, scrollHeight: scenario === 'short' || ['nested-unread', 'nested-at-end'].includes(scenario) ? 500 : 2500,
+      clientWidth: 800,
+      scrollTop: scenario === 'short' || ['nested-unread', 'nested-at-end'].includes(scenario) ? 0 : scenario === 'above-end' || scenario === 'reading-mode-at-end' ? 1500 : 2000 };
+    const nested = { clientHeight: 200, scrollHeight: 2000, scrollTop: scenario === 'nested-at-end' ? 1800 : 0,
+      getBoundingClientRect: () => ({ top: 0, bottom: 200, left: 0, right: 500, width: 500 }) };
+    const doc = { scrollingElement: scroll,
+      body: { querySelectorAll: () => scenario.startsWith('nested-') ? [nested] : [] },
+      defaultView: { getComputedStyle: () => ({ overflowY: 'auto', visibility: 'visible' }) } };
+    const primaryView = { get _iframeDocument() { return closed ? undefined : doc; } };
+    const overlay = { initialized: scenario !== 'reading-mode-loading', _iframeDocument: { scrollingElement: { ...scroll,
+      scrollTop: scenario === 'reading-mode-away-from-end' ? 500 : 2000 } } };
+    let finishInit!: () => void;
+    const initialLoad = scenario === 'restored-return-before-ready' ? new Promise<void>(resolve => {
+      finishInit = resolve;
+    }) : Promise.resolve();
     const reader = {
+      _initPromise: initialLoad,
       itemID: 10, tabID: 'snapshot-tab', _type: 'snapshot', _window: win,
-      _internalReader: { _primaryView: { get _iframeDocument() { return closed ? undefined : { scrollingElement: scroll }; } } }
+      _internalReader: { _primaryView: primaryView, get _lastView() {
+        return scenario.startsWith('reading-mode-') ? overlay : primaryView;
+      } }
     };
     const readers: Array<{ itemID: number; tabID?: string }> = secondRead
       ? [reader, { itemID: 10, tabID: 'other-tab' }] : [reader];
@@ -329,7 +442,7 @@ for (const scenario of [
     let enabled = scenario !== 'pdf-option-only';
     global.Zotero = {
       Prefs: { get: (name: string) => name === 'extensions.readingflow.autoCompleteSnapshot' ? enabled : true },
-      Session: { state: { windows: [{ tabs: [{ type: 'reader', selected: true, data: { itemID: 10 } }] }] } },
+      Session: { state: { windows: [{ tabs: [{ type: 'reader', selected: true, data: tab.data }] }] } },
       Reader: { _readers: readers, registerEventListener: (_: string, listener: typeof toolbar) => { toolbar = listener; } },
       Items: { get: (id: number) => id === 10 ? attachment : parent, getAsync: async () => parent },
       Notifier: { registerObserver: () => 'tracker', unregisterObserver() {}, trigger() {} },
@@ -338,9 +451,20 @@ for (const scenario of [
     try {
       const originalClose = tabs.close;
       const originalMove = tabs.tabHooks.moveToNewWindow.reader;
-      tracker.register(scenario === 'restored');
+      tracker.register(scenario.startsWith('restored'));
       toolbar({ reader });
+      const reselect = () => {
+        tabs.selectedID = 'library';
+        tracker.notify('select', 'tab', 'library');
+        tabs.selectedID = reader.tabID;
+        tracker.notify('select', 'tab', reader.tabID);
+      };
+      if (scenario === 'restored-return-before-ready') {
+        reselect();
+        finishInit();
+      }
       await new Promise(resolve => setImmediate(resolve));
+      if (scenario === 'restored-return-after-ready') reselect();
       await tracker.flushPending();
       now = scenario === 'brief' ? 14_999 : 15_000;
       if (scenario === 'background-close' || scenario === 'background-time') {
@@ -352,6 +476,12 @@ for (const scenario of [
         tabs.selectedID = reader.tabID;
         tracker.notify('select', 'tab', reader.tabID);
       }
+      if (scenario === 'delayed-select') {
+        now = 800;
+        tabs.selectedID = 'library';
+        now += 15_500;
+        tabs.selectedID = reader.tabID;
+      }
       if (scenario === 'window-inactive') {
         focused = false;
         win.dispatchEvent(new Event('deactivate'));
@@ -362,15 +492,24 @@ for (const scenario of [
       if (scenario === 'moved-before-reader-opens') {
         await tabs.tabHooks.moveToNewWindow.reader({ id: reader.tabID });
       } else {
-        tabs.close();
+        if (scenario === 'prebound-close') {
+          const click = Object.assign(new Event('click'), { button: 0 });
+          Object.defineProperty(click, 'target', { value: {
+            closest: (selector: string) => selector === '.tab-close' ? {} : { getAttribute: () => reader.tabID }
+          } });
+          win.dispatchEvent(click);
+          preboundClose();
+        } else tabs.close();
         await Promise.resolve();
         notifyClose();
       }
       if (scenario === 'reader-opened-before-save') readers.push({ itemID: 10 });
+      if (scenario === 'trashed-before-save') attachment.deleted = true;
       if (scenario === 'disabled-before-save') enabled = false;
       await tracker.flushPending();
       const after = store.getData(parent);
-      const qualifies = scenario === 'qualifying-close' || scenario === 'short' || defaultToRead;
+      const qualifies = scenario === 'qualifying-close' || scenario === 'short' || defaultToRead || scenario === 'reading-mode-at-end' || scenario.startsWith('restored-return')
+        || scenario === 'prebound-close' || scenario === 'nested-at-end';
       assert.equal(after.automaticRead?.attachmentKey, qualifies ? attachment.key : undefined);
       assert.equal(after.defaultToRead, undefined);
       assert.ok(after.snapshotOpenedAt);
@@ -380,10 +519,108 @@ for (const scenario of [
       assert.deepEqual(after.p, {});
       tracker.unregister();
       assert.equal(tabs.close, originalClose);
+      assert.equal(Object.getOwnPropertyDescriptor(tabs, '_selectedID')?.value, 'library');
       assert.equal(tabs.tabHooks.moveToNewWindow.reader, originalMove);
     } finally {
       tracker.unregister();
       global.Zotero = oldZotero;
     }
+  });
+}
+
+for (const scenario of ['explicit-select', 'fallback-after-close', 'press-active-fallback-tab', 'keyboard-active-fallback-tab', 'selected-in-inactive-window', 'restore-duplicate-other-tab', 'ordinary-pdf-close', 'move-at-end', 'unloaded-pdf-sibling'] as const) {
+  test(`PDF To Read selection intent: ${scenario}`, async () => {
+    const old = (globalThis as any).Zotero;
+    let extra = 'ReadingFlow: ' + JSON.stringify({ v: 8, s: 'to-read', defaultToRead: true, p: {}, important: true });
+    const item = { id: 20, getField: () => extra,
+      setField: (_: string, value: string) => { extra = value; }, saveTx: async () => {} };
+    const pdf = { id: 10, key: 'ABABABAB', parentID: 20, isPDFAttachment: () => true };
+    const store = new DataStore(), tracker = new ReaderTracker(store);
+    const win: any = new EventTarget();
+    win.document = { hasFocus: () => scenario !== 'selected-in-inactive-window' };
+    win.performance = { now: () => 0 };
+    const tabA = { id: 'A', type: 'reader', data: {itemID: 99}, onClose() {} };
+    const tabB = { id: 'B', type: 'reader', data: {itemID: 10}, onClose() { readerB._isTabClosed = true; } };
+    const startDuplicate = scenario === 'restore-duplicate-other-tab';
+    const directAction = scenario === 'press-active-fallback-tab' || scenario === 'keyboard-active-fallback-tab';
+    const completionCase = ['ordinary-pdf-close', 'move-at-end', 'unloaded-pdf-sibling'].includes(scenario);
+    if (startDuplicate) tabA.data.itemID = 10;
+    const tabs = {
+      _selectedID: 'A',
+      _tabs: [tabA, tabB],
+      tabHooks: { moveToNewWindow: { async reader(tab: { id: string }) { tabs.close(tab.id); } } },
+      _getTab(id: string) { return { tab: this._tabs.find(tab => tab.id === id) }; },
+      get selectedID() { return this._selectedID; },
+      select(id: string) {
+        this._selectedID = id;
+        tracker.notify('select', 'tab', id);
+      },
+      close(id: string) {
+        const tab = this._getTab(id).tab!;
+        if (this.selectedID === id) this.select(id === 'A' ? 'B' : 'A');
+        this._tabs = this._tabs.filter(other => other !== tab);
+        tab.onClose();
+        tracker.notify('close', 'tab', id);
+      }
+    };
+    win.Zotero_Tabs = tabs;
+    const app = { pdfViewer: { currentPageNumber: completionCase ? 3 : 1 }, pdfDocument: { numPages: 3 } };
+    let toolbar!: (event: any) => void;
+    let initA!: () => void, initB!: () => void;
+    const readerB = { _type:'pdf', itemID:10, tabID:'B', _isTabClosed: false, _window:win, PDFViewerApplication: app,
+      _initPromise: startDuplicate ? new Promise<void>(r=>{initB=r;}) : Promise.resolve() };
+    const readerA = { ...readerB, itemID:10, tabID:'A', _initPromise:new Promise<void>(r=>{initA=r;}) };
+    (globalThis as any).Zotero = {
+      getMainWindows: () => [win],
+      Session: {state:{windows:[{tabs:[{type:'reader', selected:true, data:tabA.data}]}]}},
+      Prefs: { get: () => completionCase },
+      Reader: { _readers: startDuplicate ? [readerA,readerB] : [readerB], registerEventListener: (_:string, f:typeof toolbar) => {toolbar = f;} },
+      Items: { get: (id: number) => id === 10 ? pdf : item, getAsync: async () => item },
+      Notifier: { registerObserver: () => 'tracker', unregisterObserver() {}, trigger() {} },
+      ItemTreeManager: { refreshColumns() {} }
+    };
+    try {
+      tracker.register(startDuplicate);
+      if (startDuplicate) toolbar({reader:readerA});
+      toolbar({reader:readerB});
+      if (startDuplicate) {
+        tabs.select('B');
+        initB();
+        await new Promise(resolve=>setImmediate(resolve));
+        initA();
+      } else {
+        await new Promise(resolve=>setImmediate(resolve));
+        await tracker.flushPending();
+        assert.equal(resolveReadingStatus(store.getData(item)).status, 'to-read');
+        if (scenario === 'fallback-after-close' || directAction) tabs.close('A');
+        else tabs.select('B');
+        if (directAction) {
+          await tracker.flushPending();
+          assert.equal(resolveReadingStatus(store.getData(item)).status, 'to-read');
+          const event = scenario === 'press-active-fallback-tab'
+            ? Object.assign(new Event('mousedown'), { button: 0 })
+            : Object.assign(new Event('keydown'), { key: 'Enter' });
+          Object.defineProperty(event, 'target', {value: {
+            closest: (selector: string) => selector.startsWith('#tab-bar-container') ? {getAttribute: () => 'B'} : null
+          }});
+          win.dispatchEvent(event);
+        }
+      }
+      await new Promise(resolve=>setImmediate(resolve));
+      await tracker.flushPending();
+      if (completionCase) {
+        assert.equal(resolveReadingStatus(store.getData(item)).status, 'reading');
+        if (scenario === 'unloaded-pdf-sibling') {
+          tabs._tabs.push({ ...tabB, id: 'sibling', type: 'reader-unloaded' });
+        }
+        if (scenario === 'move-at-end') await tabs.tabHooks.moveToNewWindow.reader(tabB);
+        else tabs.close(tabB.id);
+        await tracker.flushPending();
+        assert.equal(Boolean(store.getData(item).automaticRead), scenario === 'ordinary-pdf-close');
+      } else {
+        assert.equal(resolveReadingStatus(store.getData(item)).status,
+          scenario === 'explicit-select' || directAction || startDuplicate ? 'reading' : 'to-read');
+      }
+    } finally { tracker.unregister(); (globalThis as any).Zotero = old; }
   });
 }

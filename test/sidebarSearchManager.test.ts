@@ -83,12 +83,13 @@ test('renames only the tracked legacy sidebar search when its status is checked'
   assert.equal(saves, 1);
 });
 
-test('puts the sidebar list control before secondary appearance settings and states its limits', () => {
+test('keeps tracked-paper sidebar actions visible before advanced settings', () => {
   const prefs = readFileSync('addon/prefs.xhtml', 'utf8');
-  assert.ok(prefs.indexOf('Reading list in the left sidebar') < prefs.indexOf('Debug logging'));
-  assert.match(prefs, /Add to Left Sidebar/);
+  assert.ok(prefs.indexOf('Reading list in the sidebar') > prefs.indexOf('Mark as Read when closing a tab')
+    && prefs.indexOf('Reading list in the sidebar') < prefs.indexOf('Debug logging'));
+  assert.match(prefs, /Add to Sidebar/);
   assert.match(prefs, /under <html:strong>Saved Searches<\/html:strong>/);
-  assert.match(prefs, /not an exact status-filtered folder/);
+  assert.match(prefs, /tracked papers of any reading status/);
   assert.match(prefs, /id="readingflow-pref-sidebar-message"/);
 });
 

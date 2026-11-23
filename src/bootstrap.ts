@@ -29,6 +29,8 @@ import { ResumeReader } from './resumeReader';
 import { SidebarSearchManager } from './sidebarSearchManager';
 import {
   clearLegacyReadingFlowPreferenceAliases,
+  getAutomaticReadMode,
+  setAutomaticReadMode,
   setNewItemStatusPreference
 } from './preferences';
 
@@ -106,6 +108,8 @@ export class Bootstrap {
     clearLegacyReadingFlowPreferenceAliases();
     const sidebarSearchManager = new SidebarSearchManager();
     (Zotero as any).ReadingFlowPreferences = {
+      getAutomaticReadMode,
+      setAutomaticReadMode,
       setNewItemStatus: (value: string) => setNewItemStatusPreference(value),
       createSidebarSearch: () => sidebarSearchManager.create(),
       removeSidebarSearch: () => sidebarSearchManager.remove(),
@@ -234,6 +238,7 @@ export class Bootstrap {
   onMainWindowLoad({ window }: { window: Window }) {
     if (!this.started) return;
     try {
+      this.readerTracker?.trackSnapshotWindow(window);
       this.styleManager.injectCSS(window.document);
       if (this.rootURI) {
         this.styleManager.injectLocale(window, this.rootURI);
