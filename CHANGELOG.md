@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.21 - 2026-11-23
+
+- Use one Mark as Read when closing a tab setting for PDFs and web snapshots. The existing choices are preserved, and automatic completion is off by default.
+- With snapshot completion enabled, close the active tab at the end after at least 15 seconds of continuous viewing. Switches to other tabs, a restored tab that has not been deliberately selected, and moves to a new window do not trigger completion.
+- A foreground PDF visit now advances a new-paper To Read preset to Reading, matching snapshots. Explicit statuses stay in place. Closing a PDF on its final page still works with the PDF option enabled.
+- Prevent automatic Read on attachment removal and when another reader for the item remains open or is reopened before the mark is saved.
+
 ## 1.3.20 - 2026-11-21
 
 - A new-item To Read default advances to Automatic (Reading) when you open a saved snapshot in Zotero or switch to its loaded tab. Background loads and session restore preserve the default. Previously saved statuses and explicit choices, including choosing To Read again, keep their priority.
